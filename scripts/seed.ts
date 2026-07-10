@@ -42,8 +42,12 @@ try {
 
 const DEMO = {
   companyEmail: "demo@poolchem.app",
-  loginEmail: "tech@demo.com",
-  loginPassword: "password123",
+  techEmail: "tech@demo.com",
+  techPassword: "password123",
+  ownerEmail: "owner@demo.com",
+  ownerPassword: "password123",
+  adminEmail: "admin@poolchem.app",
+  adminPassword: "admin-password-456",
 } as const;
 
 const prisma = new PrismaClient({
@@ -70,17 +74,17 @@ async function clearDemoTenant(companyId: string) {
  * Provisions the Supabase Auth user for the demo login, if the service-role key
  * is configured. Returns a human-readable status for the summary.
  */
-async function provisionAuthUser(): Promise<string> {
+async function provisionAuthUser(
+  email: string,
+  password: string,
+): Promise<string> {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
   if (!url || !serviceKey) {
     return (
-      "SKIPPED — no SUPABASE_SERVICE_ROLE_KEY / NEXT_PUBLIC_SUPABASE_URL.\n" +
-      "     Create the login manually in the Supabase dashboard\n" +
-      "     (Authentication → Users → Add user):\n" +
-      `        email:    ${DEMO.loginEmail}\n` +
-      `        password: ${DEMO.loginPassword}   (mark email as confirmed)`
+      `SKIPPED — ${email} (no SUPABASE_SERVICE_ROLE_KEY).\n` +
+      `     Create the login manually in the Supabase dashboard.`
     );
   }
 
@@ -89,20 +93,19 @@ async function provisionAuthUser(): Promise<string> {
   });
 
   const { error } = await admin.auth.admin.createUser({
-    email: DEMO.loginEmail,
-    password: DEMO.loginPassword,
+    email,
+    password,
     email_confirm: true,
   });
 
   if (error) {
-    // Most common: the user already exists from a previous seed — that's fine.
     if (/already been registered|already exists/i.test(error.message)) {
-      return `OK — auth user ${DEMO.loginEmail} already existed (reused).`;
+      return `OK — auth user ${email} already existed (reused).`;
     }
-    return `FAILED — ${error.message}. Create ${DEMO.loginEmail} manually.`;
+    return `FAILED — ${error.message}. Create ${email} manually.`;
   }
 
-  return `OK — created Supabase auth user ${DEMO.loginEmail}.`;
+  return `OK — created Supabase auth user ${email}.`;
 }
 
 async function main() {
@@ -129,16 +132,44 @@ async function main() {
   });
   console.log(`• Company:  ${company.name}`);
 
-  // ---- User (the servicing tech) -------------------------------------------
-  const tech = await prisma.user.create({
-    data: {
-      email: DEMO.loginEmail,
+  // ---- SUPER_ADMIN (platform owner, no company) ----------------------------
+  const admin = await prisma.user.upsert({
+    where: { email: DEMO.adminEmail },
+    update: { name: "Platform Admin", role: "SUPER_ADMIN" },
+    create: {
+      email: DEMO.adminEmail,
+      name: "Platform Admin",
+      role: "SUPER_ADMIN",
+      companyId: null,
+    },
+  });
+  console.log(`• Admin:    ${admin.name} <${admin.email}> (SUPER_ADMIN)`);
+
+  // ---- OWNER (company owner) -----------------------------------------------
+  const owner = await prisma.user.upsert({
+    where: { email: DEMO.ownerEmail },
+    update: { name: "Sarah Chen", role: "OWNER", companyId: company.id },
+    create: {
+      email: DEMO.ownerEmail,
+      name: "Sarah Chen",
+      role: "OWNER",
+      companyId: company.id,
+    },
+  });
+  console.log(`• Owner:    ${owner.name} <${owner.email}> (OWNER)`);
+
+  // ---- TECH (servicing technician) -----------------------------------------
+  const tech = await prisma.user.upsert({
+    where: { email: DEMO.techEmail },
+    update: { name: "Alex Rivera", role: "TECH", companyId: company.id },
+    create: {
+      email: DEMO.techEmail,
       name: "Alex Rivera",
       role: "TECH",
       companyId: company.id,
     },
   });
-  console.log(`• User:     ${tech.name} <${tech.email}>`);
+  console.log(`• Tech:     ${tech.name} <${tech.email}>`);
 
   // ---- Pools ---------------------------------------------------------------
   const poolSeeds = [
@@ -147,6 +178,7 @@ async function main() {
       address: "42 Sunset Blvd, Scottsdale, AZ",
       volume: 18000,
       notes: "Gate code 4821. Dog is friendly.",
+      homeownerEmail: "henderson@example.com",
     },
     {
       name: "Vista Verde HOA",
@@ -159,6 +191,8 @@ async function main() {
       address: "17 Cactus Wren Ct, Mesa, AZ",
       volume: 12500,
       notes: "Saltwater system.",
+      homeownerEmail: "marlowe@example.com",
+      homeownerPhone: "(480) 555-0199",
     },
   ];
 
@@ -168,7 +202,16 @@ async function main() {
       await prisma.pool.create({
         // qrCode has no schema default — it's minted in code (see db/pools.ts).
         // publicToken defaults to a uuid in the schema.
-        data: { ...seed, qrCode: `POOL-${randomUUID()}`, companyId: company.id },
+        data: {
+          name: seed.name,
+          address: seed.address ?? null,
+          volume: seed.volume,
+          notes: seed.notes ?? null,
+          homeownerEmail: (seed as Record<string, unknown>).homeownerEmail as string ?? null,
+          homeownerPhone: (seed as Record<string, unknown>).homeownerPhone as string ?? null,
+          qrCode: `POOL-${randomUUID()}`,
+          companyId: company.id,
+        },
       }),
     );
   }
@@ -273,16 +316,19 @@ async function main() {
   }
   console.log(`• Visits:   ${visitSeeds.length} completed visits with readings`);
 
-  // ---- Supabase auth user (so the demo login actually works) ---------------
-  console.log("\n• Provisioning Supabase auth login…");
-  const authStatus = await provisionAuthUser();
+  // ---- Supabase auth users (so the demo logins actually work) --------------
+  console.log("\n• Provisioning Supabase auth logins…");
+  const adminAuthStatus = await provisionAuthUser(DEMO.adminEmail, DEMO.adminPassword);
+  const ownerAuthStatus = await provisionAuthUser(DEMO.ownerEmail, DEMO.ownerPassword);
+  const techAuthStatus = await provisionAuthUser(DEMO.techEmail, DEMO.techPassword);
 
   // ---- Summary -------------------------------------------------------------
   console.log("\n✅ Seed complete.\n");
-  console.log("   Demo login");
-  console.log(`     email:    ${DEMO.loginEmail}`);
-  console.log(`     password: ${DEMO.loginPassword}`);
-  console.log(`   Auth: ${authStatus}\n`);
+  console.log("   Demo logins");
+  console.log(`     SUPER_ADMIN  ${DEMO.adminEmail} / ${DEMO.adminPassword}`);
+  console.log(`     OWNER        ${DEMO.ownerEmail} / ${DEMO.ownerPassword}`);
+  console.log(`     TECH         ${DEMO.techEmail} / ${DEMO.techPassword}`);
+  console.log(`   Auth: admin=${adminAuthStatus}  owner=${ownerAuthStatus}  tech=${techAuthStatus}\n`);
 }
 
 main()

@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 
-import { requireAuth } from "@/lib/auth";
+import { requireAuth, requireOwner } from "@/lib/auth";
 import { updateCompany } from "@/lib/db/company";
 import { updateUser } from "@/lib/db/users";
 import { createClient } from "@/lib/supabase/server";
@@ -51,9 +51,9 @@ export async function updateCompanyAction(
   _prev: FormState,
   formData: FormData,
 ): Promise<FormState> {
-  const user = await requireAuth();
-  if (user.role !== "OWNER") {
-    return { ok: false, error: "Only company owners can edit company details." };
+  const user = await requireOwner();
+  if (!user.companyId) {
+    return { ok: false, error: "No company affiliation." };
   }
 
   const name = text(formData, "name");

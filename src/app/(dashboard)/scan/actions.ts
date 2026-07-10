@@ -1,6 +1,6 @@
 "use server";
 
-import { requireAuth } from "@/lib/auth";
+import { requireTech } from "@/lib/auth";
 import { getPoolById, getPoolByQR } from "@/lib/db/pools";
 import { createVisit } from "@/lib/db/visits";
 
@@ -21,7 +21,11 @@ export type StartVisitResult =
 export async function startVisitFromScan(
   code: string,
 ): Promise<StartVisitResult> {
-  const user = await requireAuth();
+  const user = await requireTech();
+  if (!user.companyId) {
+    return { ok: false, reason: "not-found" };
+  }
+
   const trimmed = code.trim();
   if (!trimmed) {
     return { ok: false, reason: "not-found" };

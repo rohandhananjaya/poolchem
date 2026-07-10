@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
-import { getCurrentUser } from "@/lib/auth";
+import { requireTech } from "@/lib/auth";
 import {
   completeVisit,
   saveDraftVisit,
@@ -21,8 +21,7 @@ export async function saveDraftAction(
   visitId: string,
   data: VisitFormValues,
 ) {
-  const user = await getCurrentUser();
-  if (!user) throw new Error("Not authenticated");
+  const user = await requireTech();
 
   await saveDraftVisit(visitId, data.readings, data.chemicals, data.notes || null);
   revalidatePath(`/visits/${visitId}`);
@@ -32,8 +31,7 @@ export async function completeVisitAction(
   visitId: string,
   data: VisitFormValues,
 ) {
-  const user = await getCurrentUser();
-  if (!user) throw new Error("Not authenticated");
+  const user = await requireTech();
 
   await completeVisit(visitId, data.readings, data.chemicals, data.notes || null);
   revalidatePath(`/visits/${visitId}`);

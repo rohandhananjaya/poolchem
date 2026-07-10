@@ -2,7 +2,7 @@ import { redirect } from "next/navigation"
 import { CalendarClock } from "lucide-react"
 import { format, isPast, isThisWeek, isToday, isTomorrow } from "date-fns"
 
-import { getCurrentUser } from "@/lib/auth"
+import { requireTech } from "@/lib/auth"
 import { getScheduleData, type ScheduledVisit } from "@/lib/db/schedule"
 import { getPoolsByCompany } from "@/lib/db/pools"
 import { Shell } from "@/components/ui/shell"
@@ -74,9 +74,9 @@ function timeLabelFor(visit: ScheduledVisit): string {
 }
 
 export default async function SchedulePage() {
-  const user = await getCurrentUser()
-  if (!user) {
-    redirect("/login")
+  const user = await requireTech()
+  if (!user.companyId) {
+    redirect("/admin")
   }
 
   const [visits, pools] = await Promise.all([

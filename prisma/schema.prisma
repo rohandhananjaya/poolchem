@@ -17,7 +17,8 @@ datasource db {
   provider = "sqlite"
 }
 
-enum Role {
+enum UserRole {
+  SUPER_ADMIN
   OWNER
   TECH
 }
@@ -48,15 +49,15 @@ model Company {
 }
 
 model User {
-  id        String   @id @default(cuid())
-  email     String   @unique
+  id        String    @id @default(cuid())
+  email     String    @unique
   name      String
-  role      Role     @default(TECH)
-  companyId String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  role      UserRole  @default(TECH)
+  companyId String?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
 
-  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  company Company? @relation(fields: [companyId], references: [id], onDelete: Cascade)
 
   // Visits this user performed as the servicing tech.
   serviceVisits ServiceVisit[]
@@ -74,9 +75,11 @@ model Pool {
   qrCode    String   @unique
   // Unguessable token for the public, no-login homeowner dashboard
   // (/pool/[publicToken]). Distinct from qrCode, which techs scan in the field.
-  publicToken String @unique @default(uuid())
-  notes     String?
-  companyId String
+  publicToken      String  @unique @default(uuid())
+  homeownerEmail   String?
+  homeownerPhone   String?
+  notes            String?
+  companyId        String
   isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -143,4 +146,18 @@ model ChemicalAdded {
 
   @@index([visitId])
   @@map("chemicals_added")
+}
+
+model SystemLog {
+  id        String   @id @default(cuid())
+  level     String
+  message   String
+  context   String?
+  stack     String?
+  metadata  String?
+  createdAt DateTime @default(now())
+
+  @@index([level])
+  @@index([createdAt])
+  @@map("system_logs")
 }

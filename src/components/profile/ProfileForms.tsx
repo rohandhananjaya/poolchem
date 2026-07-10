@@ -69,7 +69,7 @@ export interface ProfileFormsProps {
     email: string
     phone: string | null
     address: string | null
-  }
+  } | null
   /** Whether the signed-in user may edit company details. */
   canEditCompany: boolean
 }
@@ -177,67 +177,69 @@ export function ProfileForms({
       </Card>
 
       {/* Company */}
-      <Card
-        title="Company"
-        description={
-          canEditCompany
-            ? "Details shown on service reports."
-            : "Only company owners can edit these details."
-        }
-      >
-        {canEditCompany ? (
-          <form action={companyAction} className="grid gap-4">
+      {company ? (
+        <Card
+          title="Company"
+          description={
+            canEditCompany
+              ? "Details shown on service reports."
+              : "Only company owners can edit these details."
+          }
+        >
+          {canEditCompany ? (
+            <form action={companyAction} className="grid gap-4">
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="grid gap-1.5">
+                  <Label htmlFor="company-name">Company name</Label>
+                  <Input
+                    id="company-name"
+                    name="name"
+                    defaultValue={company.name}
+                    required
+                  />
+                </div>
+                <div className="grid gap-1.5">
+                  <Label htmlFor="company-email">Email</Label>
+                  <Input
+                    id="company-email"
+                    name="email"
+                    type="email"
+                    defaultValue={company.email}
+                    required
+                  />
+                </div>
+                <div className="grid gap-1.5">
+                  <Label htmlFor="company-phone">Phone</Label>
+                  <Input
+                    id="company-phone"
+                    name="phone"
+                    type="tel"
+                    defaultValue={company.phone ?? ""}
+                  />
+                </div>
+                <div className="grid gap-1.5">
+                  <Label htmlFor="company-address">Address</Label>
+                  <Input
+                    id="company-address"
+                    name="address"
+                    defaultValue={company.address ?? ""}
+                  />
+                </div>
+              </div>
+              <div>
+                <SaveButton pending={companyPending} />
+              </div>
+            </form>
+          ) : (
             <div className="grid gap-4 sm:grid-cols-2">
-              <div className="grid gap-1.5">
-                <Label htmlFor="company-name">Company name</Label>
-                <Input
-                  id="company-name"
-                  name="name"
-                  defaultValue={company.name}
-                  required
-                />
-              </div>
-              <div className="grid gap-1.5">
-                <Label htmlFor="company-email">Email</Label>
-                <Input
-                  id="company-email"
-                  name="email"
-                  type="email"
-                  defaultValue={company.email}
-                  required
-                />
-              </div>
-              <div className="grid gap-1.5">
-                <Label htmlFor="company-phone">Phone</Label>
-                <Input
-                  id="company-phone"
-                  name="phone"
-                  type="tel"
-                  defaultValue={company.phone ?? ""}
-                />
-              </div>
-              <div className="grid gap-1.5">
-                <Label htmlFor="company-address">Address</Label>
-                <Input
-                  id="company-address"
-                  name="address"
-                  defaultValue={company.address ?? ""}
-                />
-              </div>
+              <ReadOnlyField label="Company name" value={company.name} />
+              <ReadOnlyField label="Email" value={company.email} />
+              <ReadOnlyField label="Phone" value={company.phone ?? "—"} />
+              <ReadOnlyField label="Address" value={company.address ?? "—"} />
             </div>
-            <div>
-              <SaveButton pending={companyPending} />
-            </div>
-          </form>
-        ) : (
-          <div className="grid gap-4 sm:grid-cols-2">
-            <ReadOnlyField label="Company name" value={company.name} />
-            <ReadOnlyField label="Email" value={company.email} />
-            <ReadOnlyField label="Phone" value={company.phone ?? "—"} />
-            <ReadOnlyField label="Address" value={company.address ?? "—"} />
-          </div>
-        )}
-      </Card>
+          )}
+        </Card>
+      ) : null}
 
       {/* Sign out */}
       <div>
@@ -267,5 +269,12 @@ function useFormFeedback(state: FormState, successMessage: string) {
 
 /** Human-friendly label for a role enum value. */
 function roleLabel(role: string): string {
-  return role === "OWNER" ? "Owner" : "Technician"
+  switch (role) {
+    case "SUPER_ADMIN":
+      return "Platform Administrator"
+    case "OWNER":
+      return "Owner"
+    default:
+      return "Technician"
+  }
 }

@@ -43,8 +43,11 @@ export async function proxy(request: NextRequest) {
 
   const { pathname } = request.nextUrl;
 
-  // Protect /dashboard/* — send unauthenticated users to /login.
-  if (!user && pathname.startsWith("/dashboard")) {
+  // Protect /dashboard/* and /admin/* — send unauthenticated users to /login.
+  if (
+    !user &&
+    (pathname.startsWith("/dashboard") || pathname.startsWith("/admin"))
+  ) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     return copyCookies(response, NextResponse.redirect(url));

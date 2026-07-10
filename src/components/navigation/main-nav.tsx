@@ -4,11 +4,15 @@ import * as React from "react"
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
 import {
+  Activity,
+  Building2,
   Calendar,
   FileText,
   House,
   LogOut,
+  Shield,
   User,
+  Users,
   type LucideIcon,
 } from "lucide-react"
 
@@ -23,22 +27,35 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import type { UserRole } from "@/generated/prisma/client"
 
 interface NavItem {
   href: string
   label: string
   icon: LucideIcon
+  /** Roles that can see this item. Empty array = all authenticated users. */
+  roles?: UserRole[]
 }
 
 const NAV_ITEMS: NavItem[] = [
   { href: "/dashboard", label: "Home", icon: House },
-  { href: "/schedule", label: "Schedule", icon: Calendar },
-  { href: "/reports", label: "Reports", icon: FileText },
+  { href: "/schedule", label: "Schedule", icon: Calendar, roles: ["OWNER", "TECH"] },
+  { href: "/reports", label: "Reports", icon: FileText, roles: ["OWNER", "TECH"] },
+  { href: "/team", label: "Team", icon: Users, roles: ["OWNER"] },
+  { href: "/admin/companies", label: "Companies", icon: Building2, roles: ["SUPER_ADMIN"] },
+  { href: "/admin/users", label: "Users", icon: Users, roles: ["SUPER_ADMIN"] },
+  { href: "/admin/diagnostics", label: "Diagnostics", icon: Activity, roles: ["SUPER_ADMIN"] },
   { href: "/profile", label: "Profile", icon: User },
 ]
 
+const ROLE_LABELS: Record<UserRole, string> = {
+  SUPER_ADMIN: "Platform Administrator",
+  OWNER: "Owner",
+  TECH: "Technician",
+}
+
 export interface MainNavProps {
-  user: { name: string; email: string }
+  user: { name: string; email: string; role: UserRole }
   company: { name: string; logo: string | null }
 }
 
@@ -60,11 +77,14 @@ export function MainNav({ user, company }: MainNavProps) {
   const router = useRouter()
   const [signingOut, setSigningOut] = React.useState(false)
 
+  const visibleItems = NAV_ITEMS.filter(
+    (item) => !item.roles || item.roles.includes(user.role),
+  )
+
   async function handleSignOut() {
     setSigningOut(true)
     const supabase = createClient()
     await supabase.auth.signOut()
-    // Refresh so Server Components re-run without the session cookie.
     router.push("/login")
     router.refresh()
   }
@@ -88,7 +108,7 @@ export function MainNav({ user, company }: MainNavProps) {
         </div>
 
         <nav className="flex flex-1 flex-col gap-1 overflow-y-auto p-3">
-          {NAV_ITEMS.map((item) => {
+          {visibleItems.map((item) => {
             const active = isActive(pathname, item.href)
             const Icon = item.icon
             return (
@@ -121,7 +141,7 @@ export function MainNav({ user, company }: MainNavProps) {
 
       {/* Mobile: bottom tab bar */}
       <nav className="fixed inset-x-0 bottom-0 z-30 flex border-t border-border bg-background pb-[env(safe-area-inset-bottom)] md:hidden print:hidden">
-        {NAV_ITEMS.map((item) => {
+        {visibleItems.map((item) => {
           const active = isActive(pathname, item.href)
           const Icon = item.icon
           return (
@@ -151,7 +171,7 @@ function UserMenu({
   signingOut,
   onSignOut,
 }: {
-  user: { name: string; email: string }
+  user: { name: string; email: string; role: UserRole }
   signingOut: boolean
   onSignOut: () => void
 }) {
@@ -179,6 +199,9 @@ function UserMenu({
           <span className="truncate">{user.name}</span>
           <span className="truncate text-xs font-normal text-muted-foreground">
             {user.email}
+          </span>
+          <span className="mt-1 inline-flex w-fit items-center rounded-full border border-border bg-muted px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+            {ROLE_LABELS[user.role]}
           </span>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />

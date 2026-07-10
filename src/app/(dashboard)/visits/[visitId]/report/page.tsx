@@ -12,7 +12,7 @@ import {
   Quote,
 } from "lucide-react"
 
-import { getCurrentUser } from "@/lib/auth"
+import { requireTech } from "@/lib/auth"
 import {
   generateServiceReport,
   type ParameterStatus,
@@ -29,8 +29,8 @@ export async function generateMetadata({
   params: Promise<{ visitId: string }>
 }) {
   const { visitId } = await params
-  const user = await getCurrentUser()
-  if (!user) return { title: "Service Report" }
+  const user = await requireTech().catch(() => null)
+  if (!user?.companyId) return { title: "Service Report" }
   const report = await generateServiceReport(visitId, user.companyId)
   if (!report) return { title: "Service Report" }
   return {
@@ -102,8 +102,8 @@ export default async function ReportPage({
   params: Promise<{ visitId: string }>
 }) {
   const { visitId } = await params
-  const user = await getCurrentUser()
-  if (!user) return null
+  const user = await requireTech().catch(() => null)
+  if (!user?.companyId) return null
 
   const report = await generateServiceReport(visitId, user.companyId)
   if (!report) notFound()

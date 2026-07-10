@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 
-import { requireAuth } from "@/lib/auth";
+import { requireTech } from "@/lib/auth";
 import { createVisit } from "@/lib/db/visits";
 
 /** Result returned to `useActionState` on the client. */
@@ -22,7 +22,10 @@ export async function scheduleVisitAction(
   _prev: ScheduleFormState,
   formData: FormData,
 ): Promise<ScheduleFormState> {
-  const user = await requireAuth();
+  const user = await requireTech();
+  if (!user.companyId) {
+    return { ok: false, error: "No company affiliation." };
+  }
 
   const poolId = formData.get("poolId");
   const date = formData.get("date");

@@ -2,9 +2,10 @@ import "server-only";
 
 import { cache } from "react";
 
-import type { User } from "@/generated/prisma/client";
+import type { User, UserRole } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
 import { createClient } from "@/lib/supabase/server";
+import { AuthError, UnauthorizedError } from "@/lib/errors";
 
 /**
  * Returns the currently signed-in user from **our** `User` table (which carries
@@ -36,16 +37,95 @@ export const getCurrentUser = cache(async (): Promise<User | null> => {
 export async function requireAuth(): Promise<User> {
   const user = await getCurrentUser();
   if (!user) {
-    throw new Error("Unauthorized: no authenticated user");
+    throw new AuthError();
   }
   return user;
 }
 
 /**
- * Returns the `companyId` for the current session — the tenant every record is
- * scoped to. Throws if not authenticated.
+ * Returns the current user only if they hold one of the allowed roles.
+ *
+ * @throws {UnauthorizedError} If not authenticated or not in the allowed roles.
  */
-export async function getCompanyId(): Promise<string> {
+export async function requireRole(allowedRoles: UserRole[]): Promise<User> {
+  const user = await requireAuth();
+  if (!allowedRoles.includes(user.role as UserRole)) {
+    throw new UnauthorizedError(
+      `This action requires one of these roles: ${allowedRoles.join(", ")}.`,
+    );
+  }
+  return user;
+}
+
+/**
+ * Requires the current user to be an OWNER or SUPER_ADMIN.
+ *
+ * @throws {UnauthorizedError} If not authenticated or not an owner-level user.
+ */
+export async function requireOwner(): Promise<User> {
+  return requireRole(["OWNER", "SUPER_ADMIN"]);
+}
+
+/**
+ * Requires the current user to be a TECH, OWNER, or SUPER_ADMIN (any
+ * authenticated internal user).
+ *
+ * @throws {UnauthorizedError} If not authenticated.
+ */
+export async function requireTech(): Promise<User> {
+  return requireRole(["TECH", "OWNER", "SUPER_ADMIN"]);
+}
+
+/**
+ * Requires the current user to be a SUPER_ADMIN (platform owner).
+ *
+ * @throws {UnauthorizedError} If not authenticated or not a SUPER_ADMIN.
+ */
+export async function requireSuperAdmin(): Promise<User> {
+  return requireRole(["SUPER_ADMIN"]);
+}
+
+/**
+ * Verifies the current user belongs to the given company, or is a SUPER_ADMIN
+ * who may access any company.
+ *
+ * @throws {UnauthorizedError} If the user doesn't belong to the company.
+ */
+export async function requireCompanyAccess(
+  companyId: string,
+): Promise<User> {
+  const user = await requireAuth();
+  const role = user.role as UserRole;
+
+  if (role === "SUPER_ADMIN") {
+    return user;
+  }
+
+  if (user.companyId !== companyId) {
+    throw new UnauthorizedError("You don't have access to this company.");
+  }
+
+  return user;
+}
+
+/**
+ * Returns the `companyId` for the current session — the tenant every record is
+ * scoped to. Returns `null` for SUPER_ADMIN (platform owner with no company).
+ *
+ * @throws {AuthError} If not authenticated.
+ */
+export async function getCompanyId(): Promise<string | null> {
   const user = await requireAuth();
   return user.companyId;
+}
+
+/**
+ * Validates a pool's public token for homeowner access. Returns the pool and
+ * its owning company, or `null` if the token is invalid.
+ */
+export async function validatePoolToken(token: string) {
+  return prisma.pool.findUnique({
+    where: { publicToken: token },
+    include: { company: true },
+  });
 }

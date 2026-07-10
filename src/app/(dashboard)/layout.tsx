@@ -3,6 +3,7 @@ import { redirect } from "next/navigation"
 import { getCurrentUser } from "@/lib/auth"
 import { getCompanyById } from "@/lib/db/company"
 import { MainNav } from "@/components/navigation/main-nav"
+import type { UserRole } from "@/generated/prisma/client"
 
 export default async function DashboardLayout({
   children,
@@ -14,13 +15,15 @@ export default async function DashboardLayout({
     redirect("/login")
   }
 
-  const company = await getCompanyById(user.companyId)
+  const company = user.companyId
+    ? await getCompanyById(user.companyId)
+    : null
 
   return (
     <div className="flex min-h-svh flex-col">
       <MainNav
-        user={{ name: user.name, email: user.email }}
-        company={{ name: company?.name ?? "Company", logo: company?.logo ?? null }}
+        user={{ name: user.name, email: user.email, role: user.role as UserRole }}
+        company={{ name: company?.name ?? "PoolChem", logo: company?.logo ?? null }}
       />
       {/* Offset for the fixed desktop sidebar and the fixed mobile bottom bar. */}
       <main className="flex flex-1 flex-col pb-20 md:pb-0 md:pl-64 print:pb-0 print:pl-0">

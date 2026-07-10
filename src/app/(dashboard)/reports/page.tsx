@@ -2,7 +2,7 @@ import { redirect } from "next/navigation"
 import { format } from "date-fns"
 import { FileText } from "lucide-react"
 
-import { getCurrentUser } from "@/lib/auth"
+import { requireTech } from "@/lib/auth"
 import { getCompanyReportData } from "@/lib/db/reports"
 import { Shell } from "@/components/ui/shell"
 import { ScoreSparkline } from "@/components/reports/ScoreSparkline"
@@ -21,9 +21,9 @@ function StatTile({ label, value }: { label: string; value: string }) {
 }
 
 export default async function ReportsPage() {
-  const user = await getCurrentUser()
-  if (!user) {
-    redirect("/login")
+  const user = await requireTech()
+  if (!user.companyId) {
+    redirect("/admin")
   }
 
   const { stats, trend, recentVisits } = await getCompanyReportData(
