@@ -33,6 +33,15 @@ npx prisma migrate dev --name <x>   # create + apply a migration (dev.db)
 
 Environment: copy the keys in [.env](.env) — `DATABASE_URL` (SQLite `file:./dev.db` for local dev) plus `NEXT_PUBLIC_SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_ANON_KEY`.
 
+## Codebase maps (read these before searching)
+
+Concise per-directory indexes exist to avoid re-scanning files — Claude Code auto-loads them when working in the folder:
+- [src/lib/db/CLAUDE.md](src/lib/db/CLAUDE.md) — every data-access helper's signature + tenancy rules
+- [src/app/CLAUDE.md](src/app/CLAUDE.md) — route map, pages ↔ helpers ↔ Server Actions
+- [src/components/CLAUDE.md](src/components/CLAUDE.md) — component inventory by domain
+
+Keep these in sync when adding/removing an exported helper, route, or component.
+
 ## Architecture
 
 PoolChem is a **multi-tenant SaaS** for pool-service companies. Techs record water-test readings during service visits; the app scores water health and recommends chemical doses.

@@ -4,7 +4,7 @@ import { useState, useMemo, useCallback } from "react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod/v4"
-import { Loader2, AlertTriangle } from "lucide-react"
+import { Loader2, AlertTriangle, X } from "lucide-react"
 import type { Resolver } from "react-hook-form"
 import { toast } from "sonner"
 
@@ -21,13 +21,14 @@ import { Button } from "@/components/ui/button"
 import { WaterReadingInput } from "@/components/visits/WaterReadingInput"
 import { WaterHealthGauge } from "@/components/visits/WaterHealthGauge"
 import { ChemicalRecommendations } from "@/components/visits/ChemicalRecommendations"
+import { AddChemicalDialog } from "@/components/visits/AddChemicalDialog"
 import { VisitNotes } from "@/components/visits/VisitNotes"
 import {
   saveDraftAction,
   completeVisitAction,
   type VisitFormValues,
 } from "./actions"
-import type { VisitReadings } from "@/lib/db/visits"
+import type { VisitReadings, VisitChemical } from "@/lib/db/visits"
 
 const readingsSchema = z.object({
   ph: z.number().min(0).max(14).optional(),
@@ -154,6 +155,30 @@ export function VisitForm({
     }))
   }, [])
 
+  // Chemicals the tech logged by hand (not from the recommendations list).
+  // On a completed visit, seed from any recorded chemical that the engine
+  // wouldn't have recommended for the saved reading — those were added manually.
+  const [manualChemicals, setManualChemicals] = useState<VisitChemical[]>(
+    () => {
+      if (!completed || !existingReading) return []
+      const recNames = new Set(
+        getChemicalRecommendations(
+          existingReading as unknown as WaterReading,
+          visit.pool.volume,
+        ).map((r) => r.chemical),
+      )
+      return visit.chemicalsAdded.filter((c) => !recNames.has(c.name))
+    },
+  )
+
+  const handleAddChemical = useCallback((chemical: VisitChemical) => {
+    setManualChemicals((prev) => [...prev, chemical])
+  }, [])
+
+  const handleRemoveChemical = useCallback((index: number) => {
+    setManualChemicals((prev) => prev.filter((_, i) => i !== index))
+  }, [])
+
   const allFieldsFilled = useMemo(() => {
     const r = readings
     return (
@@ -207,19 +232,22 @@ export function VisitForm({
         cyanuricAcid: data.readings.cyanuricAcid ?? 0,
         temperature: data.readings.temperature ?? 0,
       },
-      chemicals: Object.entries(checkedChemicals)
-        .filter(([, checked]) => checked)
-        .map(([name]) => {
-          const rec = recommendations.find((r) => r.chemical === name)
-          return {
-            name,
-            amount: rec?.amount ?? 0,
-            unit: rec?.unit ?? "",
-          }
-        }),
+      chemicals: [
+        ...Object.entries(checkedChemicals)
+          .filter(([, checked]) => checked)
+          .map(([name]) => {
+            const rec = recommendations.find((r) => r.chemical === name)
+            return {
+              name,
+              amount: rec?.amount ?? 0,
+              unit: rec?.unit ?? "",
+            }
+          }),
+        ...manualChemicals,
+      ],
       notes: data.notes ?? "",
     }),
-    [checkedChemicals, recommendations],
+    [checkedChemicals, recommendations, manualChemicals],
   )
 
   const [saving, setSaving] = useState<"draft" | "complete" | null>(null)
@@ -405,9 +433,14 @@ export function VisitForm({
 
       {/* Chemical Recommendations Card */}
       <div className="rounded-xl border border-border bg-card p-4">
-        <h2 className="mb-3 text-sm font-semibold text-card-foreground">
-          Chemical Recommendations
-        </h2>
+        <div className="mb-3 flex items-center justify-between">
+          <h2 className="text-sm font-semibold text-card-foreground">
+            Chemical Recommendations
+          </h2>
+          {!completed && (
+            <AddChemicalDialog onAdd={handleAddChemical} />
+          )}
+        </div>
         <ChemicalRecommendations
           recommendations={recommendations}
           poolVolume={visit.pool.volume}
@@ -415,6 +448,43 @@ export function VisitForm({
           onToggle={handleToggleChemical}
           disabled={completed}
         />
+
+        {manualChemicals.length > 0 && (
+          <div className="mt-3 space-y-2">
+            <p className="text-xs font-medium text-muted-foreground">
+              Added manually
+            </p>
+            {manualChemicals.map((chem, i) => (
+              <div
+                key={`${chem.name}-${i}`}
+                className="flex items-center justify-between gap-3 rounded-lg border border-border p-3"
+              >
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-baseline justify-between gap-2">
+                    <span className="text-sm font-medium text-foreground">
+                      {chem.name}
+                    </span>
+                    {chem.amount > 0 && (
+                      <span className="shrink-0 text-sm font-medium tabular-nums text-foreground">
+                        {chem.amount} {chem.unit}
+                      </span>
+                    )}
+                  </div>
+                </div>
+                {!completed && (
+                  <button
+                    type="button"
+                    onClick={() => handleRemoveChemical(i)}
+                    className="shrink-0 rounded-md p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                    aria-label={`Remove ${chem.name}`}
+                  >
+                    <X className="size-4" />
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Technician Notes */}
