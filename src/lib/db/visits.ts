@@ -180,3 +180,71 @@ export async function getVisitHistory(poolId: string, limit: number) {
     include: { waterReadings: true, chemicalsAdded: true },
   });
 }
+
+/**
+ * Returns the water readings from the most recent completed visit for a pool,
+ * or `null` if no completed visits exist yet.
+ */
+export async function getLastVisitReadings(
+  poolId: string,
+): Promise<VisitReadings | null> {
+  const history = await getVisitHistory(poolId, 1);
+  const last = history[0]?.waterReadings[0];
+  if (!last) return null;
+  return {
+    ph: last.ph,
+    freeChlorine: last.freeChlorine,
+    totalAlkalinity: last.totalAlkalinity,
+    calciumHardness: last.calciumHardness,
+    cyanuricAcid: last.cyanuricAcid,
+    temperature: last.temperature,
+  };
+}
+
+/**
+ * Saves a draft visit: persists (replaces) water readings and chemicals, updates
+ * notes, but keeps the visit status as DRAFT.
+ *
+ * Uses a transaction so that readings, chemicals, and notes all update together.
+ *
+ * @throws {Error} If the visit does not exist.
+ */
+export async function saveDraftVisit(
+  visitId: string,
+  readings: VisitReadings,
+  chemicals: VisitChemical[],
+  notes?: string | null,
+) {
+  const existing = await prisma.serviceVisit.findUnique({
+    where: { id: visitId },
+  });
+
+  if (!existing) {
+    throw new Error(`Visit "${visitId}" not found.`);
+  }
+
+  const visit = await prisma.$transaction(async (tx) => {
+    await tx.waterReading.deleteMany({ where: { visitId } });
+    await tx.waterReading.create({ data: { visitId, ...readings } });
+
+    await tx.chemicalAdded.deleteMany({ where: { visitId } });
+    if (chemicals.length > 0) {
+      await tx.chemicalAdded.createMany({
+        data: chemicals.map((c) => ({ visitId, ...c })),
+      });
+    }
+
+    return tx.serviceVisit.update({
+      where: { id: visitId },
+      data: { notes: notes ?? undefined },
+      include: {
+        pool: true,
+        tech: true,
+        waterReadings: true,
+        chemicalsAdded: true,
+      },
+    });
+  });
+
+  return visit;
+}
