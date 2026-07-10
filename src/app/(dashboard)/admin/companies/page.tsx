@@ -4,6 +4,7 @@ import { ArrowLeft } from "lucide-react"
 import { requireSuperAdmin } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
 import { Shell } from "@/components/ui/shell"
+import { CreateCompanyDialog } from "./create-company-dialog"
 
 export const dynamic = "force-dynamic"
 
@@ -20,24 +21,28 @@ export default async function AdminCompaniesPage() {
   return (
     <Shell title="Companies">
       <div className="space-y-6">
-        <div className="flex items-center gap-4">
-          <Link
-            href="/admin"
-            className="inline-flex size-8 items-center justify-center rounded-lg border border-border bg-background text-foreground transition-colors hover:bg-muted"
-            aria-label="Back to admin"
-          >
-            <ArrowLeft className="size-4" />
-          </Link>
-          <h1 className="text-xl font-semibold tracking-tight text-foreground">
-            Companies
-          </h1>
+        <div className="flex items-center justify-between gap-4">
+          <div className="flex items-center gap-4">
+            <Link
+              href="/admin"
+              className="inline-flex size-8 items-center justify-center rounded-lg border border-border bg-background text-foreground transition-colors hover:bg-muted"
+              aria-label="Back to admin"
+            >
+              <ArrowLeft className="size-4" />
+            </Link>
+            <h1 className="text-xl font-semibold tracking-tight text-foreground">
+              Companies
+            </h1>
+          </div>
+          <CreateCompanyDialog />
         </div>
 
         <div className="space-y-3">
           {companies.map((company) => (
-            <div
+            <Link
               key={company.id}
-              className="rounded-xl border border-border bg-card p-4"
+              href={`/admin/companies/${company.id}`}
+              className="block rounded-xl border border-border bg-card p-4 transition-colors hover:bg-muted/50"
             >
               <div className="flex items-start justify-between gap-4">
                 <div className="min-w-0">
@@ -64,7 +69,7 @@ export default async function AdminCompaniesPage() {
                   ? `Subscription: ${company.subscriptionStatus}`
                   : "No subscription"}
               </p>
-            </div>
+            </Link>
           ))}
 
           {companies.length === 0 && (

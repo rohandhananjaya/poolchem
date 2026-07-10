@@ -36,6 +36,7 @@ model Company {
   email                String
   phone                String?
   address              String?
+  active               Boolean   @default(true)
   stripeCustomerId     String?   @unique
   stripeSubscriptionId String?   @unique
   subscriptionStatus   String?

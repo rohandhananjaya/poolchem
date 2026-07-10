@@ -16,9 +16,18 @@ export interface UpdateCompanyData {
   email?: string;
   phone?: string | null;
   address?: string | null;
+  active?: boolean;
   stripeCustomerId?: string | null;
   stripeSubscriptionId?: string | null;
   subscriptionStatus?: string | null;
+}
+
+/** Fields required to create a new company. */
+export interface CreateCompanyData {
+  name: string;
+  email: string;
+  phone?: string | null;
+  address?: string | null;
 }
 
 /** Headline metrics for a company dashboard. */
@@ -69,6 +78,31 @@ export async function updateCompany(
 ): Promise<Company> {
   try {
     return await prisma.company.update({ where: { id: companyId }, data });
+  } catch (error) {
+    if (isRecordNotFound(error)) {
+      throw new Error(`Company "${companyId}" not found.`);
+    }
+    throw error;
+  }
+}
+
+/**
+ * Creates a new company.
+ */
+export async function createCompany(
+  data: CreateCompanyData,
+): Promise<Company> {
+  return prisma.company.create({ data });
+}
+
+/**
+ * Deletes a company and all its cascaded records (users, pools, visits, etc.).
+ *
+ * @throws {Error} If no company with `companyId` exists.
+ */
+export async function deleteCompany(companyId: string): Promise<void> {
+  try {
+    await prisma.company.delete({ where: { id: companyId } });
   } catch (error) {
     if (isRecordNotFound(error)) {
       throw new Error(`Company "${companyId}" not found.`);
