@@ -23,7 +23,7 @@ export default async function DashboardLayout({
         company={{ name: company?.name ?? "Company", logo: company?.logo ?? null }}
       />
       {/* Offset for the fixed desktop sidebar and the fixed mobile bottom bar. */}
-      <main className="flex flex-1 flex-col pb-20 md:pb-0 md:pl-64">
+      <main className="flex flex-1 flex-col pb-20 md:pb-0 md:pl-64 print:pb-0 print:pl-0">
         {children}
       </main>
     </div>

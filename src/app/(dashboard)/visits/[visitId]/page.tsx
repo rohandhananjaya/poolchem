@@ -1,11 +1,12 @@
 import { notFound } from "next/navigation"
 import Image from "next/image"
 import Link from "next/link"
-import { ArrowLeft, FlaskConical } from "lucide-react"
+import { ArrowLeft, FileText, FlaskConical } from "lucide-react"
 
 import { getCurrentUser } from "@/lib/auth"
 import { getVisitById, getLastVisitReadings } from "@/lib/db/visits"
 import { cn } from "@/lib/utils"
+import { Button } from "@/components/ui/button"
 import { VisitForm } from "./visit-form"
 
 export default async function VisitPage({
@@ -63,8 +64,8 @@ export default async function VisitPage({
           </span>
         </div>
 
-        {visit.pool.image && (
-          <div className="shrink-0">
+        <div className="flex shrink-0 flex-col items-end gap-3">
+          {visit.pool.image && (
             <Image
               src={visit.pool.image}
               alt={visit.pool.name}
@@ -72,8 +73,16 @@ export default async function VisitPage({
               height={56}
               className="size-14 rounded-xl object-cover"
             />
-          </div>
-        )}
+          )}
+          {completed && (
+            <Button asChild size="lg" variant="outline">
+              <Link href={`/visits/${visitId}/report`}>
+                <FileText />
+                View Report
+              </Link>
+            </Button>
+          )}
+        </div>
       </div>
 
       <VisitForm

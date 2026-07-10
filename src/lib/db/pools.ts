@@ -138,6 +138,37 @@ export async function getPoolByQR(qrCode: string): Promise<Pool | null> {
 }
 
 /**
+ * Looks up a pool by its public dashboard token, eager-loading the owning
+ * company and the pool's most recent completed visits (newest first) with their
+ * readings and servicing tech — everything the public homeowner dashboard needs
+ * in one query.
+ *
+ * NOT company-scoped: the unguessable `publicToken` *is* the access grant, so
+ * this powers the no-login `/pool/[publicToken]` page. Returns `null` for an
+ * unknown token (→ 404).
+ *
+ * @param publicToken - The pool's public token.
+ * @param visitLimit - How many recent completed visits to include.
+ */
+export async function getPoolByPublicToken(
+  publicToken: string,
+  visitLimit: number,
+) {
+  return prisma.pool.findUnique({
+    where: { publicToken },
+    include: {
+      company: true,
+      serviceVisits: {
+        where: { status: "COMPLETED" },
+        orderBy: { createdAt: "desc" },
+        take: visitLimit,
+        include: { waterReadings: true, tech: true },
+      },
+    },
+  });
+}
+
+/**
  * Assigns a fresh, unique QR identifier to a pool and returns it. Use to
  * (re)issue a printable code for a pool.
  *

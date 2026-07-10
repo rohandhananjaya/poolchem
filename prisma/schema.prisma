@@ -72,6 +72,9 @@ model Pool {
   volume    Int // capacity in gallons
   image     String?
   qrCode    String   @unique
+  // Unguessable token for the public, no-login homeowner dashboard
+  // (/pool/[publicToken]). Distinct from qrCode, which techs scan in the field.
+  publicToken String @unique @default(uuid())
   notes     String?
   companyId String
   isActive  Boolean  @default(true)

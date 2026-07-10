@@ -128,3 +128,32 @@
     @apply font-sans;
   }
 }
+
+/*
+ * Print styles. Reports (and any other page) print without the app chrome:
+ * the sidebar/bottom-nav and interactive controls are marked `print:hidden`
+ * at the component level; here we reset the page itself for paper.
+ */
+@media print {
+  /* Preserve the score/status colors instead of dropping them to save ink. */
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* Force a clean white sheet regardless of the active theme. */
+  :root {
+    --background: #ffffff;
+    --foreground: #111111;
+    --card: #ffffff;
+    --muted: #f4f4f5;
+  }
+
+  @page {
+    margin: 1.5cm;
+  }
+
+  body {
+    background: #ffffff;
+  }
+}

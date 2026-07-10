@@ -72,7 +72,7 @@ export function MainNav({ user, company }: MainNavProps) {
   return (
     <>
       {/* Desktop: left sidebar */}
-      <aside className="fixed inset-y-0 left-0 z-30 hidden w-64 flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground md:flex">
+      <aside className="fixed inset-y-0 left-0 z-30 hidden w-64 flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground md:flex print:hidden">
         <div className="flex h-16 items-center gap-3 border-b border-sidebar-border px-4">
           <Avatar className="size-9 rounded-lg">
             {company.logo ? (
@@ -120,7 +120,7 @@ export function MainNav({ user, company }: MainNavProps) {
       </aside>
 
       {/* Mobile: bottom tab bar */}
-      <nav className="fixed inset-x-0 bottom-0 z-30 flex border-t border-border bg-background pb-[env(safe-area-inset-bottom)] md:hidden">
+      <nav className="fixed inset-x-0 bottom-0 z-30 flex border-t border-border bg-background pb-[env(safe-area-inset-bottom)] md:hidden print:hidden">
         {NAV_ITEMS.map((item) => {
           const active = isActive(pathname, item.href)
           const Icon = item.icon
