@@ -1,0 +1,139 @@
+// Prisma schema for PoolChem — a multi-tenant pool service SaaS.
+//
+// Using SQLite for local development. We'll migrate to PostgreSQL/Supabase
+// later; keep field types portable (avoid SQLite-only tricks).
+//
+// Prisma 7 note: the default generator is `prisma-client` (the successor to
+// `prisma-client-js`) and it REQUIRES an explicit `output` path.
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+// Prisma 7: the connection URL lives in `prisma.config.ts` (for Migrate) and is
+// supplied to PrismaClient via a driver adapter — no `url` in this block.
+datasource db {
+  provider = "sqlite"
+}
+
+enum Role {
+  OWNER
+  TECH
+}
+
+enum ServiceVisitStatus {
+  DRAFT
+  COMPLETED
+}
+
+/// A tenant. Every other record is scoped to a Company.
+model Company {
+  id                   String    @id @default(cuid())
+  name                 String
+  logo                 String?
+  email                String
+  phone                String?
+  address              String?
+  stripeCustomerId     String?   @unique
+  stripeSubscriptionId String?   @unique
+  subscriptionStatus   String?
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+
+  users User[]
+  pools Pool[]
+
+  @@map("companies")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String
+  role      Role     @default(TECH)
+  companyId String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  // Visits this user performed as the servicing tech.
+  serviceVisits ServiceVisit[]
+
+  @@index([companyId])
+  @@map("users")
+}
+
+model Pool {
+  id        String   @id @default(cuid())
+  name      String
+  address   String?
+  volume    Int // capacity in gallons
+  image     String?
+  qrCode    String   @unique
+  notes     String?
+  companyId String
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  serviceVisits ServiceVisit[]
+
+  @@index([companyId])
+  @@map("pools")
+}
+
+model ServiceVisit {
+  id           String             @id @default(cuid())
+  poolId       String
+  techId       String
+  notes        String?
+  status       ServiceVisitStatus @default(DRAFT)
+  weatherNotes String?
+  createdAt    DateTime           @default(now())
+  updatedAt    DateTime           @updatedAt
+
+  pool Pool @relation(fields: [poolId], references: [id], onDelete: Cascade)
+  tech User @relation(fields: [techId], references: [id], onDelete: Restrict)
+
+  waterReadings   WaterReading[]
+  chemicalsAdded  ChemicalAdded[]
+
+  @@index([poolId])
+  @@index([techId])
+  @@map("service_visits")
+}
+
+model WaterReading {
+  id             String   @id @default(cuid())
+  visitId        String
+  ph             Float
+  freeChlorine   Float
+  totalAlkalinity Float
+  calciumHardness Float
+  cyanuricAcid   Float
+  temperature    Float
+  createdAt      DateTime @default(now())
+
+  visit ServiceVisit @relation(fields: [visitId], references: [id], onDelete: Cascade)
+
+  @@index([visitId])
+  @@map("water_readings")
+}
+
+model ChemicalAdded {
+  id        String   @id @default(cuid())
+  visitId   String
+  name      String
+  amount    Float
+  unit      String
+  createdAt DateTime @default(now())
+
+  visit ServiceVisit @relation(fields: [visitId], references: [id], onDelete: Cascade)
+
+  @@index([visitId])
+  @@map("chemicals_added")
+}

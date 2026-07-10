@@ -1,0 +1,120 @@
+/**
+ * Data access for {@link Company} records — the tenant every other record is
+ * scoped to — plus aggregate stats for a company dashboard.
+ */
+import "server-only";
+
+import type { Company } from "@/generated/prisma/client";
+import { Prisma } from "@/generated/prisma/client";
+import { getWaterHealthScore } from "@/lib/pool-chemistry";
+import { prisma } from "@/lib/prisma";
+
+/** Fields that may be changed on a company's profile. */
+export interface UpdateCompanyData {
+  name?: string;
+  logo?: string | null;
+  email?: string;
+  phone?: string | null;
+  address?: string | null;
+  stripeCustomerId?: string | null;
+  stripeSubscriptionId?: string | null;
+  subscriptionStatus?: string | null;
+}
+
+/** Headline metrics for a company dashboard. */
+export interface CompanyStats {
+  /** Number of active pools. */
+  totalPools: number;
+  /** Visits created since the start of the current calendar month. */
+  visitsThisMonth: number;
+  /**
+   * Mean water-health score (0–100) across recent readings, or `null` when the
+   * company has no readings yet.
+   */
+  averageWaterHealth: number | null;
+}
+
+/** How many recent readings feed the average-water-health metric. */
+const HEALTH_SAMPLE_SIZE = 200;
+
+/** Returns true for Prisma's "record not found" error (P2025). */
+function isRecordNotFound(error: unknown): boolean {
+  return (
+    error instanceof Prisma.PrismaClientKnownRequestError &&
+    error.code === "P2025"
+  );
+}
+
+/** Local start-of-month timestamp. */
+function startOfMonth(): Date {
+  const now = new Date();
+  return new Date(now.getFullYear(), now.getMonth(), 1);
+}
+
+/** Returns a company by id, or `null` if it does not exist. */
+export async function getCompanyById(
+  companyId: string,
+): Promise<Company | null> {
+  return prisma.company.findUnique({ where: { id: companyId } });
+}
+
+/**
+ * Updates a company's profile.
+ *
+ * @throws {Error} If no company with `companyId` exists.
+ */
+export async function updateCompany(
+  companyId: string,
+  data: UpdateCompanyData,
+): Promise<Company> {
+  try {
+    return await prisma.company.update({ where: { id: companyId }, data });
+  } catch (error) {
+    if (isRecordNotFound(error)) {
+      throw new Error(`Company "${companyId}" not found.`);
+    }
+    throw error;
+  }
+}
+
+/**
+ * Computes dashboard stats for a company: active pool count, visits so far this
+ * month, and the mean water-health score across its most recent readings.
+ */
+export async function getCompanyStats(
+  companyId: string,
+): Promise<CompanyStats> {
+  const monthStart = startOfMonth();
+
+  const [totalPools, visitsThisMonth, readings] = await Promise.all([
+    prisma.pool.count({ where: { companyId, isActive: true } }),
+    prisma.serviceVisit.count({
+      where: { pool: { companyId }, createdAt: { gte: monthStart } },
+    }),
+    prisma.waterReading.findMany({
+      where: { visit: { pool: { companyId } } },
+      orderBy: { createdAt: "desc" },
+      take: HEALTH_SAMPLE_SIZE,
+      select: {
+        ph: true,
+        freeChlorine: true,
+        totalAlkalinity: true,
+        calciumHardness: true,
+        cyanuricAcid: true,
+        temperature: true,
+      },
+    }),
+  ]);
+
+  const averageWaterHealth =
+    readings.length === 0
+      ? null
+      : Math.round(
+          readings.reduce(
+            (sum, reading) => sum + getWaterHealthScore(reading).score,
+            0,
+          ) / readings.length,
+        );
+
+  return { totalPools, visitsThisMonth, averageWaterHealth };
+}
