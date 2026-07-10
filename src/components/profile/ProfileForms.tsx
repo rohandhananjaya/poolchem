@@ -9,9 +9,12 @@ import { createClient } from "@/lib/supabase/client"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { PasswordInput } from "@/components/ui/password-input"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import {
   updateAccountAction,
   updateCompanyAction,
+  updatePasswordAction,
   type FormState,
 } from "@/app/(dashboard)/profile/actions"
 
@@ -87,9 +90,14 @@ export function ProfileForms({
     updateCompanyAction,
     INITIAL_STATE,
   )
+  const [passwordState, passwordAction, passwordPending] = React.useActionState(
+    updatePasswordAction,
+    INITIAL_STATE,
+  )
 
   useFormFeedback(accountState, "Account updated.")
   useFormFeedback(companyState, "Company details updated.")
+  useFormFeedback(passwordState, "Password updated.")
 
   async function handleSignOut() {
     setSigningOut(true)
@@ -102,26 +110,70 @@ export function ProfileForms({
   return (
     <div className="space-y-6">
       {/* Account */}
-      <Card title="Account" description="Your personal details.">
-        <form action={accountAction} className="grid gap-4">
-          <div className="grid gap-1.5">
-            <Label htmlFor="account-name">Name</Label>
-            <Input
-              id="account-name"
-              name="name"
-              defaultValue={account.name}
-              required
-              autoComplete="name"
-            />
-          </div>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <ReadOnlyField label="Email" value={account.email} />
-            <ReadOnlyField label="Role" value={roleLabel(account.role)} />
-          </div>
-          <div>
-            <SaveButton pending={accountPending} />
-          </div>
-        </form>
+      <Card title="Account">
+        <Tabs defaultValue="personal">
+          <TabsList>
+            <TabsTrigger value="personal">Personal</TabsTrigger>
+            <TabsTrigger value="password">Change Password</TabsTrigger>
+          </TabsList>
+          <TabsContent value="personal">
+            <form action={accountAction} className="grid gap-4">
+              <div className="grid gap-1.5">
+                <Label htmlFor="account-name">Name</Label>
+                <Input
+                  id="account-name"
+                  name="name"
+                  defaultValue={account.name}
+                  required
+                  autoComplete="name"
+                />
+              </div>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <ReadOnlyField label="Email" value={account.email} />
+                <ReadOnlyField label="Role" value={roleLabel(account.role)} />
+              </div>
+              <div>
+                <SaveButton pending={accountPending} />
+              </div>
+            </form>
+          </TabsContent>
+          <TabsContent value="password">
+            <form action={passwordAction} className="grid gap-4">
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="grid gap-1.5">
+                  <Label htmlFor="current-password">Current password</Label>
+                  <PasswordInput
+                    id="current-password"
+                    name="currentPassword"
+                    autoComplete="current-password"
+                    required
+                  />
+                </div>
+                <div className="grid gap-1.5">
+                  <Label htmlFor="new-password">New password</Label>
+                  <PasswordInput
+                    id="new-password"
+                    name="newPassword"
+                    autoComplete="new-password"
+                    required
+                  />
+                </div>
+                <div className="grid gap-1.5">
+                  <Label htmlFor="confirm-password">Confirm new password</Label>
+                  <PasswordInput
+                    id="confirm-password"
+                    name="confirmPassword"
+                    autoComplete="new-password"
+                    required
+                  />
+                </div>
+              </div>
+              <div>
+                <SaveButton pending={passwordPending} />
+              </div>
+            </form>
+          </TabsContent>
+        </Tabs>
       </Card>
 
       {/* Company */}
