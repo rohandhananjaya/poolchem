@@ -19,6 +19,28 @@ import type { VisitChemical } from "@/lib/db/visits"
 
 const UNIT_OPTIONS = ["oz", "fl oz", "lbs", "gal", "tabs", "bags"]
 
+/** Common pool chemicals offered as autosuggestions; free text is still allowed. */
+const CHEMICAL_SUGGESTIONS = [
+  "Soda Ash",
+  "Muriatic Acid",
+  "Sodium Bicarbonate",
+  "Calcium Chloride",
+  "Liquid Chlorine",
+  "Cyanuric Acid",
+  "Calcium Hypochlorite",
+  "Trichlor Tabs",
+  "Dichlor",
+  "Sodium Bisulfate (Dry Acid)",
+  "Algaecide",
+  "Clarifier",
+  "Flocculant",
+  "Phosphate Remover",
+  "Pool Salt",
+  "Stabilizer",
+  "Metal Sequestrant",
+  "Enzyme Treatment",
+]
+
 export interface AddChemicalDialogProps {
   /** Called with the new chemical when the tech confirms the form. */
   onAdd: (chemical: VisitChemical) => void
@@ -77,11 +99,18 @@ export function AddChemicalDialog({ onAdd, disabled }: AddChemicalDialogProps) {
             <Label htmlFor="chemical-name">Chemical</Label>
             <Input
               id="chemical-name"
+              list="chemical-suggestions"
               autoFocus
-              placeholder="e.g. Algaecide"
+              autoComplete="off"
+              placeholder="Select or type a chemical"
               value={name}
               onChange={(e) => setName(e.target.value)}
             />
+            <datalist id="chemical-suggestions">
+              {CHEMICAL_SUGGESTIONS.map((c) => (
+                <option key={c} value={c} />
+              ))}
+            </datalist>
           </div>
 
           <div className="flex gap-3">
