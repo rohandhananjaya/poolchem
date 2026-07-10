@@ -75,7 +75,7 @@ export function WaterReadingInput<T extends FieldValues>({
           inputMode="decimal"
           step="any"
           className={cn(
-            "h-12 pr-16 text-base",
+            "h-12 pr-20 text-base",
             isOutOfRange &&
               "border-amber-400 ring-2 ring-amber-400/30 focus-visible:border-amber-500 focus-visible:ring-amber-500/40",
             error && "border-destructive",
@@ -85,6 +85,7 @@ export function WaterReadingInput<T extends FieldValues>({
           }
           disabled={disabled}
           {...field}
+          value={value ?? ""}
           onChange={(e) => {
             const val = e.target.value
             field.onChange(val === "" ? undefined : Number(val))
@@ -92,7 +93,7 @@ export function WaterReadingInput<T extends FieldValues>({
         />
 
         {unit && (
-          <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
+          <span className="pointer-events-none absolute right-11 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
             {unit}
           </span>
         )}

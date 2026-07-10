@@ -117,7 +117,24 @@ export function VisitForm({
     disabled: completed,
   })
 
-  const readings = watch("readings")
+  // react-hook-form mutates the nested `readings` object in place, so
+  // `watch("readings")` returns a referentially-stable object across renders.
+  // Rebuild a fresh reference whenever an individual reading changes, otherwise
+  // the derived useMemos below (keyed on `readings`) never recompute and the
+  // analysis + recommendations stay frozen at their initial empty state.
+  const readingsValue = watch("readings")
+  const readings = useMemo(
+    () => ({ ...readingsValue }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [
+      readingsValue.ph,
+      readingsValue.freeChlorine,
+      readingsValue.totalAlkalinity,
+      readingsValue.calciumHardness,
+      readingsValue.cyanuricAcid,
+      readingsValue.temperature,
+    ],
+  )
   const notes = watch("notes")
 
   const initialChemicals: Record<string, boolean> = {}

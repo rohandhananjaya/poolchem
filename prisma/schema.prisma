@@ -96,6 +96,9 @@ model ServiceVisit {
   notes        String?
   status       ServiceVisitStatus @default(DRAFT)
   weatherNotes String?
+  // When the visit is planned for. Null for visits created ad hoc (e.g. a tech
+  // scanning a pool in the field); set when scheduled from the Schedule page.
+  scheduledAt  DateTime?
   createdAt    DateTime           @default(now())
   updatedAt    DateTime           @updatedAt
 
@@ -107,6 +110,7 @@ model ServiceVisit {
 
   @@index([poolId])
   @@index([techId])
+  @@index([scheduledAt])
   @@map("service_visits")
 }
 

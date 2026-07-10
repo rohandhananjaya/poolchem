@@ -72,12 +72,15 @@ export async function getVisitById(visitId: string, companyId: string) {
  * Starts a new DRAFT visit for a pool, verifying that both the pool and the tech
  * belong to `companyId` before creating anything.
  *
+ * @param scheduledAt - When the visit is planned for. Omit for ad-hoc visits
+ *   (e.g. a tech scanning a pool in the field), which have no scheduled time.
  * @throws {Error} If the pool or tech is not found within the company.
  */
 export async function createVisit(
   poolId: string,
   techId: string,
   companyId: string,
+  scheduledAt?: Date,
 ) {
   const [pool, tech] = await Promise.all([
     prisma.pool.findFirst({ where: { id: poolId, companyId } }),
@@ -94,6 +97,7 @@ export async function createVisit(
   return prisma.serviceVisit.create({
     data: {
       status: "DRAFT",
+      scheduledAt: scheduledAt ?? null,
       pool: { connect: { id: poolId } },
       tech: { connect: { id: techId } },
     },
