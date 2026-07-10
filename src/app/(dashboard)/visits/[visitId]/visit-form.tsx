@@ -6,6 +6,9 @@ import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod/v4"
 import { Loader2, AlertTriangle } from "lucide-react"
 import type { Resolver } from "react-hook-form"
+import { toast } from "sonner"
+
+import { ERROR_MESSAGES } from "@/lib/errors"
 
 import {
   getWaterHealthScore,
@@ -206,10 +209,15 @@ export function VisitForm({
 
   const handleSaveDraft = useCallback(async () => {
     setSaving("draft")
+    let saved = false
     try {
       await handleSubmit(async (data) => {
         await saveDraftAction(visit.id, buildPayload(data))
+        saved = true
       })()
+      if (saved) toast.info("Visit saved as draft")
+    } catch {
+      toast.error(ERROR_MESSAGES.SAVE_FAILED)
     } finally {
       setSaving(null)
     }
@@ -217,10 +225,17 @@ export function VisitForm({
 
   const handleComplete = useCallback(async () => {
     setSaving("complete")
+    let didComplete = false
     try {
       await handleSubmit(async (data) => {
         await completeVisitAction(visit.id, buildPayload(data))
+        didComplete = true
       })()
+      // completeVisitAction redirects to the (now completed) visit; the root
+      // Toaster survives that navigation so the success toast still shows.
+      if (didComplete) toast.success("Report sent successfully")
+    } catch {
+      toast.error(ERROR_MESSAGES.SAVE_FAILED)
     } finally {
       setSaving(null)
     }

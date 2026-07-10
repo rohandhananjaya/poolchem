@@ -1,10 +1,9 @@
 "use client" // Error boundaries must be Client Components
 
 import { useEffect } from "react"
-import { TriangleAlert } from "lucide-react"
 
 import { Shell } from "@/components/ui/shell"
-import { Button } from "@/components/ui/button"
+import { ErrorState } from "@/components/ui/error-state"
 
 export default function DashboardError({
   error,
@@ -19,20 +18,11 @@ export default function DashboardError({
 
   return (
     <Shell>
-      <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border bg-card/50 px-6 py-16 text-center">
-        <div className="flex size-16 items-center justify-center rounded-full bg-destructive/10 text-destructive">
-          <TriangleAlert className="size-8" />
-        </div>
-        <p className="mt-4 text-sm font-medium text-foreground">
-          Could not load visits
-        </p>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Something went wrong while loading today&apos;s route.
-        </p>
-        <Button className="mt-5" onClick={() => unstable_retry()}>
-          Try again
-        </Button>
-      </div>
+      <ErrorState
+        title="Could not load your dashboard"
+        description="Something went wrong while loading today's route. Please try again."
+        onRetry={() => unstable_retry()}
+      />
     </Shell>
   )
 }
