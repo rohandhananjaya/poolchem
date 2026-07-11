@@ -98,8 +98,10 @@ function TestRow({ param }: { param: ReportParameter }) {
 
 export default async function ReportPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ visitId: string }>
+  searchParams: Promise<{ from?: string }>
 }) {
   const { visitId } = await params
   const user = await requireTech().catch(() => null)
@@ -114,14 +116,16 @@ export default async function ReportPage({
     report.homeownerUrl,
   )}`
 
+  const { from } = await searchParams
+
   return (
     <div className="mx-auto w-full max-w-3xl px-4 py-6 md:px-6 md:py-8 print:max-w-none print:px-0 print:py-0">
       {/* Screen-only toolbar */}
       <div className="mb-4 flex items-center justify-between gap-3 print:hidden">
         <Link
-          href={`/visits/${visitId}`}
+          href={from ?? `/visits/${visitId}`}
           className="inline-flex size-8 items-center justify-center rounded-lg border border-border bg-background text-foreground transition-colors hover:bg-muted"
-          aria-label="Back to visit"
+          aria-label={from ? "Back" : "Back to visit"}
         >
           <ArrowLeft className="size-4" />
         </Link>

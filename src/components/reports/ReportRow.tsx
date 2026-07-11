@@ -49,8 +49,8 @@ export interface ReportRowProps {
 export function ReportRow({ visit, dateLabel }: ReportRowProps) {
   return (
     <Link
-      href={`/visits/${visit.id}/report`}
-      className="flex items-center gap-4 rounded-xl border border-border bg-card p-4 transition-colors hover:bg-muted/50 focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none"
+      href={`/visits/${visit.id}/report?from=/reports`}
+      className="flex items-center gap-4 rounded-xl border border-border bg-card p-4 transition-colors hover:bg-muted focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none"
     >
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2">

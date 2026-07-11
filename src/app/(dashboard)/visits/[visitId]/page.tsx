@@ -11,8 +11,10 @@ import { VisitForm } from "./visit-form"
 
 export default async function VisitPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ visitId: string }>
+  searchParams: Promise<{ from?: string }>
 }) {
   const { visitId } = await params
   const user = await requireTech()
@@ -23,13 +25,14 @@ export default async function VisitPage({
 
   const lastReadings = await getLastVisitReadings(visit.poolId)
   const completed = visit.status === "COMPLETED"
+  const { from } = await searchParams
 
   return (
     <div className="mx-auto w-full max-w-5xl px-4 py-6 md:px-6 md:py-8">
       <Link
-        href="/dashboard"
+        href={from ?? "/dashboard"}
         className="mb-4 inline-flex size-8 items-center justify-center rounded-lg border border-border bg-background text-foreground transition-colors hover:bg-muted"
-        aria-label="Back to dashboard"
+        aria-label={from ? "Back" : "Back to dashboard"}
       >
         <ArrowLeft className="size-4" />
       </Link>
