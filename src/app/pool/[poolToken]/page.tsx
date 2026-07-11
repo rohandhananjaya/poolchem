@@ -250,8 +250,8 @@ export default async function HomeownerDashboardPage({
                 {dashboard.scoreHistory.length > 1 ? "s" : ""}
               </span>
             </div>
-            <div className="mt-3 flex justify-center text-teal-500">
-              <ScoreSparkline points={dashboard.scoreHistory} width={520} />
+            <div className="mt-3">
+              <ScoreSparkline points={dashboard.scoreHistory} />
             </div>
           </section>
         )}

@@ -52,9 +52,7 @@ export default async function ReportsPage() {
         <h2 className="mb-3 text-sm font-medium text-foreground">
           Water Health Trend
         </h2>
-        <div className="text-teal-500">
-          <ScoreSparkline points={trend} width={640} height={80} />
-        </div>
+        <ScoreSparkline points={trend} />
       </section>
 
       {/* Recent reports */}
