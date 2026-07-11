@@ -162,10 +162,12 @@ export function ScoreSparkline({ points }: ScoreSparklineProps) {
             strokeLinejoin="round"
             isAnimationActive
             animationDuration={800}
-            dot={({ cx, cy, index }) => {
+            dot={({ cx, cy, index, payload }) => {
               if (typeof cx !== "number" || typeof cy !== "number") return null
+              const point = (payload ?? points[index]) as ReportScorePoint | undefined
+              if (!point || typeof point.score !== "number") return null
               const isLast = index === points.length - 1
-              const color = getScoreColor(points[index].score)
+              const color = getScoreColor(point.score)
               return (
                 <circle
                   key={index}

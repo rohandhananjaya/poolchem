@@ -1,7 +1,6 @@
 /**
- * Read model for the company-wide Reports page: headline stats, a water-health
- * trend across recent visits, and a list of recent completed visits (each links
- * to its full per-visit report).
+ * Read model for the company-wide Reports page: a paginated, filterable list of
+ * completed visits (each links to its full per-visit report).
  *
  * Everything is scoped to the tenant via `pool: { companyId }`, and all water
  * health is derived through the pure chemistry engine — this module holds no
@@ -9,9 +8,7 @@
  */
 import "server-only";
 
-import { getCompanyStats, type CompanyStats } from "@/lib/db/company";
 import { getWaterHealthScore } from "@/lib/pool-chemistry";
-import type { ReportScorePoint } from "@/lib/reports/generate-report";
 import { prisma } from "@/lib/prisma";
 
 /** One completed visit in the recent-reports list. */
@@ -27,30 +24,65 @@ export interface ReportListItem {
   score: number | null;
 }
 
-/** Everything the Reports page renders. Fully serializable. */
-export interface CompanyReportData {
-  stats: CompanyStats;
-  /** Water-health score over recent visits, oldest-first (for the sparkline). */
-  trend: ReportScorePoint[];
-  recentVisits: ReportListItem[];
+/** Filters for the reports list. */
+export interface ReportFilters {
+  poolId?: string;
+  /** ISO date string (YYYY-MM-DD) — inclusive start. */
+  fromDate?: string;
+  /** ISO date string (YYYY-MM-DD) — inclusive end. */
+  toDate?: string;
 }
 
-/** How many recent completed visits the list and trend draw from. */
-const DEFAULT_LIMIT = 20;
+/** Everything the Reports page renders. Fully serializable. */
+export interface CompanyReportData {
+  recentVisits: ReportListItem[];
+  /** Total number of completed visits matching the current filters. */
+  total: number;
+}
+
+/** How many reports to show per page. */
+export const REPORTS_PAGE_SIZE = 20;
 
 /**
- * Assembles the company-wide report view for `companyId`: stats, a trend, and
- * the most recent completed visits (newest first).
+ * Returns a paginated, filterable list of completed visits for `companyId`.
  */
 export async function getCompanyReportData(
   companyId: string,
-  limit: number = DEFAULT_LIMIT,
+  page: number = 1,
+  filters?: ReportFilters,
 ): Promise<CompanyReportData> {
-  const [stats, visits] = await Promise.all([
-    getCompanyStats(companyId),
+  const limit = REPORTS_PAGE_SIZE;
+  const skip = (page - 1) * limit;
+
+  const where: {
+    pool: { companyId: string };
+    status: "COMPLETED";
+    poolId?: string;
+    createdAt?: { gte?: Date; lte?: Date };
+  } = {
+    pool: { companyId },
+    status: "COMPLETED",
+  };
+
+  if (filters?.poolId) {
+    where.poolId = filters.poolId;
+  }
+
+  if (filters?.fromDate || filters?.toDate) {
+    where.createdAt = {};
+    if (filters?.fromDate) {
+      where.createdAt.gte = new Date(filters.fromDate);
+    }
+    if (filters?.toDate) {
+      where.createdAt.lte = new Date(filters.toDate + "T23:59:59.999Z");
+    }
+  }
+
+  const [visits, total] = await Promise.all([
     prisma.serviceVisit.findMany({
-      where: { pool: { companyId }, status: "COMPLETED" },
+      where,
       orderBy: { createdAt: "desc" },
+      skip,
       take: limit,
       include: {
         pool: { select: { name: true, address: true } },
@@ -58,6 +90,7 @@ export async function getCompanyReportData(
         waterReadings: { orderBy: { createdAt: "desc" }, take: 1 },
       },
     }),
+    prisma.serviceVisit.count({ where }),
   ]);
 
   const recentVisits: ReportListItem[] = visits.map((visit) => {
@@ -72,18 +105,5 @@ export async function getCompanyReportData(
     };
   });
 
-  // The sparkline reads left→right oldest-first; `visits` is newest-first.
-  const trend: ReportScorePoint[] = visits
-    .map((visit) => {
-      const reading = visit.waterReadings[0];
-      if (!reading) return null;
-      return {
-        date: visit.createdAt.toISOString(),
-        score: getWaterHealthScore(reading).score,
-      };
-    })
-    .filter((point): point is ReportScorePoint => point !== null)
-    .reverse();
-
-  return { stats, trend, recentVisits };
+  return { recentVisits, total };
 }
