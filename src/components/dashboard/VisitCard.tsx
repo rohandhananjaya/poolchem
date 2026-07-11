@@ -28,7 +28,7 @@ function HealthBadge({ health }: { health: DashboardVisit["health"] }) {
   return (
     <span
       className={cn(
-        "shrink-0 rounded-full px-2 py-0.5 text-xs font-semibold tabular-nums",
+        "shrink-0 rounded-full px-2 py-0.5 font-mono text-xs font-semibold tabular-nums",
         healthClasses(health.score)
       )}
       title={`Water health: ${health.status.toLowerCase()}`}
@@ -54,15 +54,16 @@ export function VisitCard({ visit }: VisitCardProps) {
     <div className="flex items-center gap-4 rounded-xl border border-border bg-card p-4">
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2">
-          <h3 className="truncate font-medium text-card-foreground">
+          {/* Primary identifier — large & semibold for a quick glance on route. */}
+          <h3 className="truncate text-lg font-semibold text-card-foreground">
             {visit.poolName}
           </h3>
           <HealthBadge health={visit.health} />
         </div>
 
         {visit.address ? (
-          <p className="mt-1 flex items-center gap-1.5 text-sm text-muted-foreground">
-            <MapPin className="size-3.5 shrink-0" />
+          <p className="mt-1 flex items-center gap-1.5 text-base font-medium text-muted-foreground">
+            <MapPin className="size-4 shrink-0" />
             <span className="truncate">{visit.address}</span>
           </p>
         ) : null}
@@ -80,7 +81,7 @@ export function VisitCard({ visit }: VisitCardProps) {
             Completed
           </span>
         ) : (
-          <Button asChild size="lg">
+          <Button asChild size="lg" className="h-11 px-4 text-lg">
             <Link href={`/visits/${visit.id}`}>Start Visit</Link>
           </Button>
         )}

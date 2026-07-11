@@ -48,7 +48,7 @@ export default async function DashboardPage() {
       <Shell>
         <header className="mb-6 flex items-start justify-between gap-4">
           <div className="min-w-0">
-            <h1 className="truncate text-xl font-semibold tracking-tight text-foreground">
+            <h1 className="truncate text-2xl font-semibold tracking-tight text-foreground">
               {greeting(now)}, {firstName(user.name)}
             </h1>
             <p className="mt-0.5 text-sm text-muted-foreground">
@@ -71,7 +71,7 @@ export default async function DashboardPage() {
         <StatsRow stats={stats} />
 
         <section className="mt-8">
-          <h2 className="mb-3 text-sm font-medium text-foreground">
+          <h2 className="mb-3 text-base font-semibold text-foreground">
             Today&apos;s Visits
           </h2>
 
@@ -104,7 +104,7 @@ async function SuperAdminDashboard({ name }: { name: string }) {
     <Shell>
       <header className="mb-6 flex items-start justify-between gap-4">
         <div className="min-w-0">
-          <h1 className="truncate text-xl font-semibold tracking-tight text-foreground">
+          <h1 className="truncate text-2xl font-semibold tracking-tight text-foreground">
             {greeting(now)}, {firstName(name)}
           </h1>
           <p className="mt-0.5 text-sm text-muted-foreground">

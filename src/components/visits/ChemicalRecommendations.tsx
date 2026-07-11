@@ -22,10 +22,10 @@ export function ChemicalRecommendations({
     return (
       <div className="flex flex-col items-center gap-2 py-6 text-center">
         <CheckCircle2 className="size-10 text-emerald-500" />
-        <p className="text-sm font-medium text-foreground">
+        <p className="text-base font-medium text-foreground">
           Water is balanced
         </p>
-        <p className="text-xs text-muted-foreground">
+        <p className="text-sm text-muted-foreground">
           No chemical additions needed
         </p>
       </div>
@@ -34,8 +34,12 @@ export function ChemicalRecommendations({
 
   return (
     <div className="space-y-3">
-      <p className="text-xs text-muted-foreground">
-        Amounts calculated for your {poolVolume.toLocaleString()}-gallon pool
+      <p className="text-sm text-muted-foreground">
+        Amounts calculated for your{" "}
+        <span className="font-mono tabular-nums">
+          {poolVolume.toLocaleString()}
+        </span>
+        -gallon pool
       </p>
 
       <div className="space-y-2">
@@ -67,16 +71,22 @@ export function ChemicalRecommendations({
 
               <div className="min-w-0 flex-1">
                 <div className="flex items-baseline justify-between gap-2">
-                  <span className="text-sm font-medium text-foreground">
+                  {/* Chemical name: medium weight, sans — distinct from the dose. */}
+                  <span className="text-base font-medium text-foreground">
                     {isNA ? "Partial drain & refill" : rec.chemical}
                   </span>
                   {rec.amount > 0 && (
-                    <span className="shrink-0 text-sm font-medium tabular-nums text-foreground">
-                      {rec.amount} {rec.unit}
+                    // Dose: the number is monospace (critical data); the unit
+                    // stays sans-serif. Larger + semibold so it reads at arm's length.
+                    <span className="shrink-0 text-lg font-semibold text-foreground">
+                      <span className="font-mono tabular-nums">{rec.amount}</span>{" "}
+                      <span className="text-base font-medium text-muted-foreground">
+                        {rec.unit}
+                      </span>
                     </span>
                   )}
                 </div>
-                <p className="mt-0.5 text-xs text-muted-foreground">
+                <p className="mt-0.5 text-sm text-muted-foreground">
                   {rec.reason}
                 </p>
               </div>

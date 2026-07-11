@@ -26,7 +26,7 @@ function ScoreBadge({ score }: { score: number | null }) {
   return (
     <span
       className={cn(
-        "shrink-0 rounded-full px-2 py-0.5 text-xs font-semibold tabular-nums",
+        "shrink-0 rounded-full px-2 py-0.5 font-mono text-xs font-semibold tabular-nums",
         healthClasses(score),
       )}
     >
@@ -54,7 +54,7 @@ export function ReportRow({ visit, dateLabel }: ReportRowProps) {
     >
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2">
-          <h3 className="truncate font-medium text-card-foreground">
+          <h3 className="truncate text-base font-semibold text-card-foreground">
             {visit.poolName}
           </h3>
           <ScoreBadge score={visit.score} />

@@ -13,11 +13,14 @@ function StatTile({
     <div className="rounded-xl border border-border bg-card p-4">
       <p className="text-xs font-medium text-muted-foreground">{label}</p>
       <p className="mt-1 flex items-baseline gap-1.5">
-        <span className="text-2xl font-semibold tabular-nums text-card-foreground">
+        {/* Headline counter: big, bold, monospace so digits align across tiles. */}
+        <span className="font-mono text-2xl font-bold tabular-nums text-card-foreground">
           {value}
         </span>
         {hint ? (
-          <span className="text-xs text-muted-foreground">{hint}</span>
+          <span className="text-base font-normal text-muted-foreground">
+            {hint}
+          </span>
         ) : null}
       </p>
     </div>

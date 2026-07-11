@@ -47,7 +47,7 @@ export function Shell({
             </Link>
           ) : null}
           {title ? (
-            <h1 className="text-xl font-semibold tracking-tight text-foreground">
+            <h1 className="text-2xl font-semibold tracking-tight text-foreground">
               {title}
             </h1>
           ) : null}

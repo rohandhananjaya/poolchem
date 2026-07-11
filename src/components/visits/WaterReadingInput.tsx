@@ -63,7 +63,8 @@ export function WaterReadingInput<T extends FieldValues>({
             onClick={() => field.onChange(lastReading)}
             className="text-xs text-muted-foreground hover:text-primary transition-colors"
           >
-            Use Last: {lastReading}
+            Use Last:{" "}
+            <span className="font-mono tabular-nums">{lastReading}</span>
           </button>
         )}
       </div>
@@ -75,7 +76,9 @@ export function WaterReadingInput<T extends FieldValues>({
           inputMode="decimal"
           step="any"
           className={cn(
-            "h-12 pr-20 text-base",
+            // Large, monospace, tabular so digits align and are easy to tap
+            // precisely with gloves/wet hands in the field. h-12 = comfy target.
+            "h-12 pr-20 font-mono text-lg leading-[1.4] tabular-nums",
             isOutOfRange &&
               "border-amber-400 ring-2 ring-amber-400/30 focus-visible:border-amber-500 focus-visible:ring-amber-500/40",
             error && "border-destructive",

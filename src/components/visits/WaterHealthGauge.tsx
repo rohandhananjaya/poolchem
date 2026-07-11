@@ -76,7 +76,8 @@ export function WaterHealthGauge({
         </svg>
 
         <div className="absolute inset-0 flex flex-col items-center justify-center">
-          <span className="text-4xl font-bold tabular-nums text-foreground">
+          {/* The headline score — monospace so it stays optically centered. */}
+          <span className="font-mono text-3xl font-bold tabular-nums text-foreground">
             {score}
           </span>
           <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
@@ -103,7 +104,13 @@ export function WaterHealthGauge({
 
       {lsi && (
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <span>LSI: {lsi.lsi.toFixed(2)}</span>
+          {/* LSI is a critical reading — monospace + semibold so it stands out. */}
+          <span>
+            LSI:{" "}
+            <span className="font-mono font-semibold tabular-nums text-foreground">
+              {lsi.lsi.toFixed(2)}
+            </span>
+          </span>
           <span
             className={cn(
               "rounded-full px-2 py-0.5 text-xs font-medium",

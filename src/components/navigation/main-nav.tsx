@@ -150,7 +150,9 @@ export function MainNav({ user, company }: MainNavProps) {
               href={item.href}
               aria-current={active ? "page" : undefined}
               className={cn(
-                "flex flex-1 flex-col items-center gap-1 py-2 text-xs transition-colors",
+                // min-h-14 (56px) keeps the tap target well above the 48px
+                // minimum; the label stays text-xs (icon size unchanged).
+                "flex min-h-14 flex-1 flex-col items-center justify-center gap-1 py-2 text-xs font-medium transition-colors",
                 active
                   ? "text-primary"
                   : "text-muted-foreground hover:text-foreground"

@@ -33,9 +33,6 @@ export default async function TeamPage() {
       <div className="space-y-6">
         <header className="flex items-center justify-between gap-4">
           <div>
-            <h1 className="text-xl font-semibold tracking-tight text-foreground">
-              Team
-            </h1>
             <p className="mt-0.5 text-sm text-muted-foreground">
               {users.length} user{users.length !== 1 ? "s" : ""} in your company
             </p>
