@@ -34,11 +34,18 @@ interface EditPoolDialogProps {
     notes: string | null
     isActive: boolean
   }
+  /** When false, the dialog is a read-only detail view (no edit/delete). */
+  canManage?: boolean
   open?: boolean
   onOpenChange?: (open: boolean) => void
 }
 
-export function EditPoolDialog({ pool, open, onOpenChange }: EditPoolDialogProps) {
+export function EditPoolDialog({
+  pool,
+  canManage = true,
+  open,
+  onOpenChange,
+}: EditPoolDialogProps) {
   const [internalOpen, setInternalOpen] = React.useState(false)
   const [deleteOpen, setDeleteOpen] = React.useState(false)
   const [pending, startTransition] = React.useTransition()
@@ -51,6 +58,7 @@ export function EditPoolDialog({ pool, open, onOpenChange }: EditPoolDialogProps
   const setIsOpen = isControlled ? onOpenChange : setInternalOpen
 
   function handleSubmit(formData: FormData) {
+    if (!canManage) return
     formData.set("poolId", pool.id)
 
     startTransition(async () => {
@@ -76,7 +84,7 @@ export function EditPoolDialog({ pool, open, onOpenChange }: EditPoolDialogProps
         }
       }}
     >
-      {!isControlled && (
+      {!isControlled && canManage && (
         <DialogTrigger asChild>
           <Button type="button" variant="ghost" size="sm" className="w-full justify-start">
             <Pencil className="size-4" />
@@ -86,9 +94,11 @@ export function EditPoolDialog({ pool, open, onOpenChange }: EditPoolDialogProps
       )}
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Edit {pool.name}</DialogTitle>
+          <DialogTitle>
+            {canManage ? `Edit ${pool.name}` : pool.name}
+          </DialogTitle>
           <DialogDescription>
-            Update pool details.
+            {canManage ? "Update pool details." : "Pool details."}
           </DialogDescription>
         </DialogHeader>
 
@@ -101,7 +111,8 @@ export function EditPoolDialog({ pool, open, onOpenChange }: EditPoolDialogProps
                 name="name"
                 defaultValue={pool.name}
                 required
-                autoFocus
+                autoFocus={canManage}
+                disabled={!canManage}
               />
             </div>
             <div className="grid gap-1.5">
@@ -113,6 +124,7 @@ export function EditPoolDialog({ pool, open, onOpenChange }: EditPoolDialogProps
                 min={1}
                 defaultValue={pool.volume}
                 required
+                disabled={!canManage}
               />
             </div>
             <div className="grid gap-1.5">
@@ -121,6 +133,7 @@ export function EditPoolDialog({ pool, open, onOpenChange }: EditPoolDialogProps
                 id="edit-address"
                 name="address"
                 defaultValue={pool.address ?? ""}
+                disabled={!canManage}
               />
             </div>
             <div className="grid gap-1.5">
@@ -129,6 +142,7 @@ export function EditPoolDialog({ pool, open, onOpenChange }: EditPoolDialogProps
                 id="edit-notes"
                 name="notes"
                 defaultValue={pool.notes ?? ""}
+                disabled={!canManage}
               />
             </div>
             <label className="flex items-center gap-2 text-sm">
@@ -136,49 +150,64 @@ export function EditPoolDialog({ pool, open, onOpenChange }: EditPoolDialogProps
                 type="checkbox"
                 name="isActive"
                 defaultChecked={pool.isActive}
+                disabled={!canManage}
                 className="size-4 rounded border-border accent-primary"
               />
               Active
             </label>
           </div>
 
-          <DialogFooter className="gap-2 sm:justify-between">
-            <Button
-              type="button"
-              variant="destructive"
-              onClick={() => {
-                setIsOpen(false)
-                setDeleteOpen(true)
-              }}
-              disabled={pending}
-            >
-              <Trash2 className="size-4" />
-              Delete
-            </Button>
-            <div className="flex flex-col-reverse gap-2 sm:flex-row">
+          {canManage ? (
+            <DialogFooter className="gap-2 sm:justify-between">
+              <Button
+                type="button"
+                variant="destructive"
+                onClick={() => {
+                  setIsOpen(false)
+                  setDeleteOpen(true)
+                }}
+                disabled={pending}
+              >
+                <Trash2 className="size-4" />
+                Delete
+              </Button>
+              <div className="flex flex-col-reverse gap-2 sm:flex-row">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setIsOpen(false)}
+                  disabled={pending}
+                >
+                  Cancel
+                </Button>
+                <Button type="submit" disabled={pending}>
+                  {pending ? "Saving…" : "Save"}
+                </Button>
+              </div>
+            </DialogFooter>
+          ) : (
+            <DialogFooter>
               <Button
                 type="button"
                 variant="outline"
                 onClick={() => setIsOpen(false)}
-                disabled={pending}
               >
-                Cancel
+                Close
               </Button>
-              <Button type="submit" disabled={pending}>
-                {pending ? "Saving…" : "Save"}
-              </Button>
-            </div>
-          </DialogFooter>
+            </DialogFooter>
+          )}
         </form>
       </DialogContent>
     </Dialog>
 
-    <DeletePoolDialog
-      poolId={pool.id}
-      poolName={pool.name}
-      open={deleteOpen}
-      onOpenChange={setDeleteOpen}
-    />
+    {canManage && (
+      <DeletePoolDialog
+        poolId={pool.id}
+        poolName={pool.name}
+        open={deleteOpen}
+        onOpenChange={setDeleteOpen}
+      />
+    )}
     </>
   )
 }

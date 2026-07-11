@@ -36,6 +36,10 @@ export default async function PoolsPage({
     redirect("/admin")
   }
 
+  // Only owners (and platform super-admins) may add, edit, or delete pools.
+  // Techs get read-only access.
+  const canManage = user.role === "OWNER" || user.role === "SUPER_ADMIN"
+
   const sp = await searchParams
   const currentPage = Math.max(1, Number(sp.page) || 1)
 
@@ -59,9 +63,11 @@ export default async function PoolsPage({
     <Shell title="Pools">
       <div className="space-y-3">
         {/* Top bar */}
-        <div className="flex items-center justify-end">
-          <AddPoolDialog />
-        </div>
+        {canManage && (
+          <div className="flex items-center justify-end">
+            <AddPoolDialog />
+          </div>
+        )}
 
         <div className="rounded-xl border border-border bg-card p-4">
           <PoolsFilters />
@@ -90,7 +96,7 @@ export default async function PoolsPage({
           <>
             <div className="space-y-3">
               {pools.map((pool) => (
-                <PoolRow key={pool.id} pool={pool} />
+                <PoolRow key={pool.id} pool={pool} canManage={canManage} />
               ))}
             </div>
 

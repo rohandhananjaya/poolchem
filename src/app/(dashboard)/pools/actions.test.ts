@@ -1,7 +1,7 @@
 import { describe, expect, it, beforeEach, vi } from "vitest";
 
 vi.mock("@/lib/auth", () => ({
-  requireTech: vi.fn(),
+  requireOwner: vi.fn(),
 }));
 vi.mock("@/lib/db/pools", () => ({
   createPool: vi.fn(),
@@ -13,7 +13,7 @@ vi.mock("next/cache", () => ({
   revalidatePath: vi.fn(),
 }));
 
-const { requireTech } = await import("@/lib/auth");
+const { requireOwner } = await import("@/lib/auth");
 const { createPool, updatePool, deletePool, getPoolById } =
   await import("@/lib/db/pools");
 const { revalidatePath } = await import("next/cache");
@@ -39,7 +39,7 @@ beforeEach(() => {
 
 describe("createPoolAction", () => {
   it("creates a pool and returns ok", async () => {
-    vi.mocked(requireTech).mockResolvedValue(mockUser as never);
+    vi.mocked(requireOwner).mockResolvedValue(mockUser as never);
 
     const result = await createPoolAction(
       { ok: false },
@@ -55,7 +55,7 @@ describe("createPoolAction", () => {
   });
 
   it("returns error when name is empty", async () => {
-    vi.mocked(requireTech).mockResolvedValue(mockUser as never);
+    vi.mocked(requireOwner).mockResolvedValue(mockUser as never);
 
     const result = await createPoolAction(
       { ok: false },
@@ -66,7 +66,7 @@ describe("createPoolAction", () => {
   });
 
   it("returns error when volume is invalid", async () => {
-    vi.mocked(requireTech).mockResolvedValue(mockUser as never);
+    vi.mocked(requireOwner).mockResolvedValue(mockUser as never);
 
     const result = await createPoolAction(
       { ok: false },
@@ -80,7 +80,7 @@ describe("createPoolAction", () => {
   });
 
   it("returns error when user has no company", async () => {
-    vi.mocked(requireTech).mockResolvedValue({
+    vi.mocked(requireOwner).mockResolvedValue({
       ...mockUser,
       companyId: null,
     } as never);
@@ -96,7 +96,7 @@ describe("createPoolAction", () => {
 
 describe("updatePoolAction", () => {
   it("updates a pool and returns ok", async () => {
-    vi.mocked(requireTech).mockResolvedValue(mockUser as never);
+    vi.mocked(requireOwner).mockResolvedValue(mockUser as never);
 
     const result = await updatePoolAction(
       { ok: false },
@@ -117,7 +117,7 @@ describe("updatePoolAction", () => {
   });
 
   it("returns error when poolId is missing", async () => {
-    vi.mocked(requireTech).mockResolvedValue(mockUser as never);
+    vi.mocked(requireOwner).mockResolvedValue(mockUser as never);
 
     const result = await updatePoolAction(
       { ok: false },
@@ -130,7 +130,7 @@ describe("updatePoolAction", () => {
 
 describe("deletePoolAction", () => {
   it("deletes a pool after confirming the name", async () => {
-    vi.mocked(requireTech).mockResolvedValue(mockUser as never);
+    vi.mocked(requireOwner).mockResolvedValue(mockUser as never);
     vi.mocked(getPoolById).mockResolvedValue({
       id: "pool-1",
       name: "Pool to Delete",
@@ -147,7 +147,7 @@ describe("deletePoolAction", () => {
   });
 
   it("returns error when name does not match", async () => {
-    vi.mocked(requireTech).mockResolvedValue(mockUser as never);
+    vi.mocked(requireOwner).mockResolvedValue(mockUser as never);
     vi.mocked(getPoolById).mockResolvedValue({
       id: "pool-1",
       name: "Pool to Delete",

@@ -16,9 +16,11 @@ interface PoolRowProps {
     isActive: boolean
     lastVisitAt: Date | string | null
   }
+  /** When false, the detail dialog is read-only (no edit/delete). */
+  canManage?: boolean
 }
 
-export function PoolRow({ pool }: PoolRowProps) {
+export function PoolRow({ pool, canManage = false }: PoolRowProps) {
   const [open, setOpen] = React.useState(false)
   const isActive = pool.isActive
 
@@ -64,7 +66,12 @@ export function PoolRow({ pool }: PoolRowProps) {
         </div>
       </div>
 
-      <EditPoolDialog pool={pool} open={open} onOpenChange={setOpen} />
+      <EditPoolDialog
+        pool={pool}
+        canManage={canManage}
+        open={open}
+        onOpenChange={setOpen}
+      />
     </>
   )
 }

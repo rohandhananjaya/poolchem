@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { requireTech } from "@/lib/auth";
+import { requireOwner } from "@/lib/auth";
 import { createPool, updatePool, deletePool, getPoolById } from "@/lib/db/pools";
 
 export interface FormState {
@@ -23,7 +23,7 @@ export async function createPoolAction(
   _prev: FormState,
   formData: FormData,
 ): Promise<FormState> {
-  const user = await requireTech();
+  const user = await requireOwner();
   if (!user.companyId) {
     return { ok: false, error: "No company affiliation." };
   }
@@ -59,7 +59,7 @@ export async function updatePoolAction(
   _prev: FormState,
   formData: FormData,
 ): Promise<FormState> {
-  const user = await requireTech();
+  const user = await requireOwner();
   if (!user.companyId) {
     return { ok: false, error: "No company affiliation." };
   }
@@ -98,7 +98,7 @@ export async function deletePoolAction(
   _prev: FormState,
   formData: FormData,
 ): Promise<FormState> {
-  const user = await requireTech();
+  const user = await requireOwner();
   if (!user.companyId) {
     return { ok: false, error: "No company affiliation." };
   }
