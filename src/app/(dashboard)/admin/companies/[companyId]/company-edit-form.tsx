@@ -2,15 +2,26 @@
 
 import * as React from "react"
 import { toast } from "sonner"
+import { MoreHorizontal, Pencil, Trash2 } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import {
   updateCompanyAction,
   type FormState,
 } from "../actions"
 import { DeleteCompanyDialog } from "./delete-company-dialog"
+import { CreateUserDialog } from "./create-user-dialog"
+import { EditUserDialog } from "./edit-user-dialog"
+import { DeleteUserDialog } from "./delete-user-dialog"
 
 const INITIAL_STATE: FormState = { ok: false }
 
@@ -63,6 +74,21 @@ function ReadOnlyField({ label, value }: { label: string; value: string }) {
   )
 }
 
+const ROLE_LABELS: Record<string, string> = {
+  SUPER_ADMIN: "Platform Admin",
+  OWNER: "Owner",
+  TECH: "Technician",
+}
+
+function getInitials(name: string): string {
+  return name
+    .split(/\s+/)
+    .map((w) => w[0])
+    .join("")
+    .toUpperCase()
+    .slice(0, 2)
+}
+
 export interface CompanyEditFormProps {
   company: {
     id: string
@@ -76,6 +102,13 @@ export interface CompanyEditFormProps {
     stripeSubscriptionId: string | null
     createdAt: Date
     _count: { users: number; pools: number }
+    users: {
+      id: string
+      name: string
+      email: string
+      role: string
+      createdAt: Date
+    }[]
   }
 }
 
@@ -84,6 +117,18 @@ export function CompanyEditForm({ company }: CompanyEditFormProps) {
     updateCompanyAction,
     INITIAL_STATE,
   )
+
+  const [editUser, setEditUser] = React.useState<{
+    id: string
+    name: string
+    email: string
+    role: string
+  } | null>(null)
+  const [deleteUser, setDeleteUser] = React.useState<{
+    id: string
+    name: string
+    email: string
+  } | null>(null)
 
   React.useEffect(() => {
     if (state.ok) toast.success("Company updated.")
@@ -168,6 +213,83 @@ export function CompanyEditForm({ company }: CompanyEditFormProps) {
           </div>
         </Card>
 
+        <Card
+          title="Users"
+          description={`${company._count.users} user${company._count.users === 1 ? "" : "s"} in this company`}
+        >
+          <div className="space-y-3">
+            {company.users.map((user) => (
+              <div
+                key={user.id}
+                className="flex items-center justify-between gap-3 rounded-lg border border-border bg-background p-3"
+              >
+                <div className="flex items-center gap-3 min-w-0">
+                  <Avatar className="size-9">
+                    <AvatarFallback>{getInitials(user.name)}</AvatarFallback>
+                  </Avatar>
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium text-foreground truncate">
+                      {user.name}
+                    </p>
+                    <p className="text-xs text-muted-foreground truncate">
+                      {user.email}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <span className="rounded-full border border-border bg-muted px-2.5 py-0.5 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+                    {ROLE_LABELS[user.role] ?? user.role}
+                  </span>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="size-8"
+                      >
+                        <MoreHorizontal className="size-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem
+                        onClick={() =>
+                          setEditUser({
+                            id: user.id,
+                            name: user.name,
+                            email: user.email,
+                            role: user.role,
+                          })
+                        }
+                      >
+                        <Pencil className="size-4" />
+                        Edit
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        variant="destructive"
+                        onClick={() =>
+                          setDeleteUser({
+                            id: user.id,
+                            name: user.name,
+                            email: user.email,
+                          })
+                        }
+                      >
+                        <Trash2 className="size-4" />
+                        Delete
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
+              </div>
+            ))}
+
+            <div className="pt-2">
+              <CreateUserDialog companyId={company.id} />
+            </div>
+          </div>
+        </Card>
+
         <Card title="Stripe info">
           <div className="grid gap-4 sm:grid-cols-2">
             <ReadOnlyField
@@ -225,6 +347,28 @@ export function CompanyEditForm({ company }: CompanyEditFormProps) {
           )}
         </div>
       </form>
+
+      {editUser ? (
+        <EditUserDialog
+          user={editUser}
+          companyId={company.id}
+          open={!!editUser}
+          onOpenChange={(open) => {
+            if (!open) setEditUser(null)
+          }}
+        />
+      ) : null}
+
+      {deleteUser ? (
+        <DeleteUserDialog
+          user={deleteUser}
+          companyId={company.id}
+          open={!!deleteUser}
+          onOpenChange={(open) => {
+            if (!open) setDeleteUser(null)
+          }}
+        />
+      ) : null}
     </div>
   )
 }

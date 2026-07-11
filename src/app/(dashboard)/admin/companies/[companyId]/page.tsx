@@ -18,7 +18,10 @@ export default async function AdminCompanyEditPage({
 
   const company = await prisma.company.findUnique({
     where: { id: companyId },
-    include: { _count: { select: { users: true, pools: true } } },
+    include: {
+      _count: { select: { users: true, pools: true } },
+      users: { orderBy: { createdAt: "asc" } },
+    },
   })
 
   if (!company) notFound()

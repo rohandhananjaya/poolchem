@@ -22,6 +22,14 @@ export interface UpdateUserAdminData {
   role?: UserRole;
 }
 
+/** Fields required to create a new user (SUPER_ADMIN only). */
+export interface CreateUserData {
+  name: string;
+  email: string;
+  role: UserRole;
+  companyId: string;
+}
+
 /**
  * Returns all users belonging to a company, ordered by creation date.
  */
@@ -96,4 +104,33 @@ export async function getAllUsers(): Promise<User[]> {
     orderBy: { createdAt: "asc" },
     include: { company: true },
   });
+}
+
+/**
+ * Creates a new user belonging to a company (SUPER_ADMIN only).
+ */
+export async function createUser(
+  data: CreateUserData,
+): Promise<User> {
+  return prisma.user.create({ data });
+}
+
+/**
+ * Deletes a user scoped to a company.
+ *
+ * @throws {Error} If no user with `userId` is found in the given company.
+ */
+export async function deleteUser(
+  userId: string,
+  companyId: string,
+): Promise<void> {
+  const { count } = await prisma.user.deleteMany({
+    where: { id: userId, companyId },
+  });
+
+  if (count === 0) {
+    throw new Error(
+      `User "${userId}" not found for the given scope.`,
+    );
+  }
 }
