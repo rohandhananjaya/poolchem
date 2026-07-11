@@ -20,14 +20,16 @@ export interface UpdateUserData {
 export interface UpdateUserAdminData {
   name?: string;
   role?: UserRole;
+  phone?: string | null;
 }
 
-/** Fields required to create a new user (SUPER_ADMIN only). */
+/** Fields required to create a new user. */
 export interface CreateUserData {
   name: string;
   email: string;
   role: UserRole;
   companyId: string;
+  phone?: string | null;
 }
 
 /**
@@ -107,7 +109,32 @@ export async function getAllUsers(): Promise<User[]> {
 }
 
 /**
- * Creates a new user belonging to a company (SUPER_ADMIN only).
+ * Updates a user's name, role, and/or phone (admin-level). Scoped to the
+ * given company. Pass `companyId: null` for SUPER_ADMIN (unscoped).
+ */
+export async function updateUserAdmin(
+  userId: string,
+  companyId: string | null,
+  data: UpdateUserAdminData,
+) {
+  const where =
+    companyId === null
+      ? { id: userId }
+      : { id: userId, companyId };
+
+  const { count } = await prisma.user.updateMany({ where, data });
+
+  if (count === 0) {
+    throw new Error(
+      `User "${userId}" not found for the given scope.`,
+    );
+  }
+
+  return prisma.user.findUniqueOrThrow({ where: { id: userId } });
+}
+
+/**
+ * Creates a new user belonging to a company.
  */
 export async function createUser(
   data: CreateUserData,
@@ -116,17 +143,21 @@ export async function createUser(
 }
 
 /**
- * Deletes a user scoped to a company.
+ * Deletes a user scoped to a company. When `companyId` is `null` (SUPER_ADMIN
+ * context), deletes by id without company scoping.
  *
- * @throws {Error} If no user with `userId` is found in the given company.
+ * @throws {Error} If no user with `userId` is found for the given scope.
  */
 export async function deleteUser(
   userId: string,
-  companyId: string,
+  companyId: string | null,
 ): Promise<void> {
-  const { count } = await prisma.user.deleteMany({
-    where: { id: userId, companyId },
-  });
+  const where =
+    companyId === null
+      ? { id: userId }
+      : { id: userId, companyId };
+
+  const { count } = await prisma.user.deleteMany({ where });
 
   if (count === 0) {
     throw new Error(

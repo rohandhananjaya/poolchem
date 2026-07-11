@@ -3,9 +3,10 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@supabase/supabase-js";
 
+import { prisma } from "@/lib/prisma";
 import { requireSuperAdmin } from "@/lib/auth";
 import { createCompany, deleteCompany, getCompanyById, updateCompany } from "@/lib/db/company";
-import { createUser, deleteUser, updateUser, updateUserRole } from "@/lib/db/users";
+import { createUser, deleteUser, updateUser, updateUserAdmin, updateUserRole } from "@/lib/db/users";
 import type { UserRole } from "@/generated/prisma/client";
 
 export interface FormState {
@@ -136,6 +137,11 @@ export async function createUserAction(
     return { ok: false, error: "Password must be at least 6 characters." };
   }
 
+  const existing = await prisma.user.findUnique({ where: { email } });
+  if (existing) {
+    return { ok: false, error: "A user with this email already exists." };
+  }
+
   try {
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
     const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -171,7 +177,7 @@ export async function updateUserAction(
   _prev: FormState,
   formData: FormData,
 ): Promise<FormState> {
-  await requireSuperAdmin();
+  const currentUser = await requireSuperAdmin();
 
   const userId = text(formData, "userId");
   const companyId = text(formData, "companyId");
@@ -180,13 +186,27 @@ export async function updateUserAction(
   if (!userId) return { ok: false, error: "User ID is required." };
   if (name === "") return { ok: false, error: "Name is required." };
 
+  // SUPER_ADMIN cannot demote themselves
+  if (userId === currentUser.id) {
+    return { ok: false, error: "You cannot edit your own account." };
+  }
+
+  // Only a SUPER_ADMIN can modify another SUPER_ADMIN
+  const target = await prisma.user.findUnique({ where: { id: userId } });
+  if (!target) return { ok: false, error: "User not found." };
+  if (target.role === "SUPER_ADMIN") {
+    return { ok: false, error: "Cannot modify another SUPER_ADMIN." };
+  }
+
   const role = text(formData, "role") as UserRole | "";
+  const phone = text(formData, "phone") || null;
 
   try {
-    if (role && ["OWNER", "TECH"].includes(role)) {
-      await updateUserRole(userId, companyId, role as UserRole);
-    }
-    await updateUser(userId, companyId, { name });
+    await updateUserAdmin(userId, companyId, {
+      name,
+      role: role && ["OWNER", "TECH"].includes(role) ? (role as UserRole) : undefined,
+      phone,
+    });
     revalidatePath("/admin/companies");
     return { ok: true };
   } catch {
@@ -198,13 +218,24 @@ export async function deleteUserAction(
   _prev: FormState,
   formData: FormData,
 ): Promise<FormState> {
-  await requireSuperAdmin();
+  const currentUser = await requireSuperAdmin();
 
   const userId = text(formData, "userId");
   const companyId = text(formData, "companyId");
 
   if (!userId) return { ok: false, error: "User ID is required." };
   if (!companyId) return { ok: false, error: "Company ID is required." };
+
+  // SUPER_ADMIN cannot delete themselves
+  if (userId === currentUser.id) {
+    return { ok: false, error: "You cannot delete your own account." };
+  }
+
+  // Only a SUPER_ADMIN can delete another SUPER_ADMIN (already enforced by
+  // requireSuperAdmin, but double-check the target isn't a SUPER_ADMIN we
+  // shouldn't touch — actually another SUPER_ADMIN *can* delete a SUPER_ADMIN)
+  const target = await prisma.user.findUnique({ where: { id: userId } });
+  if (!target) return { ok: false, error: "User not found." };
 
   try {
     await deleteUser(userId, companyId);
