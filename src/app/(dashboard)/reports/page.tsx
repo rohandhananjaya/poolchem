@@ -61,22 +61,17 @@ export default async function ReportsPage({
 
   return (
     <Shell title="Reports">
-      <div className="space-y-6">
+      <div className="space-y-3">
         {/* Reports list with filters and pagination */}
-        <section>
-          <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-            <h2 className="text-sm font-medium text-foreground">
-              {total > 0
-                ? `Reports (${total})`
-                : "Reports"}
-            </h2>
+        <div className="rounded-xl border border-border bg-card p-4">
+          <ReportsFilters
+            pools={pools.map((p) => ({ id: p.id, name: p.name }))}
+          />
+        </div>
 
-            <ReportsFilters
-              pools={pools.map((p) => ({ id: p.id, name: p.name }))}
-            />
-          </div>
+        <hr className="border-border" />
 
-          {recentVisits.length === 0 ? (
+        {recentVisits.length === 0 ? (
             <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border bg-card/50 px-6 py-16 text-center">
               <div className="flex size-16 items-center justify-center rounded-full bg-muted text-muted-foreground">
                 <FileText className="size-8" />
@@ -179,7 +174,6 @@ export default async function ReportsPage({
               </p>
             </>
           )}
-        </section>
       </div>
     </Shell>
   )

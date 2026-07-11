@@ -19,6 +19,93 @@ import type { Pool } from "@/generated/prisma/client";
 import { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
 
+/** Filters for the paginated pools list. */
+export interface PoolsFilters {
+  /** Free-text search against name and address. */
+  search?: string;
+  /** Defaults to `"active"` when omitted. */
+  status?: "active" | "inactive" | "all";
+}
+
+/** How many pools to show per page. */
+export const POOLS_PAGE_SIZE = 10;
+
+/**
+ * Returns a paginated, filterable list of pools for `companyId`, each annotated
+ * with the date of its most recent service visit.
+ */
+export async function getPoolsPaginated(
+  companyId: string,
+  page: number = 1,
+  filters?: PoolsFilters,
+): Promise<{ pools: PoolWithLastVisit[]; total: number }> {
+  const limit = POOLS_PAGE_SIZE;
+  const skip = (page - 1) * limit;
+
+  const where: Prisma.PoolWhereInput = { companyId };
+
+  if (filters?.status === "active" || !filters?.status) {
+    where.isActive = true;
+  } else if (filters?.status === "inactive") {
+    where.isActive = false;
+  }
+  // "all" — no isActive filter
+
+  if (filters?.search) {
+    where.OR = [
+      { name: { contains: filters.search } },
+      { address: { contains: filters.search } },
+    ];
+  }
+
+  const [pools, total] = await Promise.all([
+    prisma.pool.findMany({
+      where,
+      orderBy: { name: "asc" },
+      skip,
+      take: limit,
+      include: {
+        serviceVisits: {
+          orderBy: { createdAt: "desc" },
+          take: 1,
+          select: { createdAt: true },
+        },
+      },
+    }),
+    prisma.pool.count({ where }),
+  ]);
+
+  return {
+    pools: pools.map(({ serviceVisits, ...pool }) => ({
+      ...pool,
+      lastVisitAt: serviceVisits[0]?.createdAt ?? null,
+    })),
+    total,
+  };
+}
+
+/**
+ * Permanently deletes a pool and all its cascaded records (service visits,
+ * water readings, chemical logs).
+ *
+ * @throws {Error} If no pool with `poolId` is owned by `companyId`.
+ */
+export async function deletePool(
+  poolId: string,
+  companyId: string,
+): Promise<void> {
+  try {
+    await prisma.pool.delete({ where: { id: poolId, companyId } });
+  } catch (error) {
+    if (isRecordNotFound(error)) {
+      throw new Error(
+        `Pool "${poolId}" not found for company "${companyId}" (or not owned by it).`,
+      );
+    }
+    throw error;
+  }
+}
+
 /** Fields accepted when creating a pool. `qrCode` is generated for you. */
 export interface CreatePoolData {
   name: string;

@@ -13,6 +13,7 @@ import {
   Shield,
   User,
   Users,
+  Waves,
   type LucideIcon,
 } from "lucide-react"
 
@@ -41,6 +42,7 @@ const NAV_ITEMS: NavItem[] = [
   { href: "/dashboard", label: "Home", icon: House },
   { href: "/schedule", label: "Schedule", icon: Calendar, roles: ["OWNER", "TECH"] },
   { href: "/reports", label: "Reports", icon: FileText, roles: ["OWNER", "TECH"] },
+  { href: "/pools", label: "Pools", icon: Waves, roles: ["OWNER", "TECH"] },
   { href: "/team", label: "Team", icon: Users, roles: ["OWNER"] },
   { href: "/admin/companies", label: "Companies", icon: Building2, roles: ["SUPER_ADMIN"] },
   { href: "/admin/users", label: "Users", icon: Users, roles: ["SUPER_ADMIN"] },
