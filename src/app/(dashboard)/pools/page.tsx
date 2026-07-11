@@ -9,17 +9,8 @@ import type { PoolsFilters as PoolsFilterParams } from "@/lib/db/pools"
 import { Shell } from "@/components/ui/shell"
 import { Button } from "@/components/ui/button"
 import { AddPoolDialog } from "@/components/pools/AddPoolDialog"
-import { EditPoolDialog } from "@/components/pools/EditPoolDialog"
-import { DeletePoolDialog } from "@/components/pools/DeletePoolDialog"
+import { PoolActions } from "@/components/pools/PoolActions"
 import { PoolsFilters } from "@/components/pools/PoolsFilters"
-
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
-import { MoreHorizontal } from "lucide-react"
 
 function buildQueryString(
   params: URLSearchParams,
@@ -139,21 +130,7 @@ export default async function PoolsPage({
                       </p>
                     </div>
 
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon" className="shrink-0">
-                          <MoreHorizontal className="size-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem onSelect={(e) => e.preventDefault()} asChild>
-                          <EditPoolDialog pool={pool} />
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onSelect={(e) => e.preventDefault()} asChild>
-                          <DeletePoolDialog poolId={pool.id} poolName={pool.name} />
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+                    <PoolActions pool={pool} />
                   </div>
                 )
               })}
