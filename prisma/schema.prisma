@@ -97,7 +97,7 @@ model Pool {
 model ServiceVisit {
   id           String             @id @default(cuid())
   poolId       String
-  techId       String
+  techId       String?
   notes        String?
   status       ServiceVisitStatus @default(DRAFT)
   weatherNotes String?
@@ -108,7 +108,7 @@ model ServiceVisit {
   updatedAt    DateTime           @updatedAt
 
   pool Pool @relation(fields: [poolId], references: [id], onDelete: Cascade)
-  tech User @relation(fields: [techId], references: [id], onDelete: Restrict)
+  tech User? @relation(fields: [techId], references: [id], onDelete: SetNull)
 
   waterReadings   WaterReading[]
   chemicalsAdded  ChemicalAdded[]

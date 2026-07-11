@@ -15,8 +15,10 @@ export interface ScheduleFormState {
 const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 
 /**
- * Schedules a new DRAFT visit for a pool on a chosen day, assigned to the
- * signed-in user as the servicing tech.
+ * Schedules a new DRAFT visit for a pool on a chosen day.
+ *
+ * - OWNER / SUPER_ADMIN: techId from the form (or `null` for unassigned).
+ * - TECH: always self-assigned (form value is ignored — security hardening).
  */
 export async function scheduleVisitAction(
   _prev: ScheduleFormState,
@@ -44,11 +46,22 @@ export async function scheduleVisitAction(
     return { ok: false, error: "Please choose a valid date." };
   }
 
+  // Resolve the tech id: owners/admins may assign to any company tech or leave
+  // unassigned; TECH users are always forced to self-assign.
+  const rawTechId = formData.get("techId");
+  const techId =
+    user.role === "TECH"
+      ? user.id
+      : typeof rawTechId === "string" && rawTechId.length > 0
+        ? rawTechId
+        : null;
+
   try {
-    await createVisit(poolId, user.id, user.companyId, scheduledAt);
+    await createVisit(poolId, techId, user.companyId, scheduledAt);
     revalidatePath("/schedule");
     return { ok: true };
-  } catch {
+  } catch (e) {
+    console.error("scheduleVisitAction:", e);
     return { ok: false, error: "Could not schedule the visit. Please try again." };
   }
 }

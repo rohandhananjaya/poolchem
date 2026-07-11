@@ -13,6 +13,33 @@ This project uses **Next.js 16, React 19, Prisma 7, Tailwind v4, and Zod v4** â€
 - **Prisma 7 has no `url` in `schema.prisma`.** The connection string lives in [prisma.config.ts](prisma.config.ts) (for Migrate) and is passed to `PrismaClient` via a **driver adapter** at runtime ([src/lib/prisma.ts](src/lib/prisma.ts)).
 - **Prisma client is generated to [src/generated/prisma/](src/generated/prisma/)**, not `node_modules`. Import types/client from `@/generated/prisma/client`. This directory is generated â€” never edit it by hand; run `npx prisma generate` after schema changes.
 
+## Test inventory (191 tests across 22 files)
+
+| Domain | File | Tests |
+|---|---|---|
+| Chemistry engine | `src/lib/pool-chemistry.test.ts` | 36 |
+| Auth | `src/lib/auth.test.ts` | 16 |
+| Errors | `src/lib/errors.test.ts` | 11 |
+| DB: visits | `src/lib/db/visits.test.ts` | 17 |
+| DB: pools | `src/lib/db/pools.test.ts` | 16 |
+| DB: users | `src/lib/db/users.test.ts` | 11 |
+| DB: company | `src/lib/db/company.test.ts` | 9 |
+| DB: reports | `src/lib/db/reports.test.ts` | 3 |
+| DB: schedule | `src/lib/db/schedule.test.ts` | 2 |
+| DB: dashboard | `src/lib/db/dashboard.test.ts` | 2 |
+| Reports | `src/lib/reports/generate-report.test.ts` | 5 |
+| Actions: pools | `src/app/(dashboard)/pools/actions.test.ts` | 8 |
+| Actions: profile | `src/app/(dashboard)/profile/actions.test.ts` | 10 |
+| Actions: scan | `src/app/(dashboard)/scan/actions.test.ts` | 5 |
+| Actions: schedule | `src/app/(dashboard)/schedule/actions.test.ts` | 4 |
+| Actions: visits | `src/app/(dashboard)/visits/[visitId]/actions.test.ts` | 4 |
+| Components: error-state | `src/components/ui/error-state.test.tsx` | 6 |
+| Components: loading-skeleton | `src/components/ui/loading-skeleton.test.tsx` | 8 |
+| Components: EmptyState | `src/components/dashboard/EmptyState.test.tsx` | 1 |
+| Components: WaterHealthGauge | `src/components/visits/WaterHealthGauge.test.tsx` | 7 |
+| Components: ChemicalRecommendations | `src/components/visits/ChemicalRecommendations.test.tsx` | 5 |
+| Components: WaterReadingInput | `src/components/visits/WaterReadingInput.test.tsx` | 5 |
+
 ## Commands
 
 ```bash

@@ -1,5 +1,5 @@
 import Link from "next/link"
-import { CheckCircle2, Clock, MapPin } from "lucide-react"
+import { CheckCircle2, Clock, MapPin, User } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -71,6 +71,18 @@ export function ScheduleVisitCard({ visit, timeLabel }: ScheduleVisitCardProps) 
           <Clock className="size-3.5 shrink-0" />
           {timeLabel}
         </p>
+
+        {visit.assignedTech ? (
+          <p className="mt-0.5 flex items-center gap-1.5 text-xs text-muted-foreground">
+            <User className="size-3.5 shrink-0" />
+            {visit.assignedTech.name}
+          </p>
+        ) : (
+          <p className="mt-0.5 flex items-center gap-1.5 text-xs italic text-muted-foreground">
+            <User className="size-3.5 shrink-0" />
+            Unassigned — anyone can take
+          </p>
+        )}
       </div>
 
       <div className="shrink-0">

@@ -229,7 +229,7 @@ export async function generateServiceReport(
       address: visit.pool.address,
       volume: visit.pool.volume,
     },
-    tech: { name: visit.tech.name },
+    tech: { name: visit.tech?.name ?? "Unassigned" },
     waterHealth,
     lsi,
     parameters,

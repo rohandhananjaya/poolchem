@@ -26,6 +26,8 @@ export interface ScheduledVisit {
   effectiveDate: string;
   /** Water-health snapshot from the latest reading, or `null` when none. */
   health: { score: number; status: WaterHealthStatus } | null;
+  /** The assigned tech, or `null` when unassigned (anyone can take). */
+  assignedTech: { id: string; name: string } | null;
 }
 
 /** How many visits the schedule loads (recent + upcoming). */
@@ -45,6 +47,7 @@ export async function getScheduleData(
     take: SCHEDULE_LIMIT,
     include: {
       pool: { select: { name: true, address: true } },
+      tech: { select: { id: true, name: true } },
       waterReadings: { orderBy: { createdAt: "desc" }, take: 1 },
     },
   });
@@ -60,6 +63,7 @@ export async function getScheduleData(
       scheduledAt: visit.scheduledAt ? visit.scheduledAt.toISOString() : null,
       effectiveDate: (visit.scheduledAt ?? visit.createdAt).toISOString(),
       health: health ? { score: health.score, status: health.status } : null,
+      assignedTech: visit.tech ? { id: visit.tech.id, name: visit.tech.name } : null,
     };
   });
 }

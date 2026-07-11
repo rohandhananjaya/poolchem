@@ -45,6 +45,20 @@ export async function getUsersByCompany(
 }
 
 /**
+ * Returns only TECH-role users for a company, ordered by name — used when an
+ * owner picks which tech to assign a visit to.
+ */
+export async function getCompanyTechs(
+  companyId: string,
+): Promise<Pick<User, "id" | "name" | "email">[]> {
+  return prisma.user.findMany({
+    where: { companyId, role: "TECH" },
+    select: { id: true, name: true, email: true },
+    orderBy: { name: "asc" },
+  });
+}
+
+/**
  * Updates a user's profile. When `companyId` is provided, the update is scoped
  * to that tenant. When `null` (SUPER_ADMIN), any user can be updated by id.
  *

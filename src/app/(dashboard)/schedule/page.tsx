@@ -5,6 +5,7 @@ import { format, isPast, isThisWeek, isToday, isTomorrow } from "date-fns"
 import { requireTech } from "@/lib/auth"
 import { getScheduleData, type ScheduledVisit } from "@/lib/db/schedule"
 import { getPoolsByCompany } from "@/lib/db/pools"
+import { getCompanyTechs } from "@/lib/db/users"
 import { Shell } from "@/components/ui/shell"
 import { ScheduleVisitForm } from "@/components/schedule/ScheduleVisitForm"
 import { ScheduleVisitCard } from "@/components/schedule/ScheduleVisitCard"
@@ -79,9 +80,10 @@ export default async function SchedulePage() {
     redirect("/admin")
   }
 
-  const [visits, pools] = await Promise.all([
+  const [visits, pools, techs] = await Promise.all([
     getScheduleData(user.companyId),
     getPoolsByCompany(user.companyId),
+    getCompanyTechs(user.companyId),
   ])
 
   const groups = groupVisits(visits)
@@ -91,6 +93,8 @@ export default async function SchedulePage() {
       <div className="space-y-6">
         <ScheduleVisitForm
           pools={pools.map((pool) => ({ id: pool.id, name: pool.name }))}
+          techs={techs}
+          userRole={user.role}
         />
 
         {groups.length === 0 ? (

@@ -69,37 +69,39 @@ export async function getVisitById(visitId: string, companyId: string) {
 }
 
 /**
- * Starts a new DRAFT visit for a pool, verifying that both the pool and the tech
- * belong to `companyId` before creating anything.
+ * Starts a new DRAFT visit for a pool. When `techId` is provided, verifies the
+ * tech belongs to `companyId` before creating. Passing `null` creates an
+ * unassigned visit (any tech can pick it up).
  *
  * @param scheduledAt - When the visit is planned for. Omit for ad-hoc visits
  *   (e.g. a tech scanning a pool in the field), which have no scheduled time.
- * @throws {Error} If the pool or tech is not found within the company.
+ * @throws {Error} If the pool is not found, or if a `techId` is given but does
+ *   not belong to the company.
  */
 export async function createVisit(
   poolId: string,
-  techId: string,
+  techId: string | null,
   companyId: string,
   scheduledAt?: Date,
 ) {
-  const [pool, tech] = await Promise.all([
-    prisma.pool.findFirst({ where: { id: poolId, companyId } }),
-    prisma.user.findFirst({ where: { id: techId, companyId } }),
-  ]);
-
+  const pool = await prisma.pool.findFirst({ where: { id: poolId, companyId } });
   if (!pool) {
     throw new Error(`Pool "${poolId}" not found for company "${companyId}".`);
   }
-  if (!tech) {
-    throw new Error(`Tech "${techId}" not found for company "${companyId}".`);
+
+  if (techId) {
+    const tech = await prisma.user.findFirst({ where: { id: techId, companyId } });
+    if (!tech) {
+      throw new Error(`Tech "${techId}" not found for company "${companyId}".`);
+    }
   }
 
   return prisma.serviceVisit.create({
     data: {
       status: "DRAFT",
       scheduledAt: scheduledAt ?? null,
-      pool: { connect: { id: poolId } },
-      tech: { connect: { id: techId } },
+      poolId: poolId,
+      techId: techId,
     },
   });
 }

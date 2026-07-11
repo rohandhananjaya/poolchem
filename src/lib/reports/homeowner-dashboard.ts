@@ -126,7 +126,7 @@ export async function getHomeownerDashboard(
         date: visit.createdAt.toISOString(),
         score: health.score,
         status: health.status,
-        techName: firstName(visit.tech.name),
+        techName: visit.tech ? firstName(visit.tech.name) : "Unassigned",
       };
     })
     .filter((activity): activity is HomeownerActivity => activity !== null);

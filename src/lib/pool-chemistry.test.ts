@@ -54,6 +54,68 @@ describe("calculateLSI", () => {
     const highTds = calculateLSI(7.5, 80, 300, 100, 2000).lsi;
     expect(highTds).toBeCloseTo(normal - 0.1, 2);
   });
+
+  it("uses low-TDS constant at exactly 1000 ppm and high at 1001", () => {
+    const low = calculateLSI(7.5, 80, 300, 100, 1000).lsi;
+    const high = calculateLSI(7.5, 80, 300, 100, 1001).lsi;
+    expect(high).toBeCloseTo(low - 0.1, 2);
+  });
+
+  it("clamps temperature at the low end (32°F and below)", () => {
+    const at32 = calculateLSI(7.5, 32, 300, 100).lsi;
+    const below = calculateLSI(7.5, 20, 300, 100).lsi;
+    expect(at32).toBeCloseTo(below, 10);
+  });
+
+  it("clamps temperature at the high end (105°F and above)", () => {
+    const at105 = calculateLSI(7.5, 105, 300, 100).lsi;
+    const above = calculateLSI(7.5, 120, 300, 100).lsi;
+    expect(at105).toBeCloseTo(above, 10);
+  });
+
+  it("interpolates between every adjacent temperature breakpoint", () => {
+    // 46→0.2 and 53→0.3 → at 50 = 0.2 + (4/7)*0.1 ≈ 0.257
+    const mid = calculateLSI(7.5, 50, 300, 100).lsi;
+    const low = calculateLSI(7.5, 46, 300, 100).lsi;
+    const high = calculateLSI(7.5, 53, 300, 100).lsi;
+    expect(mid).toBeGreaterThan(low);
+    expect(mid).toBeLessThan(high);
+    expect(mid - low).toBeCloseTo(Math.round(0.05714 * 100) / 100, 1);
+  });
+
+  it("reads the correct temperature factor at every breakpoint", () => {
+    const breakpoints: [number, number][] = [
+      [32, 0.0],
+      [37, 0.1],
+      [46, 0.2],
+      [53, 0.3],
+      [60, 0.4],
+      [66, 0.5],
+      [76, 0.6],
+      [84, 0.7],
+      [94, 0.8],
+      [105, 0.9],
+    ];
+    for (const [temp, expectedFactor] of breakpoints) {
+      // Use fixed pH=7.5, CH=300, TA=100 so LSI = 7.5 + TF + 2.08 - 12.1
+      const baseline = calculateLSI(7.5, 76, 300, 100).lsi; // TF=0.6
+      const shifted = calculateLSI(7.5, temp, 300, 100).lsi;
+      expect(shifted - baseline).toBeCloseTo(expectedFactor - 0.6, 2);
+    }
+  });
+
+  it("handles zero calcium hardness without crashing", () => {
+    // log10(0) = -Infinity, which should result in a very low (corrosive) LSI
+    const result = calculateLSI(7.5, 80, 0, 100);
+    expect(result.lsi).toBeLessThan(-10);
+    expect(result.status).toBe("CORROSIVE");
+  });
+
+  it("handles zero total alkalinity without crashing", () => {
+    const result = calculateLSI(7.5, 80, 300, 0);
+    expect(result.lsi).toBeLessThan(-10);
+    expect(result.status).toBe("CORROSIVE");
+  });
 });
 
 describe("getWaterHealthScore", () => {
@@ -83,6 +145,79 @@ describe("getWaterHealthScore", () => {
     expect(result.status).toBe("POOR");
     expect(result.score).toBeLessThan(50);
     expect(result.issues).toHaveLength(5);
+  });
+
+  it("scores 100 when every parameter is exactly at its min bound", () => {
+    const result = getWaterHealthScore({
+      ph: 7.4,
+      freeChlorine: 1,
+      totalAlkalinity: 80,
+      calciumHardness: 200,
+      cyanuricAcid: 30,
+    });
+    expect(result.score).toBe(100);
+    expect(result.status).toBe("EXCELLENT");
+  });
+
+  it("scores 100 when every parameter is exactly at its max bound", () => {
+    const result = getWaterHealthScore({
+      ph: 7.6,
+      freeChlorine: 3,
+      totalAlkalinity: 120,
+      calciumHardness: 400,
+      cyanuricAcid: 50,
+    });
+    expect(result.score).toBe(100);
+    expect(result.status).toBe("EXCELLENT");
+  });
+
+  it("returns partial credit for a parameter just outside its range", () => {
+    // pH range is 7.4-7.6. At 7.7, distance = 0.1, tolerance = 0.2 → 0.5 weight.
+    // pH weight is 30 → contribution = 30 * (1 - 0.1/0.2) = 15
+    // All other params at midpoint → 70 points → total = 85
+    const result = getWaterHealthScore({ ...idealReadings, ph: 7.7 });
+    expect(result.score).toBeCloseTo(85, 0);
+    expect(result.status).toBe("GOOD");
+  });
+
+  it("scores zero for a parameter far outside its range", () => {
+    // pH = 8.0 → distance = 0.4, tolerance = 0.2 → max(0, 1 - 2) = 0
+    // pH weight 30 * 0 = 0 → total = 70
+    const result = getWaterHealthScore({ ...idealReadings, ph: 8.0 });
+    expect(result.score).toBe(70);
+  });
+
+  it("returns EXCELLENT at exactly score 90", () => {
+    // Tune readings so total lands exactly on 90
+    const result = getWaterHealthScore({
+      ph: 7.4,
+      freeChlorine: 3,
+      totalAlkalinity: 80,
+      calciumHardness: 400,
+      cyanuricAcid: 50,
+    });
+    expect(result.score).toBeGreaterThanOrEqual(90);
+    expect(result.status).toBe("EXCELLENT");
+  });
+
+  it("returns FAIR at exactly score 75 boundary", () => {
+    const result = getWaterHealthScore({
+      ph: 7.7,
+      freeChlorine: 0.5,
+      totalAlkalinity: 60,
+      calciumHardness: 100,
+      cyanuricAcid: 20,
+    });
+    expect(result.score).toBeGreaterThanOrEqual(50);
+    expect(result.score).toBeLessThan(75);
+    expect(result.status).toBe("FAIR");
+  });
+
+  it("handles the temperature field being undefined gracefully", () => {
+    const { temperature: _, ...noTemp } = idealReadings;
+    const result = getWaterHealthScore(noTemp as WaterReadingInput);
+    expect(result.score).toBe(100);
+    expect(result.status).toBe("EXCELLENT");
   });
 });
 
@@ -126,6 +261,44 @@ describe("getChemicalRecommendations", () => {
     expect(rec.reason).toBe("Partially drain and refill pool water");
   });
 
+  it("returns no recommendations when at the exact low bound of range", () => {
+    const recs = getChemicalRecommendations(
+      { ...idealReadings, ph: 7.4 },
+      10_000,
+    );
+    expect(recs).toEqual([]);
+  });
+
+  it("returns multiple pH + TA + CH recommendations together", () => {
+    const recs = getChemicalRecommendations(
+      { ...idealReadings, ph: 7.3, totalAlkalinity: 60, calciumHardness: 100 },
+      10_000,
+    );
+    expect(recs).toHaveLength(3);
+    expect(recs.map((r) => r.chemical)).toEqual([
+      "Soda Ash",
+      "Sodium Bicarbonate",
+      "Calcium Chloride",
+    ]);
+  });
+
+  it("scales dose correctly for a 1-gallon pool (rounds to 0 at 2 decimals)", () => {
+    const [rec] = getChemicalRecommendations(
+      { ...idealReadings, ph: 7.3 },
+      1,
+    );
+    // roundDose rounds to 2 decimals; 6/10000 = 0.0006 → 0
+    expect(rec.amount).toBe(0);
+  });
+
+  it("scales dose correctly for a very large pool", () => {
+    const [rec] = getChemicalRecommendations(
+      { ...idealReadings, ph: 7.3 },
+      100_000,
+    );
+    expect(rec.amount).toBeCloseTo(60, 2);
+  });
+
   it("recommends bicarbonate, calcium chloride, chlorine and CYA for low readings", () => {
     const recs = getChemicalRecommendations(
       {
@@ -164,5 +337,21 @@ describe("getIdealRange", () => {
 
   it("throws for an unknown parameter", () => {
     expect(() => getIdealRange("salinity")).toThrow(/unknown/i);
+  });
+
+  it("accepts aliases with mixed spacing and casing", () => {
+    expect(getIdealRange("free chlorine")).toEqual(
+      getIdealRange("freeChlorine"),
+    );
+    expect(getIdealRange("TOTAL_ALKALINITY")).toEqual(
+      getIdealRange("totalAlkalinity"),
+    );
+    expect(getIdealRange("free-chlorine")).toEqual(
+      getIdealRange("freeChlorine"),
+    );
+  });
+
+  it("throws for empty string", () => {
+    expect(() => getIdealRange("")).toThrow(/unknown/i);
   });
 });

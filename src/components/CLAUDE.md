@@ -16,7 +16,7 @@ Feature components grouped by domain; shadcn/ui primitives in [ui/](ui/) (style 
 `ReportRow` · `ScoreSparkline` (inline SVG water-health trend)
 
 ## schedule/
-`ScheduleVisitCard` · `ScheduleVisitForm` (posts to `schedule/actions.ts`)
+`ScheduleVisitCard` · `ScheduleVisitForm` (Dialog popup with pool/date/tech-search; posts to `schedule/actions.ts`)
 
 ## profile/
 `ProfileForms` (account + company forms, posts to `profile/actions.ts`)

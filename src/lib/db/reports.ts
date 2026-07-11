@@ -99,7 +99,7 @@ export async function getCompanyReportData(
       id: visit.id,
       poolName: visit.pool.name,
       address: visit.pool.address,
-      techName: visit.tech.name,
+      techName: visit.tech?.name ?? "Unassigned",
       date: visit.createdAt.toISOString(),
       score: reading ? getWaterHealthScore(reading).score : null,
     };
