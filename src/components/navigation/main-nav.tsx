@@ -55,7 +55,7 @@ const ROLE_LABELS: Record<UserRole, string> = {
 }
 
 export interface MainNavProps {
-  user: { name: string; email: string; role: UserRole }
+  user: { name: string; email: string; role: UserRole; image?: string | null }
   company: { name: string; logo: string | null }
 }
 
@@ -171,7 +171,7 @@ function UserMenu({
   signingOut,
   onSignOut,
 }: {
-  user: { name: string; email: string; role: UserRole }
+  user: { name: string; email: string; role: UserRole; image?: string | null }
   signingOut: boolean
   onSignOut: () => void
 }) {
@@ -179,12 +179,13 @@ function UserMenu({
     <DropdownMenu>
       <DropdownMenuTrigger
         className={cn(
-          "flex w-full items-center gap-3 rounded-lg px-2 py-2 text-left text-sm outline-none transition-colors",
+          "flex w-full cursor-pointer items-center gap-3 rounded-lg px-2 py-2 text-left text-sm outline-none transition-colors",
           "hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
           "focus-visible:ring-3 focus-visible:ring-sidebar-ring/50"
         )}
       >
         <Avatar>
+          <AvatarImage src={user.image ?? undefined} alt={user.name} />
           <AvatarFallback>{initials(user.name)}</AvatarFallback>
         </Avatar>
         <span className="flex min-w-0 flex-1 flex-col">
