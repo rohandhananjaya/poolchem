@@ -2,7 +2,7 @@
 
 import { useRouter, usePathname, useSearchParams } from "next/navigation"
 import { useCallback } from "react"
-import { Filter, RotateCcw } from "lucide-react"
+import { RotateCcw } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 
@@ -11,36 +11,41 @@ interface PoolOption {
   name: string
 }
 
-export function ReportsFilters({ pools }: { pools: PoolOption[] }) {
+function useFilterPush() {
   const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()
 
-  const currentPool = searchParams.get("poolId") || ""
-  const currentFrom = searchParams.get("fromDate") || ""
-  const currentTo = searchParams.get("toDate") || ""
-
-  const apply = useCallback(
-    (formData: FormData) => {
+  return useCallback(
+    (updates: Record<string, string | null>) => {
       const params = new URLSearchParams()
-      const poolId = formData.get("poolId") as string
-      const fromDate = formData.get("fromDate") as string
-      const toDate = formData.get("toDate") as string
-      if (poolId) params.set("poolId", poolId)
-      if (fromDate) params.set("fromDate", fromDate)
-      if (toDate) params.set("toDate", toDate)
+      for (const [key, value] of searchParams.entries()) {
+        if (key !== "page") params.set(key, value)
+      }
+      for (const [key, value] of Object.entries(updates)) {
+        if (value) params.set(key, value)
+        else params.delete(key)
+      }
       params.set("page", "1")
       router.push(`${pathname}?${params.toString()}`)
     },
-    [router, pathname],
+    [router, pathname, searchParams],
   )
+}
 
-  const clear = useCallback(() => {
-    router.push(pathname)
-  }, [router, pathname])
+export function ReportsFilters({ pools }: { pools: PoolOption[] }) {
+  const push = useFilterPush()
+  const pathname = usePathname()
+  const router = useRouter()
+
+  const currentPool = useSearchParams().get("poolId") || ""
+  const currentFrom = useSearchParams().get("fromDate") || ""
+  const currentTo = useSearchParams().get("toDate") || ""
+
+  const clear = () => router.push(pathname)
 
   return (
-    <form action={apply} className="flex flex-wrap items-end gap-3">
+    <div className="flex flex-wrap items-end gap-3">
       <div>
         <label
           htmlFor="pool-filter"
@@ -50,8 +55,8 @@ export function ReportsFilters({ pools }: { pools: PoolOption[] }) {
         </label>
         <select
           id="pool-filter"
-          name="poolId"
-          defaultValue={currentPool}
+          value={currentPool}
+          onChange={(e) => push({ poolId: e.target.value || null })}
           className="h-8 rounded-lg border border-border bg-background px-2.5 text-sm text-foreground"
         >
           <option value="">All pools</option>
@@ -73,8 +78,8 @@ export function ReportsFilters({ pools }: { pools: PoolOption[] }) {
         <input
           id="from-date"
           type="date"
-          name="fromDate"
-          defaultValue={currentFrom}
+          value={currentFrom}
+          onChange={(e) => push({ fromDate: e.target.value || null })}
           className="h-8 rounded-lg border border-border bg-background px-2.5 text-sm text-foreground"
         />
       </div>
@@ -89,21 +94,15 @@ export function ReportsFilters({ pools }: { pools: PoolOption[] }) {
         <input
           id="to-date"
           type="date"
-          name="toDate"
-          defaultValue={currentTo}
+          value={currentTo}
+          onChange={(e) => push({ toDate: e.target.value || null })}
           className="h-8 rounded-lg border border-border bg-background px-2.5 text-sm text-foreground"
         />
       </div>
 
-      <Button type="submit" size="sm" variant="default">
-        <Filter className="size-4" />
-        Apply
-      </Button>
-
-      <Button type="button" size="sm" variant="ghost" onClick={clear}>
+      <Button type="button" size="icon-sm" variant="ghost" onClick={clear}>
         <RotateCcw className="size-4" />
-        Clear
       </Button>
-    </form>
+    </div>
   )
 }

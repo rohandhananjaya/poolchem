@@ -70,4 +70,49 @@ describe("getScheduleData", () => {
       }),
     );
   });
+
+  it("filters by status=all", async () => {
+    prismaMock.serviceVisit.findMany.mockResolvedValue([]);
+
+    await getScheduleData(companyId, { status: "all" });
+
+    expect(prismaMock.serviceVisit.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { pool: { companyId } },
+        orderBy: [{ scheduledAt: "asc" }, { createdAt: "asc" }],
+      }),
+    );
+  });
+
+  it("filters by status=cancelled", async () => {
+    prismaMock.serviceVisit.findMany.mockResolvedValue([]);
+
+    await getScheduleData(companyId, { status: "cancelled" });
+
+    const callArgs = prismaMock.serviceVisit.findMany.mock.calls[0][0];
+    expect(callArgs.where).toEqual({
+      pool: { companyId },
+      status: "CANCELLED",
+    });
+  });
+
+  it("filters by poolId", async () => {
+    prismaMock.serviceVisit.findMany.mockResolvedValue([]);
+
+    await getScheduleData(companyId, { poolId: "pool-1" });
+
+    const callArgs = prismaMock.serviceVisit.findMany.mock.calls[0][0];
+    expect(callArgs.where.poolId).toBe("pool-1");
+  });
+
+  it("filters by date range", async () => {
+    prismaMock.serviceVisit.findMany.mockResolvedValue([]);
+
+    await getScheduleData(companyId, { fromDate: "2026-07-01", toDate: "2026-07-31" });
+
+    const callArgs = prismaMock.serviceVisit.findMany.mock.calls[0][0];
+    expect(callArgs.where.scheduledAt).toBeDefined();
+    expect(callArgs.where.scheduledAt.gte).toEqual(new Date("2026-07-01"));
+    expect(callArgs.where.scheduledAt.lte).toEqual(new Date("2026-07-31T23:59:59.999Z"));
+  });
 });

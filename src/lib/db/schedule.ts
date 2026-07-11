@@ -31,8 +31,20 @@ export interface ScheduledVisit {
   assignedTech: { id: string; name: string } | null;
 }
 
-/** How many visits the schedule loads (recent + upcoming). */
-const SCHEDULE_LIMIT = 100;
+/** Filters for the schedule list. */
+export interface ScheduleFilters {
+  /** "scheduled" = exclude CANCELLED (default), "all" = everything, "cancelled" = only cancelled. */
+  status?: "scheduled" | "all" | "cancelled";
+  /** Pool id to narrow results. */
+  poolId?: string;
+  /** ISO date string (YYYY-MM-DD) — inclusive start. */
+  fromDate?: string;
+  /** ISO date string (YYYY-MM-DD) — inclusive end. */
+  toDate?: string;
+}
+
+/** How many visits the schedule loads. */
+const SCHEDULE_LIMIT = 200;
 
 /**
  * Returns the company's visits ordered for the schedule: by planned time
@@ -41,9 +53,39 @@ const SCHEDULE_LIMIT = 100;
  */
 export async function getScheduleData(
   companyId: string,
+  filters?: ScheduleFilters,
 ): Promise<ScheduledVisit[]> {
+  const where: {
+    pool: { companyId: string };
+    status?: Record<string, unknown> | "DRAFT" | "COMPLETED" | "CANCELLED";
+    poolId?: string;
+    scheduledAt?: { gte?: Date; lte?: Date };
+  } = {
+    pool: { companyId },
+  };
+
+  if (filters?.status === "cancelled") {
+    where.status = ServiceVisitStatus.CANCELLED;
+  } else if (filters?.status !== "all") {
+    where.status = { not: ServiceVisitStatus.CANCELLED };
+  }
+
+  if (filters?.poolId) {
+    where.poolId = filters.poolId;
+  }
+
+  if (filters?.fromDate || filters?.toDate) {
+    where.scheduledAt = {};
+    if (filters?.fromDate) {
+      where.scheduledAt.gte = new Date(filters.fromDate);
+    }
+    if (filters?.toDate) {
+      where.scheduledAt.lte = new Date(filters.toDate + "T23:59:59.999Z");
+    }
+  }
+
   const visits = await prisma.serviceVisit.findMany({
-    where: { pool: { companyId }, status: { not: ServiceVisitStatus.CANCELLED } },
+    where,
     orderBy: [{ scheduledAt: "asc" }, { createdAt: "asc" }],
     take: SCHEDULE_LIMIT,
     include: {

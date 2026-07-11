@@ -1,8 +1,8 @@
 "use client"
 
 import { useRouter, usePathname, useSearchParams } from "next/navigation"
-import { useCallback } from "react"
-import { Filter, RotateCcw } from "lucide-react"
+import { useEffect, useState } from "react"
+import { RotateCcw } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 
@@ -11,28 +11,24 @@ export function PoolsFilters() {
   const pathname = usePathname()
   const searchParams = useSearchParams()
 
-  const currentSearch = searchParams.get("search") || ""
-  const currentStatus = searchParams.get("status") || ""
+  const [search, setSearch] = useState(searchParams.get("search") || "")
+  const [status, setStatus] = useState(searchParams.get("status") || "")
 
-  const apply = useCallback(
-    (formData: FormData) => {
+  useEffect(() => {
+    const timer = setTimeout(() => {
       const params = new URLSearchParams()
-      const search = formData.get("search") as string
-      const status = formData.get("status") as string
       if (search) params.set("search", search)
       if (status && status !== "active") params.set("status", status)
       params.set("page", "1")
       router.push(`${pathname}?${params.toString()}`)
-    },
-    [router, pathname],
-  )
+    }, 300)
+    return () => clearTimeout(timer)
+  }, [search, status, router, pathname])
 
-  const clear = useCallback(() => {
-    router.push(pathname)
-  }, [router, pathname])
+  const clear = () => router.push(pathname)
 
   return (
-    <form action={apply} className="flex flex-wrap items-end gap-3">
+    <div className="flex flex-wrap items-end gap-3">
       <div>
         <label
           htmlFor="pool-search"
@@ -43,8 +39,8 @@ export function PoolsFilters() {
         <input
           id="pool-search"
           type="search"
-          name="search"
-          defaultValue={currentSearch}
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
           placeholder="Name or address…"
           className="h-8 w-48 rounded-lg border border-border bg-background px-2.5 text-sm text-foreground"
         />
@@ -59,8 +55,8 @@ export function PoolsFilters() {
         </label>
         <select
           id="pool-status"
-          name="status"
-          defaultValue={currentStatus}
+          value={status}
+          onChange={(e) => setStatus(e.target.value)}
           className="h-8 rounded-lg border border-border bg-background px-2.5 text-sm text-foreground"
         >
           <option value="active">Active only</option>
@@ -69,15 +65,9 @@ export function PoolsFilters() {
         </select>
       </div>
 
-      <Button type="submit" size="sm" variant="default">
-        <Filter className="size-4" />
-        Apply
-      </Button>
-
-      <Button type="button" size="sm" variant="ghost" onClick={clear}>
+      <Button type="button" size="icon-sm" variant="ghost" onClick={clear}>
         <RotateCcw className="size-4" />
-        Clear
       </Button>
-    </form>
+    </div>
   )
 }

@@ -3,12 +3,13 @@ import { CalendarClock } from "lucide-react"
 import { format, isPast, isThisWeek, isToday, isTomorrow } from "date-fns"
 
 import { requireTech } from "@/lib/auth"
-import { getScheduleData, type ScheduledVisit } from "@/lib/db/schedule"
+import { getScheduleData, type ScheduledVisit, type ScheduleFilters } from "@/lib/db/schedule"
 import { getPoolsByCompany } from "@/lib/db/pools"
 import { getCompanyTechs } from "@/lib/db/users"
 import { Shell } from "@/components/ui/shell"
 import { ScheduleVisitForm } from "@/components/schedule/ScheduleVisitForm"
 import { ScheduleVisitCard } from "@/components/schedule/ScheduleVisitCard"
+import { ScheduleFilters as ScheduleFiltersComponent } from "@/components/schedule/ScheduleFilters"
 
 /** Ordered schedule buckets. */
 const BUCKET_ORDER = [
@@ -74,28 +75,67 @@ function timeLabelFor(visit: ScheduledVisit): string {
   return format(new Date(visit.scheduledAt), "EEE, MMM d")
 }
 
-export default async function SchedulePage() {
+const EMPTY_MESSAGES: Record<string, { title: string; description: string }> = {
+  scheduled: {
+    title: "No visits scheduled yet.",
+    description: "Schedule a visit to see it on your route.",
+  },
+  all: {
+    title: "No visits found.",
+    description: "Try adjusting your filter criteria.",
+  },
+  cancelled: {
+    title: "No cancelled visits.",
+    description: "Cancelled visits will appear here.",
+  },
+}
+
+export default async function SchedulePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ tab?: string; poolId?: string; fromDate?: string; toDate?: string }>
+}) {
   const user = await requireTech()
   if (!user.companyId) {
     redirect("/admin")
   }
 
+  const sp = await searchParams
+  const filters: ScheduleFilters = {
+    status: (sp.tab as ScheduleFilters["status"]) || "scheduled",
+    poolId: sp.poolId || undefined,
+    fromDate: sp.fromDate || undefined,
+    toDate: sp.toDate || undefined,
+  }
+
   const [visits, pools, techs] = await Promise.all([
-    getScheduleData(user.companyId),
+    getScheduleData(user.companyId, filters),
     getPoolsByCompany(user.companyId),
     getCompanyTechs(user.companyId),
   ])
 
   const groups = groupVisits(visits)
+  const tab = filters.status || "scheduled"
+  const empty = EMPTY_MESSAGES[tab] ?? EMPTY_MESSAGES.scheduled
 
   return (
     <Shell title="Schedule">
-      <div className="space-y-6">
-        <ScheduleVisitForm
-          pools={pools.map((pool) => ({ id: pool.id, name: pool.name }))}
-          techs={techs}
-          userRole={user.role}
-        />
+      <div className="space-y-3">
+        <div className="flex items-center justify-end">
+          <ScheduleVisitForm
+            pools={pools.map((pool) => ({ id: pool.id, name: pool.name }))}
+            techs={techs}
+            userRole={user.role}
+          />
+        </div>
+
+        <div className="rounded-xl border border-border bg-card p-4">
+          <ScheduleFiltersComponent
+            pools={pools.map((p) => ({ id: p.id, name: p.name }))}
+          />
+        </div>
+
+        <hr className="border-border" />
 
         {groups.length === 0 ? (
           <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border bg-card/50 px-6 py-16 text-center">
@@ -103,10 +143,10 @@ export default async function SchedulePage() {
               <CalendarClock className="size-8" />
             </div>
             <p className="mt-4 text-sm font-medium text-foreground">
-              No visits scheduled yet.
+              {empty.title}
             </p>
             <p className="mt-1 text-sm text-muted-foreground">
-              Schedule a visit to see it on your route.
+              {empty.description}
             </p>
           </div>
         ) : (
