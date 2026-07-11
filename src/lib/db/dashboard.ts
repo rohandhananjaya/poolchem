@@ -60,9 +60,13 @@ function todayRange(): { gte: Date; lt: Date } {
 }
 
 /**
- * Loads everything the technician home dashboard needs for `companyId`:
- * today's visits (with the pool and the most recent water reading, from which a
- * health score is derived) and the headline stats.
+ * Returns the company's visits for today — those scheduled for today or created
+ * ad-hoc today (the day's route) — with their pool and the most recent water
+ * reading, plus headline stats. Ordered by scheduled time (null last), then
+ * creation time.
+ *
+ * Everything is scoped to a tenant (`companyId`) through the visit's pool, the
+ * same relation-safety rule the rest of the visit data layer follows.
  */
 export async function getDashboardData(
   companyId: string,
@@ -71,8 +75,14 @@ export async function getDashboardData(
 
   const [visits, activePools] = await Promise.all([
     prisma.serviceVisit.findMany({
-      where: { pool: { companyId }, createdAt: { gte, lt } },
-      orderBy: { createdAt: "asc" },
+      where: {
+        pool: { companyId },
+        OR: [
+          { scheduledAt: { gte, lt } },
+          { scheduledAt: null, createdAt: { gte, lt } },
+        ],
+      },
+      orderBy: [{ scheduledAt: { sort: "asc", nulls: "last" } }, { createdAt: "asc" }],
       include: {
         pool: true,
         // Newest reading first — a completed visit's latest test drives its score.
@@ -95,10 +105,15 @@ export async function getDashboardData(
       poolName: visit.pool.name,
       address: visit.pool.address,
       status: visit.status,
-      // We have no scheduled-time field, so a visit only gets a time once it's
-      // been serviced; everything else reads as "Unscheduled".
+      // Show the scheduled date when one is set (the form has no time picker);
+      // otherwise show the completion time for completed visits, or null
+      // ("Unscheduled") for ad-hoc uncompleted visits.
       timeLabel:
-        visit.status === "COMPLETED" ? format(visit.updatedAt, "p") : null,
+        visit.scheduledAt
+          ? format(visit.scheduledAt, "EEE, MMM d")
+          : visit.status === "COMPLETED"
+            ? format(visit.updatedAt, "p")
+            : null,
       health,
     };
   });

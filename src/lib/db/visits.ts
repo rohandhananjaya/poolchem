@@ -40,14 +40,21 @@ function todayRange(): { gte: Date; lt: Date } {
 }
 
 /**
- * Returns the company's visits created today (the day's route), with their pool
- * and servicing tech attached. Ordered oldest-first.
+ * Returns the company's visits for today — those scheduled for today or created
+ * ad-hoc today (the day's route) — with their pool and servicing tech attached.
+ * Ordered by scheduled time (null last), then creation time.
  */
 export async function getTodayVisits(companyId: string) {
   const { gte, lt } = todayRange();
   return prisma.serviceVisit.findMany({
-    where: { pool: { companyId }, createdAt: { gte, lt } },
-    orderBy: { createdAt: "asc" },
+    where: {
+      pool: { companyId },
+      OR: [
+        { scheduledAt: { gte, lt } },
+        { scheduledAt: null, createdAt: { gte, lt } },
+      ],
+    },
+    orderBy: [{ scheduledAt: { sort: "asc", nulls: "last" } }, { createdAt: "asc" }],
     include: { pool: true, tech: true },
   });
 }

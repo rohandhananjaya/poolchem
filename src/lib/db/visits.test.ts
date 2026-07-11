@@ -60,9 +60,13 @@ describe("getTodayVisits", () => {
       expect.objectContaining({
         where: expect.objectContaining({
           pool: { companyId },
+          OR: [
+            { scheduledAt: expect.objectContaining({ gte: expect.any(Date), lt: expect.any(Date) }) },
+            { scheduledAt: null, createdAt: expect.objectContaining({ gte: expect.any(Date), lt: expect.any(Date) }) },
+          ],
         }),
         include: { pool: true, tech: true },
-        orderBy: { createdAt: "asc" },
+        orderBy: [{ scheduledAt: { sort: "asc", nulls: "last" } }, { createdAt: "asc" }],
       }),
     );
     expect(result).toEqual(mockVisits);
