@@ -106,6 +106,8 @@ export default async function SchedulePage({
     poolId: sp.poolId || undefined,
     fromDate: sp.fromDate || undefined,
     toDate: sp.toDate || undefined,
+    // Techs only see their own + unassigned visits; owners/admins see all.
+    techId: user.role === "TECH" ? user.id : undefined,
   }
 
   const [visits, pools, techs] = await Promise.all([

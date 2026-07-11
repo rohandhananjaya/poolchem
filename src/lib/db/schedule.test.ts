@@ -105,6 +105,15 @@ describe("getScheduleData", () => {
     expect(callArgs.where.poolId).toBe("pool-1");
   });
 
+  it("filters by techId to own + unassigned visits", async () => {
+    prismaMock.serviceVisit.findMany.mockResolvedValue([]);
+
+    await getScheduleData(companyId, { techId: "tech-1" });
+
+    const callArgs = prismaMock.serviceVisit.findMany.mock.calls[0][0];
+    expect(callArgs.where.OR).toEqual([{ techId: "tech-1" }, { techId: null }]);
+  });
+
   it("filters by date range", async () => {
     prismaMock.serviceVisit.findMany.mockResolvedValue([]);
 

@@ -1,10 +1,10 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { createClient } from "@supabase/supabase-js";
 
 import { prisma } from "@/lib/prisma";
 import { requireOwner } from "@/lib/auth";
+import { createAdminClient, deleteAuthUserByEmail } from "@/lib/supabase/admin";
 import { createUser, deleteUser, updateUserAdmin } from "@/lib/db/users";
 import type { UserRole } from "@/generated/prisma/client";
 
@@ -50,14 +50,9 @@ export async function createTeamUserAction(
   }
 
   try {
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    const admin = createAdminClient();
 
-    if (supabaseUrl && serviceKey) {
-      const admin = createClient(supabaseUrl, serviceKey, {
-        auth: { autoRefreshToken: false, persistSession: false },
-      });
-
+    if (admin) {
       const { error: authError } = await admin.auth.admin.createUser({
         email,
         password,
@@ -154,6 +149,8 @@ export async function deleteTeamUserAction(
 
   try {
     await deleteUser(userId, currentUser.companyId);
+    // Also remove the Supabase Auth identity so the email can be re-registered.
+    await deleteAuthUserByEmail(target.email);
     revalidatePath("/team");
     return { ok: true };
   } catch {

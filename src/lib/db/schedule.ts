@@ -41,6 +41,12 @@ export interface ScheduleFilters {
   fromDate?: string;
   /** ISO date string (YYYY-MM-DD) — inclusive end. */
   toDate?: string;
+  /**
+   * Restrict to visits a given tech may work: those assigned to them plus
+   * unassigned ("anyone can take") visits. Visits assigned to other techs are
+   * excluded. Leave undefined for owners/admins to see the whole company.
+   */
+  techId?: string;
 }
 
 /** How many visits the schedule loads. */
@@ -60,9 +66,16 @@ export async function getScheduleData(
     status?: Record<string, unknown> | "DRAFT" | "COMPLETED" | "CANCELLED";
     poolId?: string;
     scheduledAt?: { gte?: Date; lte?: Date };
+    OR?: Array<{ techId: string | null }>;
   } = {
     pool: { companyId },
   };
+
+  if (filters?.techId) {
+    // Techs see only their own visits plus unassigned ones — never a
+    // visit assigned to another tech.
+    where.OR = [{ techId: filters.techId }, { techId: null }];
+  }
 
   if (filters?.status === "cancelled") {
     where.status = ServiceVisitStatus.CANCELLED;
