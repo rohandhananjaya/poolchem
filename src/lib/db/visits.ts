@@ -16,6 +16,7 @@ import {
   type WaterReadingInput,
 } from "@/lib/pool-chemistry";
 import { prisma } from "@/lib/prisma";
+import { ServiceVisitStatus } from "@/generated/prisma/client";
 
 /** A full set of water-test readings recorded during a visit. */
 export interface VisitReadings extends Omit<WaterReadingInput, "temperature"> {
@@ -49,6 +50,7 @@ export async function getTodayVisits(companyId: string) {
   return prisma.serviceVisit.findMany({
     where: {
       pool: { companyId },
+      status: { not: ServiceVisitStatus.CANCELLED },
       OR: [
         { scheduledAt: { gte, lt } },
         { scheduledAt: null, createdAt: { gte, lt } },
@@ -105,7 +107,7 @@ export async function createVisit(
 
   return prisma.serviceVisit.create({
     data: {
-      status: "DRAFT",
+      status: ServiceVisitStatus.DRAFT,
       scheduledAt: scheduledAt ?? null,
       poolId: poolId,
       techId: techId,
@@ -159,7 +161,7 @@ export async function completeVisit(
     return tx.serviceVisit.update({
       where: { id: visitId },
       data: {
-        status: "COMPLETED",
+        status: ServiceVisitStatus.COMPLETED,
         // Leave existing notes untouched when none are supplied.
         notes: notes ?? undefined,
       },
@@ -187,7 +189,7 @@ export async function completeVisit(
  */
 export async function getVisitHistory(poolId: string, limit: number) {
   return prisma.serviceVisit.findMany({
-    where: { poolId, status: "COMPLETED" },
+    where: { poolId, status: ServiceVisitStatus.COMPLETED },
     orderBy: { createdAt: "desc" },
     take: limit,
     include: { waterReadings: true, chemicalsAdded: true },
@@ -212,6 +214,67 @@ export async function getLastVisitReadings(
     cyanuricAcid: last.cyanuricAcid,
     temperature: last.temperature,
   };
+}
+
+/**
+ * Cancels a visit: sets its status to CANCELLED and stores the cancellation
+ * reason. Only visits belonging to `companyId` (via the pool relation) can be
+ * cancelled.
+ *
+ * @returns The updated visit, or `null` if the visit was not found or is not
+ *   scoped to this company.
+ */
+export async function cancelVisit(
+  visitId: string,
+  companyId: string,
+  reason: string,
+) {
+  const visit = await prisma.serviceVisit.findFirst({
+    where: { id: visitId, pool: { companyId } },
+  });
+  if (!visit) return null;
+
+  return prisma.serviceVisit.update({
+    where: { id: visitId },
+    data: { status: ServiceVisitStatus.CANCELLED, cancellationReason: reason },
+  });
+}
+
+/**
+ * Updates the scheduled date and/or assigned tech for a visit. Verifies the
+ * visit belongs to `companyId` (via its pool). When `techId` is provided, it
+ * must also belong to `companyId`.
+ *
+ * @returns The updated visit, or `null` if the visit was not found.
+ * @throws {Error} If the given `techId` does not belong to the company.
+ */
+export async function updateVisit(
+  visitId: string,
+  companyId: string,
+  data: { scheduledAt?: Date | null; techId?: string | null },
+) {
+  const visit = await prisma.serviceVisit.findFirst({
+    where: { id: visitId, pool: { companyId } },
+    include: { pool: true },
+  });
+  if (!visit) return null;
+
+  if (data.techId) {
+    const tech = await prisma.user.findFirst({
+      where: { id: data.techId, companyId },
+    });
+    if (!tech) {
+      throw new Error(`Tech "${data.techId}" not found for company "${companyId}".`);
+    }
+  }
+
+  return prisma.serviceVisit.update({
+    where: { id: visitId },
+    data: {
+      scheduledAt: data.scheduledAt !== undefined ? data.scheduledAt : undefined,
+      techId: data.techId !== undefined ? data.techId : undefined,
+    },
+  });
 }
 
 /**

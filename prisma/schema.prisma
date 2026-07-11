@@ -26,6 +26,7 @@ enum UserRole {
 enum ServiceVisitStatus {
   DRAFT
   COMPLETED
+  CANCELLED
 }
 
 /// A tenant. Every other record is scoped to a Company.
@@ -100,7 +101,8 @@ model ServiceVisit {
   techId       String?
   notes        String?
   status       ServiceVisitStatus @default(DRAFT)
-  weatherNotes String?
+  weatherNotes      String?
+  cancellationReason String?
   // When the visit is planned for. Null for visits created ad hoc (e.g. a tech
   // scanning a pool in the field); set when scheduled from the Schedule page.
   scheduledAt  DateTime?

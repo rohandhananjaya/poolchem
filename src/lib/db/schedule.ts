@@ -13,13 +13,14 @@ import "server-only";
 
 import { getWaterHealthScore, type WaterHealthStatus } from "@/lib/pool-chemistry";
 import { prisma } from "@/lib/prisma";
+import { ServiceVisitStatus } from "@/generated/prisma/client";
 
 /** A single visit as shown on the Schedule page. Fully serializable. */
 export interface ScheduledVisit {
   id: string;
   poolName: string;
   address: string | null;
-  status: "DRAFT" | "COMPLETED";
+  status: "DRAFT" | "COMPLETED" | "CANCELLED";
   /** Planned time, ISO string, or `null` when the visit was created ad hoc. */
   scheduledAt: string | null;
   /** `scheduledAt ?? createdAt`, ISO string — used to place the visit on a day. */
@@ -42,7 +43,7 @@ export async function getScheduleData(
   companyId: string,
 ): Promise<ScheduledVisit[]> {
   const visits = await prisma.serviceVisit.findMany({
-    where: { pool: { companyId } },
+    where: { pool: { companyId }, status: { not: ServiceVisitStatus.CANCELLED } },
     orderBy: [{ scheduledAt: "asc" }, { createdAt: "asc" }],
     take: SCHEDULE_LIMIT,
     include: {

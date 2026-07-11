@@ -17,7 +17,7 @@ import {
   type WaterHealthStatus,
 } from "@/lib/pool-chemistry";
 import { prisma } from "@/lib/prisma";
-import type { ServiceVisitStatus } from "@/generated/prisma/enums";
+import { ServiceVisitStatus } from "@/generated/prisma/client";
 
 /** A single visit as rendered by {@link VisitCard} — primitives only. */
 export interface DashboardVisit {
@@ -77,6 +77,7 @@ export async function getDashboardData(
     prisma.serviceVisit.findMany({
       where: {
         pool: { companyId },
+        status: { not: ServiceVisitStatus.CANCELLED },
         OR: [
           { scheduledAt: { gte, lt } },
           { scheduledAt: null, createdAt: { gte, lt } },

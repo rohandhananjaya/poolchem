@@ -64,7 +64,7 @@ describe("getScheduleData", () => {
 
     expect(prismaMock.serviceVisit.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: { pool: { companyId } },
+        where: { pool: { companyId }, status: { not: "CANCELLED" } },
         orderBy: [{ scheduledAt: "asc" }, { createdAt: "asc" }],
         take: expect.any(Number),
       }),

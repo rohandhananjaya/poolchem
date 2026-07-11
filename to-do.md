@@ -1,33 +1,42 @@
 # PoolChem — To-Do
 
-Generated from a project scan on 2026-07-10. Groups outstanding work by area:
-stubbed pages, "coming soon" features, placeholder integrations, and
-infrastructure follow-ups noted in the codebase and docs.
+MVP launch priorities for the US market, assessed 2026-07-11.
 
-## Stubbed pages (placeholder content only)
+## P0 — Blocking launch (must ship)
 
-These render a `<Shell>` with a single "will appear here" line and need real
-implementations.
+- [ ] **Self-service sign-up** — no registration page exists. Users cannot create an account without admin intervention. Need: `/sign-up` page, company creation, initial OWNER user setup, Supabase Auth user creation from client. URL: `src/app/login/page.tsx`
+- [ ] **Password reset** — no "forgot password?" link or reset flow. Supabase supports `resetPasswordForEmail()` but there's no UI or route. URL: `src/app/login/page.tsx`
+- [ ] **Transactional email** — zero email infrastructure. Three concrete gaps:
+  - Report auto-send (currently `mailto:`). URL: `src/app/(dashboard)/visits/[visitId]/report/report-actions.tsx`
+  - Password reset emails
+  - Team invitation emails
+  - Recommended: Resend or SendGrid
+- [ ] **SQLite → Supabase Postgres** — swap `@prisma/adapter-better-sqlite3` for `@prisma/adapter-pg` in `src/lib/prisma.ts`, update `prisma.config.ts`, verify schema portability
+- [ ] **Production environment** — configure real Supabase project, Vercel project env vars, set `NEXT_PUBLIC_APP_URL`, CI/CD (GitHub Actions)
 
-- [ ] **Schedule** — [src/app/(dashboard)/schedule/page.tsx](<src/app/(dashboard)/schedule/page.tsx>): list upcoming service visits for the tech/company.
-- [ ] **Reports** — [src/app/(dashboard)/reports/page.tsx](<src/app/(dashboard)/reports/page.tsx>): water-health reports and visit history.
-- [ ] **Profile** — [src/app/(dashboard)/profile/page.tsx](<src/app/(dashboard)/profile/page.tsx>): account + company details.
+## P1 — High priority (ship soon after launch)
 
-## "Coming soon" features
+- [ ] **Stripe billing integration** — schema has fields (`stripeCustomerId`, `stripeSubscriptionId`, `subscriptionStatus`) but zero implementation. Need: pricing page, checkout, webhooks, subscription gating.
+- [ ] **Privacy Policy & Terms of Service** — required for US market SaaS. Static pages or legal-reference links in footer. URL: `src/app/`
+- [ ] **Error monitoring** — no Sentry or equivalent. Critical for catching production bugs.
+- [ ] **Analytics** — no Plausible/PostHog/GA4. Need to understand usage patterns.
 
-- [ ] **Test-strip scanning** — button is disabled/`title="coming soon"` in [src/components/visits/WaterReadingInput.tsx:106](src/components/visits/WaterReadingInput.tsx#L106). Wire up camera capture + reading extraction.
-- [ ] **Voice recording for notes** — disabled in [src/components/visits/VisitNotes.tsx:46](src/components/visits/VisitNotes.tsx#L46). Add recording + transcription.
+## P2 — Polish
 
-## Placeholder integrations
+- [ ] **OG image / social preview** — meta tags for the landing page. URL: `src/app/layout.tsx`
+- [ ] **robots.txt / sitemap.xml** — SEO basics for public pages.
+- [ ] **Rate limiting on Server Actions** — no protection against abuse on mutation endpoints.
 
-- [ ] **Report auto-send email** — currently opens the user's mail client via `mailto:` in [src/app/(dashboard)/visits/[visitId]/report/report-actions.tsx:36](<src/app/(dashboard)/visits/[visitId]/report/report-actions.tsx#L36>). Replace with a server-side transactional send.
-- [ ] **Homeowner dashboard QR** — uses an external QR service as an MVP placeholder in [src/app/(dashboard)/visits/[visitId]/report/page.tsx:333](<src/app/(dashboard)/visits/[visitId]/report/page.tsx#L333>). Move to a self-hosted/local QR generator.
+## Coming-soon features (deferred from original to-do)
 
-## Infrastructure & platform
+- [ ] **Test-strip scanning** — disabled button in `src/components/visits/WaterReadingInput.tsx`
+- [ ] **Voice recording for notes** — disabled in `src/components/visits/VisitNotes.tsx`
+- [ ] **Self-hosted QR generation** — currently uses external `qrserver.com` API in `src/app/(dashboard)/visits/[visitId]/report/page.tsx`
+- [ ] **E2E tests** — no Playwright/Cypress tests
 
-- [ ] **SQLite → Supabase Postgres migration** — per [CLAUDE.md](CLAUDE.md): swap the driver adapter in [src/lib/prisma.ts](src/lib/prisma.ts) to `@prisma/adapter-pg` and update the datasource `provider`. Keep schema field types portable.
-- [ ] **Test coverage beyond chemistry** — only [src/lib/pool-chemistry.test.ts](src/lib/pool-chemistry.test.ts) has unit tests. Consider tests for `db/` helpers (multi-tenant scoping) and Server Actions.
+## Already shipped (items from previous to-do that are done)
 
-## Notes
-
-- The dashboard layout/nav design is documented in [docs/superpowers/specs/2026-07-10-dashboard-layout-nav-design.md](docs/superpowers/specs/2026-07-10-dashboard-layout-nav-design.md); its explicit non-goals (real page content, theme toggle) overlap with the stubbed pages above.
+- [x] **Schedule page** — full implementation with buckets, cards, scheduling form
+- [x] **Reports page** — filters, pagination, report rows
+- [x] **Profile page** — account + company settings with role-based editing
+- [x] **DB helper tests** — 60 tests across 7 files in `src/lib/db/` (plus 131 more across app)

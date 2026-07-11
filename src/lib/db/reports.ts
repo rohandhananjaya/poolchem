@@ -10,6 +10,7 @@ import "server-only";
 
 import { getWaterHealthScore } from "@/lib/pool-chemistry";
 import { prisma } from "@/lib/prisma";
+import { ServiceVisitStatus } from "@/generated/prisma/client";
 
 /** One completed visit in the recent-reports list. */
 export interface ReportListItem {
@@ -61,7 +62,7 @@ export async function getCompanyReportData(
     createdAt?: { gte?: Date; lte?: Date };
   } = {
     pool: { companyId },
-    status: "COMPLETED",
+    status: ServiceVisitStatus.COMPLETED,
   };
 
   if (filters?.poolId) {

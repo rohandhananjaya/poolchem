@@ -3,6 +3,7 @@ import "server-only"
 import { format, subDays } from "date-fns"
 
 import { prisma } from "@/lib/prisma"
+import { ServiceVisitStatus } from "@/generated/prisma/client"
 
 export interface RegistrationTrendItem {
   date: string
@@ -102,9 +103,9 @@ export async function getAdminDashboardData(): Promise<AdminDashboardData> {
     prisma.company.count(),
     prisma.user.count(),
     prisma.pool.count({ where: { isActive: true } }),
-    prisma.serviceVisit.count({ where: { status: "COMPLETED" } }),
+    prisma.serviceVisit.count({ where: { status: ServiceVisitStatus.COMPLETED } }),
     prisma.serviceVisit.count({
-      where: { status: "COMPLETED", createdAt: { gte: todayStart, lt: todayEnd } },
+      where: { status: ServiceVisitStatus.COMPLETED, createdAt: { gte: todayStart, lt: todayEnd } },
     }),
     prisma.user.count({
       where: { createdAt: { gte: todayStart, lt: todayEnd } },
@@ -131,7 +132,7 @@ export async function getAdminDashboardData(): Promise<AdminDashboardData> {
       select: { createdAt: true },
     }),
     prisma.serviceVisit.findMany({
-      where: { status: "COMPLETED", createdAt: { gte: trendStart, lt: trendEnd } },
+      where: { status: ServiceVisitStatus.COMPLETED, createdAt: { gte: trendStart, lt: trendEnd } },
       select: { createdAt: true },
     }),
   ])

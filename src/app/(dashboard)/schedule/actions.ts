@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 
 import { requireTech } from "@/lib/auth";
-import { createVisit } from "@/lib/db/visits";
+import { cancelVisit, createVisit, updateVisit } from "@/lib/db/visits";
 
 /** Result returned to `useActionState` on the client. */
 export interface ScheduleFormState {
@@ -63,5 +63,95 @@ export async function scheduleVisitAction(
   } catch (e) {
     console.error("scheduleVisitAction:", e);
     return { ok: false, error: "Could not schedule the visit. Please try again." };
+  }
+}
+
+/**
+ * Cancels a visit with a required reason. Only DRAFT visits can be cancelled.
+ * The caller must belong to the same company as the visit's pool.
+ */
+export async function cancelVisitAction(
+  _prev: ScheduleFormState,
+  formData: FormData,
+): Promise<ScheduleFormState> {
+  const user = await requireTech();
+  if (!user.companyId) {
+    return { ok: false, error: "No company affiliation." };
+  }
+
+  const visitId = formData.get("visitId");
+  const reason = formData.get("reason");
+
+  if (typeof visitId !== "string" || visitId === "") {
+    return { ok: false, error: "Visit ID is required." };
+  }
+  if (typeof reason !== "string" || reason.trim().length === 0) {
+    return { ok: false, error: "A cancellation reason is required." };
+  }
+
+  try {
+    const result = await cancelVisit(visitId, user.companyId, reason.trim());
+    if (!result) {
+      return { ok: false, error: "Visit not found." };
+    }
+    revalidatePath("/schedule");
+    return { ok: true };
+  } catch (e) {
+    console.error("cancelVisitAction:", e);
+    return { ok: false, error: "Could not cancel the visit. Please try again." };
+  }
+}
+
+/**
+ * Updates a visit's scheduled date and/or assigned tech. TECH users are forced
+ * to self-assign; OWNER/SUPER_ADMIN may assign any company tech or unassign.
+ */
+export async function updateVisitAction(
+  _prev: ScheduleFormState,
+  formData: FormData,
+): Promise<ScheduleFormState> {
+  const user = await requireTech();
+  if (!user.companyId) {
+    return { ok: false, error: "No company affiliation." };
+  }
+
+  const visitId = formData.get("visitId");
+  if (typeof visitId !== "string" || visitId === "") {
+    return { ok: false, error: "Visit ID is required." };
+  }
+
+  const date = formData.get("date");
+  let scheduledAt: Date | null | undefined = undefined;
+  if (typeof date === "string" && date.length > 0) {
+    if (!DATE_PATTERN.test(date)) {
+      return { ok: false, error: "Please choose a valid date." };
+    }
+    scheduledAt = new Date(`${date}T12:00:00`);
+    if (Number.isNaN(scheduledAt.getTime())) {
+      return { ok: false, error: "Please choose a valid date." };
+    }
+  }
+
+  const rawTechId = formData.get("techId");
+  const techId =
+    user.role === "TECH"
+      ? user.id
+      : typeof rawTechId === "string" && rawTechId.length > 0
+        ? rawTechId
+        : null;
+
+  try {
+    const result = await updateVisit(visitId, user.companyId, {
+      scheduledAt,
+      techId,
+    });
+    if (!result) {
+      return { ok: false, error: "Visit not found." };
+    }
+    revalidatePath("/schedule");
+    return { ok: true };
+  } catch (e) {
+    console.error("updateVisitAction:", e);
+    return { ok: false, error: "Could not update the visit. Please try again." };
   }
 }

@@ -16,7 +16,7 @@ import "server-only";
 import { randomUUID } from "node:crypto";
 
 import type { Pool } from "@/generated/prisma/client";
-import { Prisma } from "@/generated/prisma/client";
+import { Prisma, ServiceVisitStatus } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
 
 /** Filters for the paginated pools list. */
@@ -246,7 +246,7 @@ export async function getPoolByPublicToken(
     include: {
       company: true,
       serviceVisits: {
-        where: { status: "COMPLETED" },
+        where: { status: ServiceVisitStatus.COMPLETED },
         orderBy: { createdAt: "desc" },
         take: visitLimit,
         include: { waterReadings: true, tech: true },
