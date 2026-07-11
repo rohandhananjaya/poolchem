@@ -45,6 +45,7 @@ describe("getDashboardData", () => {
       },
     ]);
     prismaMock.pool.count.mockResolvedValue(10);
+    prismaMock.serviceVisit.count.mockResolvedValue(3);
 
     const result = await getDashboardData(companyId);
 
@@ -54,20 +55,21 @@ describe("getDashboardData", () => {
     expect(result.visits[1].health).toBeNull();
     expect(result.stats.completed).toBe(1);
     expect(result.stats.total).toBe(2);
-    expect(result.stats.avgHealth).toBe(100);
+    expect(result.stats.upcomingVisits).toBe(3);
     expect(result.stats.activePools).toBe(10);
   });
 
   it("returns empty data when no visits exist", async () => {
     prismaMock.serviceVisit.findMany.mockResolvedValue([]);
     prismaMock.pool.count.mockResolvedValue(0);
+    prismaMock.serviceVisit.count.mockResolvedValue(0);
 
     const result = await getDashboardData(companyId);
 
     expect(result.visits).toEqual([]);
     expect(result.stats.completed).toBe(0);
     expect(result.stats.total).toBe(0);
-    expect(result.stats.avgHealth).toBeNull();
+    expect(result.stats.upcomingVisits).toBe(0);
     expect(result.stats.activePools).toBe(0);
   });
 });

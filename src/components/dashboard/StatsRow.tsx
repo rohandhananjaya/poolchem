@@ -41,8 +41,8 @@ export function StatsRow({ stats }: StatsRowProps) {
         hint="completed"
       />
       <StatTile
-        label="Avg Water Health"
-        value={stats.avgHealth === null ? "—" : String(stats.avgHealth)}
+        label="Upcoming Visits"
+        value={String(stats.upcomingVisits)}
       />
       <StatTile label="Active Pools" value={String(stats.activePools)} />
     </div>

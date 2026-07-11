@@ -192,7 +192,7 @@ export async function getVisitHistory(poolId: string, limit: number) {
     where: { poolId, status: ServiceVisitStatus.COMPLETED },
     orderBy: { createdAt: "desc" },
     take: limit,
-    include: { waterReadings: true, chemicalsAdded: true },
+    include: { waterReadings: true, chemicalsAdded: true, tech: true },
   });
 }
 

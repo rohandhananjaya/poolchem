@@ -39,8 +39,8 @@ export interface DashboardStats {
   completed: number;
   /** Total visits on today's route. */
   total: number;
-  /** Mean water-health score across scored visits, or `null` when none. */
-  avgHealth: number | null;
+  /** Visits scheduled for future dates (after today). */
+  upcomingVisits: number;
   /** Active pools for the company. */
   activePools: number;
 }
@@ -73,7 +73,7 @@ export async function getDashboardData(
 ): Promise<DashboardData> {
   const { gte, lt } = todayRange();
 
-  const [visits, activePools] = await Promise.all([
+  const [visits, activePools, upcomingVisits] = await Promise.all([
     prisma.serviceVisit.findMany({
       where: {
         pool: { companyId },
@@ -91,6 +91,13 @@ export async function getDashboardData(
       },
     }),
     prisma.pool.count({ where: { companyId, isActive: true } }),
+    prisma.serviceVisit.count({
+      where: {
+        pool: { companyId },
+        status: { not: ServiceVisitStatus.CANCELLED },
+        scheduledAt: { gt: lt },
+      },
+    }),
   ]);
 
   const dashboardVisits: DashboardVisit[] = visits.map((visit) => {
@@ -123,19 +130,12 @@ export async function getDashboardData(
     (visit) => visit.status === "COMPLETED",
   ).length;
 
-  const scores = dashboardVisits
-    .map((visit) => visit.health?.score)
-    .filter((score): score is number => score !== undefined);
-  const avgHealth = scores.length
-    ? Math.round(scores.reduce((sum, score) => sum + score, 0) / scores.length)
-    : null;
-
   return {
     visits: dashboardVisits,
     stats: {
       completed,
       total: dashboardVisits.length,
-      avgHealth,
+      upcomingVisits,
       activePools,
     },
   };

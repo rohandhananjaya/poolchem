@@ -371,7 +371,7 @@ describe("getVisitHistory", () => {
       where: { poolId, status: "COMPLETED" },
       orderBy: { createdAt: "desc" },
       take: 5,
-      include: { waterReadings: true, chemicalsAdded: true },
+      include: { waterReadings: true, chemicalsAdded: true, tech: true },
     });
     expect(result).toEqual(mockHistory);
   });

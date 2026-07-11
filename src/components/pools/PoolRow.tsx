@@ -1,9 +1,11 @@
 "use client"
 
 import * as React from "react"
+import Link from "next/link"
 import { format } from "date-fns"
-import { MapPin } from "lucide-react"
+import { LayoutDashboard, MapPin } from "lucide-react"
 
+import { Button } from "@/components/ui/button"
 import { EditPoolDialog } from "./EditPoolDialog"
 
 interface PoolRowProps {
@@ -63,6 +65,15 @@ export function PoolRow({ pool, canManage = false }: PoolRowProps) {
               ? `Last visit: ${format(new Date(pool.lastVisitAt), "MMM d, yyyy")}`
               : "No visits yet"}
           </p>
+        </div>
+
+        <div className="shrink-0" onClick={(e) => e.stopPropagation()}>
+          <Button asChild variant="default" size="lg">
+            <Link href={`/pools/${pool.id}`}>
+              <LayoutDashboard className="size-4" />
+              Analysis
+            </Link>
+          </Button>
         </div>
       </div>
 
