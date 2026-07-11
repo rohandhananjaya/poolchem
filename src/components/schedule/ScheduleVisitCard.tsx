@@ -296,11 +296,6 @@ export function ScheduleVisitCard({
 
               {isDraft ? (
                 <DialogFooter className="gap-2 sm:justify-between">
-                  <Button asChild variant="default">
-                    <Link href={`/visits/${visit.id}`} onClick={() => setOpen(false)}>
-                      Start Visit
-                    </Link>
-                  </Button>
                   <Button
                     type="button"
                     variant="destructive"
@@ -308,6 +303,11 @@ export function ScheduleVisitCard({
                   >
                     <XCircle className="size-4" />
                     Cancel Visit
+                  </Button>
+                  <Button asChild variant="default">
+                    <Link href={`/visits/${visit.id}`} onClick={() => setOpen(false)}>
+                      Start Visit
+                    </Link>
                   </Button>
                 </DialogFooter>
               ) : null}

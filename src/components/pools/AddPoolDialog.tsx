@@ -54,8 +54,8 @@ export function AddPoolDialog() {
       }}
     >
       <DialogTrigger asChild>
-        <Button type="button" size="sm">
-          <Plus className="size-4" />
+        <Button type="button" size="lg">
+          <Plus />
           Add Pool
         </Button>
       </DialogTrigger>

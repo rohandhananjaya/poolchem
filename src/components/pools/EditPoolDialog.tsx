@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import { useRouter } from "next/navigation"
-import { Pencil } from "lucide-react"
+import { Pencil, Trash2 } from "lucide-react"
 import { toast } from "sonner"
 
 import { Button } from "@/components/ui/button"
@@ -21,6 +21,7 @@ import {
   updatePoolAction,
   type FormState,
 } from "@/app/(dashboard)/pools/actions"
+import { DeletePoolDialog } from "./DeletePoolDialog"
 
 const INITIAL_STATE: FormState = { ok: false }
 
@@ -33,14 +34,21 @@ interface EditPoolDialogProps {
     notes: string | null
     isActive: boolean
   }
+  open?: boolean
+  onOpenChange?: (open: boolean) => void
 }
 
-export function EditPoolDialog({ pool }: EditPoolDialogProps) {
-  const [open, setOpen] = React.useState(false)
+export function EditPoolDialog({ pool, open, onOpenChange }: EditPoolDialogProps) {
+  const [internalOpen, setInternalOpen] = React.useState(false)
+  const [deleteOpen, setDeleteOpen] = React.useState(false)
   const [pending, startTransition] = React.useTransition()
   const router = useRouter()
 
   const formRef = React.useRef<HTMLFormElement>(null)
+
+  const isControlled = open !== undefined && onOpenChange !== undefined
+  const isOpen = isControlled ? open : internalOpen
+  const setIsOpen = isControlled ? onOpenChange : setInternalOpen
 
   function handleSubmit(formData: FormData) {
     formData.set("poolId", pool.id)
@@ -49,7 +57,7 @@ export function EditPoolDialog({ pool }: EditPoolDialogProps) {
       const result = await updatePoolAction(INITIAL_STATE, formData)
       if (result.ok) {
         toast.success("Pool updated.")
-        setOpen(false)
+        setIsOpen(false)
         router.refresh()
       } else if (result.error) {
         toast.error(result.error)
@@ -58,19 +66,24 @@ export function EditPoolDialog({ pool }: EditPoolDialogProps) {
   }
 
   return (
+    <>
     <Dialog
-      open={open}
+      open={isOpen}
       onOpenChange={(next) => {
-        setOpen(next)
-        if (!next) formRef.current?.reset()
+        setIsOpen(next)
+        if (!next) {
+          formRef.current?.reset()
+        }
       }}
     >
-      <DialogTrigger asChild>
-        <Button type="button" variant="ghost" size="sm" className="w-full justify-start">
-          <Pencil className="size-4" />
-          Edit
-        </Button>
-      </DialogTrigger>
+      {!isControlled && (
+        <DialogTrigger asChild>
+          <Button type="button" variant="ghost" size="sm" className="w-full justify-start">
+            <Pencil className="size-4" />
+            Edit
+          </Button>
+        </DialogTrigger>
+      )}
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Edit {pool.name}</DialogTitle>
@@ -129,21 +142,43 @@ export function EditPoolDialog({ pool }: EditPoolDialogProps) {
             </label>
           </div>
 
-          <DialogFooter>
+          <DialogFooter className="gap-2 sm:justify-between">
             <Button
               type="button"
-              variant="outline"
-              onClick={() => setOpen(false)}
+              variant="destructive"
+              onClick={() => {
+                setIsOpen(false)
+                setDeleteOpen(true)
+              }}
               disabled={pending}
             >
-              Cancel
+              <Trash2 className="size-4" />
+              Delete
             </Button>
-            <Button type="submit" disabled={pending}>
-              {pending ? "Saving…" : "Save"}
-            </Button>
+            <div className="flex flex-col-reverse gap-2 sm:flex-row">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setIsOpen(false)}
+                disabled={pending}
+              >
+                Cancel
+              </Button>
+              <Button type="submit" disabled={pending}>
+                {pending ? "Saving…" : "Save"}
+              </Button>
+            </div>
           </DialogFooter>
         </form>
       </DialogContent>
     </Dialog>
+
+    <DeletePoolDialog
+      poolId={pool.id}
+      poolName={pool.name}
+      open={deleteOpen}
+      onOpenChange={setDeleteOpen}
+    />
+    </>
   )
 }

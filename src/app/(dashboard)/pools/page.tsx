@@ -1,7 +1,6 @@
 import Link from "next/link"
 import { redirect } from "next/navigation"
-import { format } from "date-fns"
-import { ChevronLeft, ChevronRight, MapPin, Waves } from "lucide-react"
+import { ChevronLeft, ChevronRight, Waves } from "lucide-react"
 
 import { requireTech } from "@/lib/auth"
 import { getPoolsPaginated, POOLS_PAGE_SIZE } from "@/lib/db/pools"
@@ -9,7 +8,7 @@ import type { PoolsFilters as PoolsFilterParams } from "@/lib/db/pools"
 import { Shell } from "@/components/ui/shell"
 import { Button } from "@/components/ui/button"
 import { AddPoolDialog } from "@/components/pools/AddPoolDialog"
-import { PoolActions } from "@/components/pools/PoolActions"
+import { PoolRow } from "@/components/pools/PoolRow"
 import { PoolsFilters } from "@/components/pools/PoolsFilters"
 
 function buildQueryString(
@@ -90,50 +89,9 @@ export default async function PoolsPage({
         ) : (
           <>
             <div className="space-y-3">
-              {pools.map((pool) => {
-                const isActive = pool.isActive
-                return (
-                  <div
-                    key={pool.id}
-                    className="flex items-center gap-4 rounded-xl border border-border bg-card p-4"
-                  >
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2">
-                        <h3 className="truncate text-base font-semibold text-card-foreground">
-                          {pool.name}
-                        </h3>
-                        {isActive ? (
-                          <span className="inline-flex items-center rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-medium text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300">
-                            Active
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
-                            Inactive
-                          </span>
-                        )}
-                        <span className="font-mono text-xs text-muted-foreground">
-                          {pool.volume.toLocaleString()} gal
-                        </span>
-                      </div>
-
-                      {pool.address ? (
-                        <p className="mt-1 flex items-center gap-1.5 text-sm text-muted-foreground">
-                          <MapPin className="size-3.5 shrink-0" />
-                          <span className="truncate">{pool.address}</span>
-                        </p>
-                      ) : null}
-
-                      <p className="mt-1 text-xs text-muted-foreground">
-                        {pool.lastVisitAt
-                          ? `Last visit: ${format(new Date(pool.lastVisitAt), "MMM d, yyyy")}`
-                          : "No visits yet"}
-                      </p>
-                    </div>
-
-                    <PoolActions pool={pool} />
-                  </div>
-                )
-              })}
+              {pools.map((pool) => (
+                <PoolRow key={pool.id} pool={pool} />
+              ))}
             </div>
 
             {/* Pagination */}

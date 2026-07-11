@@ -5,7 +5,8 @@ import { useRouter } from "next/navigation"
 import { Trash2 } from "lucide-react"
 import { toast } from "sonner"
 
-import { Button } from "@/components/ui/button"
+import { Button, type buttonVariants } from "@/components/ui/button"
+import { type VariantProps } from "class-variance-authority"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import {
@@ -29,13 +30,30 @@ const INITIAL_STATE: FormState = { ok: false }
 interface DeletePoolDialogProps {
   poolId: string
   poolName: string
+  triggerClassName?: string
+  triggerVariant?: VariantProps<typeof buttonVariants>["variant"]
+  triggerSize?: VariantProps<typeof buttonVariants>["size"]
+  open?: boolean
+  onOpenChange?: (open: boolean) => void
 }
 
-export function DeletePoolDialog({ poolId, poolName }: DeletePoolDialogProps) {
-  const [open, setOpen] = React.useState(false)
+export function DeletePoolDialog({
+  poolId,
+  poolName,
+  triggerClassName = "w-full justify-start text-destructive",
+  triggerVariant = "ghost",
+  triggerSize = "sm",
+  open,
+  onOpenChange,
+}: DeletePoolDialogProps) {
+  const [internalOpen, setInternalOpen] = React.useState(false)
   const [confirmValue, setConfirmValue] = React.useState("")
   const [pending, startTransition] = React.useTransition()
   const router = useRouter()
+
+  const isControlled = open !== undefined && onOpenChange !== undefined
+  const isOpen = isControlled ? open : internalOpen
+  const setOpen = isControlled ? onOpenChange : setInternalOpen
 
   const matches = confirmValue === poolName
 
@@ -60,18 +78,20 @@ export function DeletePoolDialog({ poolId, poolName }: DeletePoolDialogProps) {
 
   return (
     <AlertDialog
-      open={open}
+      open={isOpen}
       onOpenChange={(next) => {
         setOpen(next)
         if (!next) setConfirmValue("")
       }}
     >
-      <AlertDialogTrigger asChild>
-        <Button type="button" variant="ghost" size="sm" className="w-full justify-start text-destructive">
-          <Trash2 className="size-4" />
-          Delete
-        </Button>
-      </AlertDialogTrigger>
+      {!isControlled && (
+        <AlertDialogTrigger asChild>
+          <Button type="button" variant={triggerVariant} size={triggerSize} className={triggerClassName}>
+            <Trash2 className="size-4" />
+            Delete
+          </Button>
+        </AlertDialogTrigger>
+      )}
       <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogTitle>Delete {poolName}?</AlertDialogTitle>
