@@ -242,6 +242,14 @@ export default function Home() {
             </span>
             PoolChem
           </div>
+          <div className="flex items-center gap-4">
+            <Link href="/privacy" className="hover:text-foreground transition-colors">
+              Privacy
+            </Link>
+            <Link href="/terms" className="hover:text-foreground transition-colors">
+              Terms
+            </Link>
+          </div>
           <p>© 2026 PoolChem. Water chemistry, handled.</p>
         </div>
       </footer>

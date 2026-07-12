@@ -1,10 +1,16 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { createClient as createAdminClient } from "@supabase/supabase-js";
 
 import { requireAuth, requireOwner } from "@/lib/auth";
 import { updateCompany } from "@/lib/db/company";
-import { updateUser } from "@/lib/db/users";
+import {
+  updateUser,
+  deleteUser,
+  getUserExportData,
+  type UserExportData,
+} from "@/lib/db/users";
 import { createClient } from "@/lib/supabase/server";
 import { formText, formOptionalText } from "@/lib/utils";
 
@@ -64,6 +70,74 @@ export async function updateCompanyAction(
     return { ok: true };
   } catch {
     return { ok: false, error: "Could not update company details. Please try again." };
+  }
+}
+
+/**
+ * Deletes the signed-in user's account (GDPR right to erasure, Art. 17).
+ * Removes the Prisma User record and, if the service role key is configured,
+ * also deletes the Supabase Auth user.
+ *
+ * After calling this, the client should sign the user out and redirect to /login.
+ */
+export async function deleteAccountAction(
+  _prev: FormState,
+): Promise<FormState> {
+  const user = await requireAuth();
+
+  try {
+    // 1. Delete the Supabase Auth user (best-effort — requires SERVICE_ROLE_KEY).
+    const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    if (url && serviceKey) {
+      try {
+        // We need the Supabase Auth UID, which is not stored in Prisma. Fetch it
+        // from the current session before the Prisma user is deleted.
+        const supabase = await createClient();
+        const {
+          data: { user: authUser },
+        } = await supabase.auth.getUser();
+        if (authUser?.id) {
+          const admin = createAdminClient(url, serviceKey, {
+            auth: { autoRefreshToken: false, persistSession: false },
+          });
+          await admin.auth.admin.deleteUser(authUser.id);
+        }
+      } catch {
+        // Non-critical — the Prisma record carries the personal data.
+      }
+    }
+
+    // 2. Delete the Prisma User record (personal data).
+    await deleteUser(user.id, user.companyId);
+
+    revalidatePath("/profile");
+    return { ok: true };
+  } catch {
+    return {
+      ok: false,
+      error: "Could not delete your account. Please try again.",
+    };
+  }
+}
+
+/**
+ * Exports all of the signed-in user's data in a structured format (GDPR right
+ * to data portability, Art. 20). Returns the JSON payload via the `data` field.
+ */
+export async function exportDataAction(): Promise<
+  FormState & { data?: UserExportData }
+> {
+  const user = await requireAuth();
+
+  try {
+    const data = await getUserExportData(user.id, user.companyId);
+    return { ok: true, data };
+  } catch {
+    return {
+      ok: false,
+      error: "Could not export your data. Please try again.",
+    };
   }
 }
 

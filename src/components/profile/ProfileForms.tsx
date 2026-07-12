@@ -2,11 +2,19 @@
 
 import * as React from "react"
 import { useRouter } from "next/navigation"
-import { LogOut } from "lucide-react"
+import { Download, LogOut, Trash2 } from "lucide-react"
 import { toast } from "sonner"
 
 import { createClient } from "@/lib/supabase/client"
 import { Button } from "@/components/ui/button"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { PasswordInput } from "@/components/ui/password-input"
@@ -15,6 +23,8 @@ import {
   updateAccountAction,
   updateCompanyAction,
   updatePasswordAction,
+  deleteAccountAction,
+  exportDataAction,
   type FormState,
 } from "@/app/(dashboard)/profile/actions"
 
@@ -81,6 +91,9 @@ export function ProfileForms({
 }: ProfileFormsProps) {
   const router = useRouter()
   const [signingOut, setSigningOut] = React.useState(false)
+  const [exporting, startExport] = React.useTransition()
+  const [deleteOpen, setDeleteOpen] = React.useState(false)
+  const [deleting, startDelete] = React.useTransition()
 
   const [accountState, accountAction, accountPending] = React.useActionState(
     updateAccountAction,
@@ -241,11 +254,61 @@ export function ProfileForms({
         </Card>
       ) : null}
 
+      {/* GDPR: data privacy controls */}
+      <Card
+        title="Data & Privacy"
+        description="Manage your personal data under GDPR."
+      >
+        <div className="flex flex-wrap gap-3">
+          <Button
+            type="button"
+            variant="outline"
+            size="lg"
+            disabled={exporting}
+            onClick={() =>
+              startExport(async () => {
+                const result = await exportDataAction()
+                if (result.ok && result.data) {
+                  const blob = new Blob(
+                    [JSON.stringify(result.data, null, 2)],
+                    { type: "application/json" },
+                  )
+                  const url = URL.createObjectURL(blob)
+                  const a = document.createElement("a")
+                  a.href = url
+                  a.download = `poolchem-export-${new Date().toISOString().slice(0, 10)}.json`
+                  document.body.appendChild(a)
+                  a.click()
+                  document.body.removeChild(a)
+                  URL.revokeObjectURL(url)
+                  toast.success("Your data has been downloaded.")
+                } else if (result.error) {
+                  toast.error(result.error)
+                }
+              })
+            }
+          >
+            <Download />
+            {exporting ? "Exporting…" : "Export my data"}
+          </Button>
+
+          <Button
+            type="button"
+            variant="destructive"
+            size="lg"
+            onClick={() => setDeleteOpen(true)}
+          >
+            <Trash2 />
+            Delete account
+          </Button>
+        </div>
+      </Card>
+
       {/* Sign out */}
       <div>
         <Button
           type="button"
-          variant="destructive"
+          variant="outline"
           size="lg"
           disabled={signingOut}
           onClick={handleSignOut}
@@ -254,6 +317,53 @@ export function ProfileForms({
           {signingOut ? "Signing out…" : "Sign out"}
         </Button>
       </div>
+
+      {/* Delete account confirmation dialog */}
+      <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete your account?</DialogTitle>
+            <DialogDescription>
+              This permanently removes your account and all associated personal
+              data from PoolChem. You will no longer be able to access the app.
+              This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              disabled={deleting}
+              onClick={() => setDeleteOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              disabled={deleting}
+              onClick={() =>
+                startDelete(async () => {
+                  const result = await deleteAccountAction({ ok: false })
+                  if (result.ok) {
+                    setDeleteOpen(false)
+                    toast.success("Your account has been deleted.")
+                    const supabase = createClient()
+                    await supabase.auth.signOut()
+                    router.push("/login")
+                    router.refresh()
+                  } else if (result.error) {
+                    toast.error(result.error)
+                  }
+                })
+              }
+            >
+              {deleting ? "Deleting…" : "Delete my account"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

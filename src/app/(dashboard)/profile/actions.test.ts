@@ -9,6 +9,8 @@ vi.mock("@/lib/db/company", () => ({
 }));
 vi.mock("@/lib/db/users", () => ({
   updateUser: vi.fn(),
+  deleteUser: vi.fn(),
+  getUserExportData: vi.fn(),
 }));
 vi.mock("@/lib/supabase/server", () => ({
   createClient: vi.fn(),
@@ -17,15 +19,26 @@ vi.mock("next/cache", () => ({
   revalidatePath: vi.fn(),
 }));
 
+vi.mock("@supabase/supabase-js", () => ({
+  createClient: vi.fn(() => ({
+    auth: {
+      admin: { deleteUser: vi.fn().mockResolvedValue({ error: null }) },
+    },
+  })),
+}));
+
 const { requireAuth, requireOwner } = await import("@/lib/auth");
 const { updateCompany } = await import("@/lib/db/company");
 const { updateUser } = await import("@/lib/db/users");
 const { createClient } = await import("@/lib/supabase/server");
 const { revalidatePath } = await import("next/cache");
+const { deleteUser, getUserExportData } = await import("@/lib/db/users");
 const {
   updateAccountAction,
   updateCompanyAction,
   updatePasswordAction,
+  deleteAccountAction,
+  exportDataAction,
 } = await import("./actions");
 
 const mockUser = {
@@ -204,6 +217,94 @@ describe("updatePasswordAction", () => {
       error: "New passwords do not match.",
     });
   });
+
+describe("deleteAccountAction", () => {
+  beforeEach(() => {
+    vi.stubEnv("NEXT_PUBLIC_SUPABASE_URL", "https://test.supabase.co");
+    vi.stubEnv("SUPABASE_SERVICE_ROLE_KEY", "test-service-key");
+  });
+
+  it("deletes the user's Prisma record and Supabase auth", async () => {
+    vi.mocked(requireAuth).mockResolvedValue(mockUser as never);
+    vi.mocked(createClient).mockResolvedValue({
+      auth: {
+        getUser: vi
+          .fn()
+          .mockResolvedValue({ data: { user: { id: "auth-uid" } } }),
+      },
+    } as never);
+    vi.mocked(deleteUser).mockResolvedValue(undefined);
+
+    const result = await deleteAccountAction({ ok: false });
+
+    expect(result).toEqual({ ok: true });
+    expect(deleteUser).toHaveBeenCalledWith("user-1", "company-1");
+    expect(revalidatePath).toHaveBeenCalledWith("/profile");
+  });
+
+  it("still succeeds when Supabase admin API is unavailable", async () => {
+    vi.stubEnv("SUPABASE_SERVICE_ROLE_KEY", "");
+    vi.mocked(requireAuth).mockResolvedValue(mockUser as never);
+    vi.mocked(deleteUser).mockResolvedValue(undefined);
+
+    const result = await deleteAccountAction({ ok: false });
+
+    expect(result).toEqual({ ok: true });
+    expect(deleteUser).toHaveBeenCalledWith("user-1", "company-1");
+  });
+
+  it("returns error when Prisma deletion fails", async () => {
+    vi.mocked(requireAuth).mockResolvedValue(mockUser as never);
+    vi.mocked(deleteUser).mockRejectedValue(new Error("DB error"));
+
+    const result = await deleteAccountAction({ ok: false });
+
+    expect(result).toEqual({
+      ok: false,
+      error: "Could not delete your account. Please try again.",
+    });
+  });
+});
+
+describe("exportDataAction", () => {
+  it("returns user data for export", async () => {
+    vi.mocked(requireAuth).mockResolvedValue(mockUser as never);
+    vi.mocked(getUserExportData).mockResolvedValue({
+      exportedAt: new Date().toISOString(),
+      user: {
+        id: "user-1",
+        email: "user@test.com",
+        name: "Test User",
+        phone: null,
+        role: "TECH",
+        createdAt: new Date().toISOString(),
+      },
+      company: null,
+      pools: [],
+    });
+
+    const result = await exportDataAction();
+
+    expect(result.ok).toBe(true);
+    expect(result.data).toBeDefined();
+
+    const data = result.data!;
+    expect(data.user.email).toBe("user@test.com");
+    expect(data.pools).toEqual([]);
+  });
+
+  it("returns error when export fails", async () => {
+    vi.mocked(requireAuth).mockResolvedValue(mockUser as never);
+    vi.mocked(getUserExportData).mockRejectedValue(new Error("DB error"));
+
+    const result = await exportDataAction();
+
+    expect(result).toEqual({
+      ok: false,
+      error: "Could not export your data. Please try again.",
+    });
+  });
+});
 
   it("returns error when current password is incorrect", async () => {
     vi.mocked(requireAuth).mockResolvedValue(mockUser as never);

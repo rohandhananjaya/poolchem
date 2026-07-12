@@ -38,6 +38,8 @@ Keep these in sync when adding/removing exports, routes, or components.
 npm run dev              # dev server on localhost:3000
 npm run build            # runs prisma generate then next build
 npm test                 # vitest run
+npm run test:e2e         # Playwright E2E tests (headless)
+npm run test:e2e:ui      # Playwright E2E tests (headed, watch-ui)
 npx vitest run -t "pattern"   # single test by name
 npx prisma migrate dev --name <x>  # create + apply migration
 ```

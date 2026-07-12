@@ -121,6 +121,18 @@ export default function LoginPage() {
         >
           Continue with Google
         </Button>
+
+        <p className="text-xs text-muted-foreground text-center">
+          By signing in with Google, you share your email address and basic
+          profile info with PoolChem.{" "}
+          <a
+            href="/privacy"
+            className="underline underline-offset-2 hover:text-foreground transition-colors"
+          >
+            Privacy notice
+          </a>
+          .
+        </p>
       </div>
     </div>
   )

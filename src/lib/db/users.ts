@@ -113,6 +113,147 @@ export async function updateUserRole(
 }
 
 /**
+ * All data belonging to a user, structured for GDPR right to data portability
+ * (Art. 20). Returns the user's profile, company info, pools, and full visit
+ * history with readings and chemicals.
+ */
+export interface UserExportData {
+  exportedAt: string;
+  user: {
+    id: string;
+    email: string;
+    name: string;
+    phone: string | null;
+    role: string;
+    createdAt: string;
+  };
+  company: {
+    id: string;
+    name: string;
+    email: string;
+    phone: string | null;
+    address: string | null;
+    createdAt: string;
+  } | null;
+  pools: Array<{
+    id: string;
+    name: string;
+    address: string | null;
+    volume: number;
+    createdAt: string;
+    visits: Array<{
+      id: string;
+      status: string;
+      notes: string | null;
+      createdAt: string;
+      reading: {
+        ph: number;
+        freeChlorine: number;
+        totalAlkalinity: number;
+        calciumHardness: number;
+        cyanuricAcid: number;
+        temperature: number;
+      } | null;
+      chemicals: Array<{
+        name: string;
+        amount: number;
+        unit: string;
+      }>;
+    }>;
+  }>;
+}
+
+/**
+ * Gathers all user data for GDPR right to data portability (Art. 20).
+ * Scoped to the user's company for multi-tenant safety.
+ */
+export async function getUserExportData(
+  userId: string,
+  companyId: string | null,
+): Promise<UserExportData> {
+  const user = await prisma.user.findUniqueOrThrow({
+    where: companyId === null
+      ? { id: userId }
+      : { id: userId, companyId },
+  });
+
+  const company = companyId
+    ? await prisma.company.findUnique({ where: { id: companyId } })
+    : null;
+
+  const pools = companyId
+    ? await prisma.pool.findMany({
+        where: { companyId, isActive: true },
+        include: {
+          serviceVisits: {
+            orderBy: { createdAt: "desc" },
+            include: {
+              waterReadings: true,
+              chemicalsAdded: true,
+            },
+          },
+        },
+        orderBy: { name: "asc" },
+      })
+    : [];
+
+  const latestReading = (visits: typeof pools[number]["serviceVisits"]) => {
+    const completed = visits.find((v) => v.status === "COMPLETED");
+    if (!completed || completed.waterReadings.length === 0) return null;
+    const r = completed.waterReadings[0];
+    return {
+      ph: r.ph,
+      freeChlorine: r.freeChlorine,
+      totalAlkalinity: r.totalAlkalinity,
+      calciumHardness: r.calciumHardness,
+      cyanuricAcid: r.cyanuricAcid,
+      temperature: r.temperature,
+    };
+  };
+
+  return {
+    exportedAt: new Date().toISOString(),
+    user: {
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      phone: user.phone,
+      role: user.role,
+      createdAt: user.createdAt.toISOString(),
+    },
+    company: company
+      ? {
+          id: company.id,
+          name: company.name,
+          email: company.email,
+          phone: company.phone,
+          address: company.address,
+          createdAt: company.createdAt.toISOString(),
+        }
+      : null,
+    pools: pools.map((pool) => ({
+      id: pool.id,
+      name: pool.name,
+      address: pool.address,
+      volume: pool.volume,
+      createdAt: pool.createdAt.toISOString(),
+      visits: pool.serviceVisits.map((visit) => ({
+        id: visit.id,
+        status: visit.status,
+        notes: visit.notes,
+        createdAt: visit.createdAt.toISOString(),
+        reading: latestReading([visit]),
+        chemicals: visit.chemicalsAdded.map((c) => ({
+          name: c.name,
+          amount: c.amount,
+          unit: c.unit,
+        })),
+      })),
+    })),
+  };
+}
+
+/**
  * Returns all users across all companies (SUPER_ADMIN only).
  */
 export async function getAllUsers(): Promise<User[]> {
