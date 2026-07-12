@@ -3,6 +3,12 @@ import { CheckCircle2, Circle } from "lucide-react"
 import { cn } from "@/lib/utils"
 import type { ChemicalRecommendation } from "@/lib/pool-chemistry"
 
+const SEVERITY_STYLES: Record<string, string> = {
+  critical: "bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-300",
+  moderate: "bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300",
+  minor: "bg-sky-100 text-sky-700 dark:bg-sky-950 dark:text-sky-300",
+}
+
 export interface ChemicalRecommendationsProps {
   recommendations: ChemicalRecommendation[]
   poolVolume: number
@@ -71,13 +77,20 @@ export function ChemicalRecommendations({
 
               <div className="min-w-0 flex-1">
                 <div className="flex items-baseline justify-between gap-2">
-                  {/* Chemical name: medium weight, sans — distinct from the dose. */}
-                  <span className="text-base font-medium text-foreground">
-                    {isNA ? "Partial drain & refill" : rec.chemical}
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-base font-medium text-foreground">
+                      {isNA ? "Partial drain & refill" : rec.chemical}
+                    </span>
+                    <span
+                      className={cn(
+                        "shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider",
+                        SEVERITY_STYLES[rec.severity],
+                      )}
+                    >
+                      {rec.severity}
+                    </span>
+                  </div>
                   {rec.amount > 0 && (
-                    // Dose: the number is monospace (critical data); the unit
-                    // stays sans-serif. Larger + semibold so it reads at arm's length.
                     <span className="shrink-0 text-lg font-semibold text-foreground">
                       <span className="font-mono tabular-nums">{rec.amount}</span>{" "}
                       <span className="text-base font-medium text-muted-foreground">

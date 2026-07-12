@@ -29,12 +29,14 @@ describe("ChemicalRecommendations", () => {
             amount: 6,
             unit: "oz",
             reason: "Raise pH",
+            severity: "moderate",
           },
           {
             chemical: "Liquid Chlorine",
             amount: 2,
             unit: "gal",
             reason: "Raise chlorine",
+            severity: "minor",
           },
         ]}
         poolVolume={10_000}
@@ -58,6 +60,7 @@ describe("ChemicalRecommendations", () => {
             amount: 0,
             unit: "",
             reason: "Partially drain and refill pool water",
+            severity: "critical",
           },
         ]}
         poolVolume={10_000}
@@ -82,6 +85,7 @@ describe("ChemicalRecommendations", () => {
             amount: 6,
             unit: "oz",
             reason: "Raise pH",
+            severity: "moderate",
           },
         ]}
         poolVolume={10_000}
@@ -103,6 +107,7 @@ describe("ChemicalRecommendations", () => {
             amount: 6,
             unit: "oz",
             reason: "Raise pH",
+            severity: "moderate",
           },
         ]}
         poolVolume={10_000}

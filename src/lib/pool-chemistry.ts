@@ -73,6 +73,9 @@ export interface WaterHealthResult {
   issues: string[];
 }
 
+/** Severity of a chemical recommendation. */
+export type RecommendationSeverity = "critical" | "moderate" | "minor";
+
 /** A single recommended chemical addition. */
 export interface ChemicalRecommendation {
   /** Product/chemical name, or `"N/A"` when no dosing applies. */
@@ -83,6 +86,8 @@ export interface ChemicalRecommendation {
   unit: string;
   /** Why this addition is recommended. */
   reason: string;
+  /** How urgently this needs attention. */
+  severity: RecommendationSeverity;
 }
 
 /** The ideal (target) range for a single parameter. */
@@ -457,6 +462,21 @@ function roundDose(amount: number): number {
  * @param poolVolumeGallons - Pool volume in US gallons.
  * @returns One recommendation per actionable out-of-range parameter.
  */
+function computeSeverity(value: number, range: IdealRange): RecommendationSeverity {
+  const width = range.max - range.min;
+  if (width === 0) return "moderate";
+  let distance: number;
+  if (value < range.min) {
+    distance = range.min - value;
+  } else {
+    distance = value - range.max;
+  }
+  const ratio = distance / width;
+  if (ratio <= 0.5) return "minor";
+  if (ratio <= 1.5) return "moderate";
+  return "critical";
+}
+
 export function getChemicalRecommendations(
   readings: WaterReadingInput,
   poolVolumeGallons: number,
@@ -474,6 +494,7 @@ export function getChemicalRecommendations(
       amount: roundDose((delta / 0.2) * 6 * volumeFactor),
       unit: "oz",
       reason: `Raise pH from ${readings.ph} toward ${mid("ph")} (6 oz per 10k gal raises pH ~0.2).`,
+      severity: computeSeverity(readings.ph, IDEAL_RANGES.ph),
     });
   } else if (readings.ph > IDEAL_RANGES.ph.max) {
     const delta = readings.ph - mid("ph");
@@ -482,6 +503,7 @@ export function getChemicalRecommendations(
       amount: roundDose((delta / 0.2) * 12 * volumeFactor),
       unit: "fl oz",
       reason: `Lower pH from ${readings.ph} toward ${mid("ph")} (12 fl oz per 10k gal lowers pH ~0.2).`,
+      severity: computeSeverity(readings.ph, IDEAL_RANGES.ph),
     });
   }
 
@@ -493,6 +515,7 @@ export function getChemicalRecommendations(
       amount: roundDose((delta / 10) * 1.5 * volumeFactor),
       unit: "lbs",
       reason: `Raise total alkalinity from ${readings.totalAlkalinity} toward ${mid("totalAlkalinity")} ppm (1.5 lbs per 10k gal raises TA ~10 ppm).`,
+      severity: computeSeverity(readings.totalAlkalinity, IDEAL_RANGES.totalAlkalinity),
     });
   }
 
@@ -504,6 +527,7 @@ export function getChemicalRecommendations(
       amount: roundDose((delta / 10) * 1.25 * volumeFactor),
       unit: "lbs",
       reason: `Raise calcium hardness from ${readings.calciumHardness} toward ${mid("calciumHardness")} ppm (1.25 lbs per 10k gal raises CH ~10 ppm).`,
+      severity: computeSeverity(readings.calciumHardness, IDEAL_RANGES.calciumHardness),
     });
   }
 
@@ -515,6 +539,7 @@ export function getChemicalRecommendations(
       amount: roundDose((delta / 10) * 1 * volumeFactor),
       unit: "gal",
       reason: `Raise free chlorine from ${readings.freeChlorine} toward ${mid("freeChlorine")} ppm (1 gal per 10k gal raises FC ~10 ppm).`,
+      severity: computeSeverity(readings.freeChlorine, IDEAL_RANGES.freeChlorine),
     });
   }
 
@@ -526,6 +551,7 @@ export function getChemicalRecommendations(
       amount: roundDose((delta / 30) * 4 * volumeFactor),
       unit: "lbs",
       reason: `Raise cyanuric acid from ${readings.cyanuricAcid} toward ${mid("cyanuricAcid")} ppm (4 lbs per 10k gal raises CYA ~30 ppm).`,
+      severity: computeSeverity(readings.cyanuricAcid, IDEAL_RANGES.cyanuricAcid),
     });
   } else if (readings.cyanuricAcid > IDEAL_RANGES.cyanuricAcid.max) {
     recommendations.push({
@@ -533,6 +559,7 @@ export function getChemicalRecommendations(
       amount: 0,
       unit: "",
       reason: "Partially drain and refill pool water",
+      severity: computeSeverity(readings.cyanuricAcid, IDEAL_RANGES.cyanuricAcid),
     });
   }
 

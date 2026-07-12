@@ -1,4 +1,3 @@
-import { Camera } from "lucide-react"
 import {
   useController,
   type Control,
@@ -10,7 +9,6 @@ import { cn } from "@/lib/utils"
 import { getIdealRange } from "@/lib/pool-chemistry"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Button } from "@/components/ui/button"
 
 export interface WaterReadingInputProps<T extends FieldValues> {
   name: Path<T>
@@ -37,11 +35,14 @@ export function WaterReadingInput<T extends FieldValues>({
   const value = field.value as number | undefined
   const hasValue = value !== undefined && value !== null
 
+  let idealRange: { min: number; max: number; unit: string } | null = null
+  let isInRange = false
   let isOutOfRange = false
   try {
-    const range = getIdealRange(label)
+    idealRange = getIdealRange(label)
     if (hasValue) {
-      isOutOfRange = value! < range.min || value! > range.max
+      isInRange = value! >= idealRange.min && value! <= idealRange.max
+      isOutOfRange = value! < idealRange.min || value! > idealRange.max
     }
   } catch {}
 
@@ -53,15 +54,38 @@ export function WaterReadingInput<T extends FieldValues>({
 
   return (
     <div className="space-y-1.5">
-      <div className="flex items-center justify-between">
-        <Label htmlFor={name} className="text-sm font-medium">
-          {label}
-        </Label>
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-1.5">
+          <Label htmlFor={name} className="text-sm font-medium">
+            {label}
+          </Label>
+          {hasValue && idealRange && (
+            <span
+              className={cn(
+                "inline-block size-2 rounded-full",
+                isInRange && "bg-emerald-500",
+                isOutOfRange && "bg-amber-500",
+              )}
+              aria-label={isInRange ? "In ideal range" : "Out of ideal range"}
+            />
+          )}
+          {!hasValue && idealRange && (
+            <span
+              className="inline-block size-2 rounded-full bg-muted-foreground/30"
+              aria-label="No reading entered"
+            />
+          )}
+          {idealRange && (
+            <span className="text-xs text-muted-foreground">
+              Ideal: {idealRange.min}–{idealRange.max}
+            </span>
+          )}
+        </div>
         {showUseLast && (
           <button
             type="button"
             onClick={() => field.onChange(lastReading)}
-            className="text-xs text-muted-foreground hover:text-primary transition-colors"
+            className="shrink-0 text-xs text-muted-foreground hover:text-primary transition-colors"
           >
             Use Last:{" "}
             <span className="font-mono tabular-nums">{lastReading}</span>
@@ -76,9 +100,7 @@ export function WaterReadingInput<T extends FieldValues>({
           inputMode="decimal"
           step="any"
           className={cn(
-            // Large, monospace, tabular so digits align and are easy to tap
-            // precisely with gloves/wet hands in the field. h-12 = comfy target.
-            "h-12 pr-20 font-mono text-lg leading-[1.4] tabular-nums",
+            "h-12 pr-11 font-mono text-lg leading-[1.4] tabular-nums",
             isOutOfRange &&
               "border-amber-400 ring-2 ring-amber-400/30 focus-visible:border-amber-500 focus-visible:ring-amber-500/40",
             error && "border-destructive",
@@ -96,21 +118,10 @@ export function WaterReadingInput<T extends FieldValues>({
         />
 
         {unit && (
-          <span className="pointer-events-none absolute right-11 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
+          <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
             {unit}
           </span>
         )}
-
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon"
-          disabled
-          className="absolute right-0 top-0 size-12 rounded-lg opacity-30"
-          title="Scan test strip (coming soon)"
-        >
-          <Camera className="size-4" />
-        </Button>
       </div>
 
       {error && (

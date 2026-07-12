@@ -4,7 +4,7 @@ import { useState, useMemo, useCallback } from "react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod/v4"
-import { Loader2, AlertTriangle, X } from "lucide-react"
+import { Loader2, AlertTriangle, CheckCircle2, Minus, X } from "lucide-react"
 import type { Resolver } from "react-hook-form"
 import { toast } from "sonner"
 
@@ -14,6 +14,7 @@ import {
   getWaterHealthScore,
   calculateLSI,
   getChemicalRecommendations,
+  getIdealRange,
   type WaterReadingInput as WaterReading,
   type ChemicalRecommendation,
 } from "@/lib/pool-chemistry"
@@ -186,28 +187,34 @@ export function VisitForm({
   const allFieldsFilled = useMemo(() => {
     const r = readings
     return (
-      r.ph !== undefined &&
-      r.ph !== null &&
-      r.freeChlorine !== undefined &&
-      r.freeChlorine !== null &&
-      r.totalAlkalinity !== undefined &&
-      r.totalAlkalinity !== null &&
-      r.calciumHardness !== undefined &&
-      r.calciumHardness !== null &&
-      r.cyanuricAcid !== undefined &&
-      r.cyanuricAcid !== null &&
-      r.temperature !== undefined &&
-      r.temperature !== null
+      r.ph !== undefined && r.ph !== null &&
+      r.freeChlorine !== undefined && r.freeChlorine !== null &&
+      r.totalAlkalinity !== undefined && r.totalAlkalinity !== null &&
+      r.calciumHardness !== undefined && r.calciumHardness !== null &&
+      r.cyanuricAcid !== undefined && r.cyanuricAcid !== null &&
+      r.temperature !== undefined && r.temperature !== null
+    )
+  }, [readings])
+
+  // Water health score works with 5 core params (temperature is optional)
+  const hasCoreReadings = useMemo(() => {
+    const r = readings
+    return (
+      r.ph !== undefined && r.ph !== null &&
+      r.freeChlorine !== undefined && r.freeChlorine !== null &&
+      r.totalAlkalinity !== undefined && r.totalAlkalinity !== null &&
+      r.calciumHardness !== undefined && r.calciumHardness !== null &&
+      r.cyanuricAcid !== undefined && r.cyanuricAcid !== null
     )
   }, [readings])
 
   const waterHealth = useMemo(() => {
-    if (!allFieldsFilled) return null
+    if (!hasCoreReadings) return null
     return getWaterHealthScore(readings as unknown as WaterReading)
-  }, [readings, allFieldsFilled])
+  }, [readings, hasCoreReadings])
 
   const lsi = useMemo(() => {
-    if (!allFieldsFilled) return null
+    if (!hasCoreReadings) return null
     const r = readings as unknown as WaterReading
     if (!r.temperature) return null
     return calculateLSI(
@@ -216,15 +223,41 @@ export function VisitForm({
       r.calciumHardness,
       r.totalAlkalinity,
     )
-  }, [readings, allFieldsFilled])
+  }, [readings, hasCoreReadings])
 
   const recommendations: ChemicalRecommendation[] = useMemo(() => {
-    if (!allFieldsFilled) return []
+    if (!hasCoreReadings) return []
     return getChemicalRecommendations(
       readings as unknown as WaterReading,
       visit.pool.volume,
     )
-  }, [readings, allFieldsFilled, visit.pool.volume])
+  }, [readings, hasCoreReadings, visit.pool.volume])
+
+  const parameterRows = useMemo(() => {
+    const configs = [
+      { key: "ph" as const, label: "pH", unit: "" },
+      { key: "freeChlorine" as const, label: "Free Chlorine", unit: "ppm" },
+      { key: "totalAlkalinity" as const, label: "Total Alkalinity", unit: "ppm" },
+      { key: "calciumHardness" as const, label: "Calcium Hardness", unit: "ppm" },
+      { key: "cyanuricAcid" as const, label: "Cyanuric Acid", unit: "ppm" },
+    ]
+    const r = readings
+    return configs.map(({ key, label, unit }) => {
+      const value = r[key]
+      if (value === undefined || value === null) {
+        return { key, label, unit, value: null, ideal: null, status: "empty" as const }
+      }
+      try {
+        const range = getIdealRange(key)
+        const status = value < range.min ? "low" : value > range.max ? "high" : "ideal"
+        return { key, label, unit, value, ideal: { min: range.min, max: range.max }, status }
+      } catch {
+        return { key, label, unit, value, ideal: null, status: "info" as const }
+      }
+    })
+  }, [readings])
+
+  const hasTemp = readings.temperature !== undefined && readings.temperature !== null
 
   const buildPayload = useCallback(
     (data: FormData): VisitFormValues => ({
@@ -303,15 +336,10 @@ export function VisitForm({
             Log Readings
           </h2>
           {!completed && !isOthersVisit && (
-            <Button
-              type="button"
-              variant="outline"
-              size="xs"
-              disabled
-              className="opacity-50"
-            >
-              Scan Test Strip
-            </Button>
+            <span className="text-xs text-muted-foreground">
+              {[readings.ph, readings.freeChlorine, readings.totalAlkalinity, readings.calciumHardness, readings.cyanuricAcid, readings.temperature]
+                .filter((v) => v !== undefined && v !== null).length}/6
+            </span>
           )}
         </div>
 
@@ -389,8 +417,8 @@ export function VisitForm({
         </div>
       </div>
 
-      {/* Results Card */}
-      {allFieldsFilled && waterHealth && (
+      {/* Results Card — shows when 5 core params are entered */}
+      {hasCoreReadings && waterHealth && (
         <div className="rounded-xl border border-border bg-card p-4">
           <h2 className="mb-4 text-sm font-semibold text-card-foreground">
             Water Analysis
@@ -435,6 +463,78 @@ export function VisitForm({
                 </div>
               )}
             </div>
+          </div>
+
+          {/* Per-parameter status summary */}
+          <div className="mt-4 overflow-x-auto">
+            <table className="w-full border-collapse text-sm">
+              <thead>
+                <tr className="text-left text-xs uppercase tracking-wider text-muted-foreground">
+                  <th className="pb-1.5 pr-3 font-medium">Parameter</th>
+                  <th className="pb-1.5 pr-3 font-medium">Reading</th>
+                  <th className="pb-1.5 pr-3 font-medium">Ideal</th>
+                  <th className="pb-1.5 font-medium">Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {parameterRows.map((p) => (
+                  <tr key={p.key} className="border-t border-border">
+                    <td className="py-2 pr-3 font-medium text-foreground">
+                      {p.label}
+                    </td>
+                    <td className="py-2 pr-3 font-mono tabular-nums text-foreground">
+                      {p.value !== null ? p.value : "—"}
+                    </td>
+                    <td className="py-2 pr-3 font-mono tabular-nums text-muted-foreground">
+                      {p.ideal ? `${p.ideal.min}–${p.ideal.max}${p.unit ? ` ${p.unit}` : ""}` : "—"}
+                    </td>
+                    <td className="py-2">
+                      {p.status === "empty" ? (
+                        <span className="text-xs text-muted-foreground">—</span>
+                      ) : p.status === "ideal" ? (
+                        <span className="inline-flex items-center gap-1 text-sm font-medium text-emerald-600 dark:text-emerald-400">
+                          <CheckCircle2 className="size-3.5" />
+                          Ideal
+                        </span>
+                      ) : p.status === "low" ? (
+                        <span className="inline-flex items-center gap-1 text-sm font-medium text-amber-600 dark:text-amber-400">
+                          <AlertTriangle className="size-3.5" />
+                          Low
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 text-sm font-medium text-amber-600 dark:text-amber-400">
+                          <AlertTriangle className="size-3.5" />
+                          High
+                        </span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+                {/* Temperature row */}
+                <tr className="border-t border-border">
+                  <td className="py-2 pr-3 font-medium text-foreground">
+                    Temperature
+                  </td>
+                  <td className="py-2 pr-3 font-mono tabular-nums text-foreground">
+                    {hasTemp ? `${readings.temperature}°F` : "—"}
+                  </td>
+                  <td className="py-2 pr-3 font-mono tabular-nums text-muted-foreground">—</td>
+                  <td className="py-2">
+                    {hasTemp ? (
+                      <span className="inline-flex items-center gap-1 text-sm font-medium text-muted-foreground">
+                        <CheckCircle2 className="size-3.5 text-emerald-500" />
+                        Recorded
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
+                        <Minus className="size-3.5" />
+                        Needed for LSI
+                      </span>
+                    )}
+                  </td>
+                </tr>
+              </tbody>
+            </table>
           </div>
         </div>
       )}
@@ -506,32 +606,39 @@ export function VisitForm({
 
       {/* Action Buttons */}
       {!completed && !isOthersVisit && (
-        <div className="flex justify-end gap-3">
-          <Button
-            type="button"
-            variant="outline"
-            size="lg"
-            onClick={handleSaveDraft}
-            disabled={isSubmitting || saving !== null}
-          >
-            {saving === "draft" ? (
-              <Loader2 className="size-4 animate-spin" />
-            ) : null}
-            Save Draft
-          </Button>
+        <div className="flex flex-col items-end gap-2">
+          <div className="flex gap-3">
+            <Button
+              type="button"
+              variant="outline"
+              size="lg"
+              onClick={handleSaveDraft}
+              disabled={isSubmitting || saving !== null}
+            >
+              {saving === "draft" ? (
+                <Loader2 className="size-4 animate-spin" />
+              ) : null}
+              Save Draft
+            </Button>
 
-          <Button
-            type="button"
-            size="lg"
-            className="bg-teal-600 text-white hover:bg-teal-700 disabled:opacity-50"
-            onClick={handleComplete}
-            disabled={!allFieldsFilled || isSubmitting || saving !== null}
-          >
-            {saving === "complete" ? (
-              <Loader2 className="size-4 animate-spin" />
-            ) : null}
-            Complete &amp; Send Report
-          </Button>
+            <Button
+              type="button"
+              size="lg"
+              className="bg-teal-600 text-white hover:bg-teal-700 disabled:opacity-50"
+              onClick={handleComplete}
+              disabled={!allFieldsFilled || isSubmitting || saving !== null}
+            >
+              {saving === "complete" ? (
+                <Loader2 className="size-4 animate-spin" />
+              ) : null}
+              Complete &amp; Send Report
+            </Button>
+          </div>
+          {!allFieldsFilled && (
+            <p className="text-xs text-muted-foreground">
+              Enter all 6 readings to complete the report
+            </p>
+          )}
         </div>
       )}
     </form>
