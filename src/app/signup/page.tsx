@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { Waves } from "lucide-react"
 
-import { createClient } from "@/lib/supabase/client"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -17,36 +16,15 @@ const INITIAL_STATE: SignupFormState = { ok: false }
 export default function SignupPage() {
   const router = useRouter()
   const [state, action, pending] = React.useActionState(signupAction, INITIAL_STATE)
-  const [signingIn, setSigningIn] = React.useState(false)
 
   React.useEffect(() => {
     if (!state.ok) return
-
-    // Recover the password from the form to sign in immediately after creation.
-    const form = document.querySelector<HTMLFormElement>("form")
-    if (!form) return
-
-    const formData = new FormData(form)
-    const email = formData.get("email") as string
-    const password = formData.get("password") as string
-    if (!email || !password) return
-
-    setSigningIn(true)
-
-    const supabase = createClient()
-    supabase.auth.signInWithPassword({ email, password }).then(({ error }) => {
-      if (error) {
-        setSigningIn(false)
-        return
-      }
-      router.push("/onboarding")
-      router.refresh()
-    })
+    router.push("/login?signup=success")
   }, [state.ok, router])
 
   return (
     <div className="flex flex-1 items-center justify-center px-4 py-16">
-      <div className="w-full max-w-sm space-y-6">
+      <div className="w-full max-w-sm rounded-xl border border-border bg-card p-6 md:p-8 shadow-sm">
         <div className="space-y-1.5 text-center">
           <Link href="/" className="inline-flex items-center gap-2 font-semibold tracking-tight mb-4">
             <span className="flex size-8 items-center justify-center rounded-lg bg-sky-500 text-white shadow-sm">
@@ -62,18 +40,16 @@ export default function SignupPage() {
           </p>
         </div>
 
-        {(state.error || signingIn) && (
+        {state.error && (
           <div
             role="alert"
-            className="rounded-lg border px-3 py-2 text-sm"
+            className="mt-6 rounded-lg border px-3 py-2 text-sm"
           >
-            {signingIn
-              ? "Account created! Signing you in…"
-              : state.error}
+            {state.error}
           </div>
         )}
 
-        <form action={action} className="space-y-4">
+        <form action={action} className="mt-6 space-y-4">
           <div className="space-y-2">
             <Label htmlFor="companyName">Company name</Label>
             <Input
@@ -124,13 +100,13 @@ export default function SignupPage() {
             type="submit"
             size="lg"
             className="w-full"
-            disabled={pending || signingIn}
+            disabled={pending}
           >
-            {pending ? "Creating…" : signingIn ? "Signing you in…" : "Create account"}
+            {pending ? "Creating…" : "Create account"}
           </Button>
         </form>
 
-        <p className="text-xs text-muted-foreground text-center">
+        <p className="mt-6 text-xs text-muted-foreground text-center">
           Already have an account?{" "}
           <Link
             href="/login"

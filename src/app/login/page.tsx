@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 
 import { createClient } from "@/lib/supabase/client"
 import { Button } from "@/components/ui/button"
@@ -11,10 +11,13 @@ import { PasswordInput } from "@/components/ui/password-input"
 
 export default function LoginPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [email, setEmail] = React.useState("")
   const [password, setPassword] = React.useState("")
   const [error, setError] = React.useState<string | null>(null)
   const [pending, setPending] = React.useState(false)
+
+  const showSuccess = searchParams.get("signup") === "success"
 
   async function handleSignIn(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -54,7 +57,7 @@ export default function LoginPage() {
 
   return (
     <div className="flex flex-1 items-center justify-center px-4 py-16">
-      <div className="w-full max-w-sm space-y-6">
+      <div className="w-full max-w-sm rounded-xl border border-border bg-card p-6 md:p-8 shadow-sm">
         <div className="space-y-1.5 text-center">
           <h1 className="text-2xl font-semibold tracking-tight text-foreground">
             Sign in
@@ -64,16 +67,25 @@ export default function LoginPage() {
           </p>
         </div>
 
+        {showSuccess && (
+          <div
+            role="status"
+            className="mt-6 rounded-lg border border-emerald-300 bg-emerald-50 px-3 py-2 text-sm text-emerald-700"
+          >
+            Account created successfully! Sign in with your credentials.
+          </div>
+        )}
+
         {error && (
           <div
             role="alert"
-            className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive"
+            className="mt-6 rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive"
           >
             {error}
           </div>
         )}
 
-        <form onSubmit={handleSignIn} className="space-y-4">
+        <form onSubmit={handleSignIn} className="mt-6 space-y-4">
           <div className="space-y-2">
             <Label htmlFor="email">Email</Label>
             <Input
@@ -103,9 +115,18 @@ export default function LoginPage() {
           <Button type="submit" size="lg" className="w-full" disabled={pending}>
             {pending ? "Signing in…" : "Sign in"}
           </Button>
+          <p className="text-xs text-muted-foreground text-center">
+            Don&apos;t have an account?{" "}
+            <a
+              href="/signup"
+              className="underline underline-offset-2 hover:text-foreground transition-colors"
+            >
+              Create one
+            </a>
+          </p>
         </form>
 
-        <div className="flex items-center gap-3">
+        <div className="mt-6 flex items-center gap-3">
           <span className="h-px flex-1 bg-border" />
           <span className="text-xs text-muted-foreground">or</span>
           <span className="h-px flex-1 bg-border" />
@@ -115,14 +136,14 @@ export default function LoginPage() {
           type="button"
           variant="outline"
           size="lg"
-          className="w-full"
+          className="mt-6 w-full"
           disabled={pending}
           onClick={handleGoogleSignIn}
         >
           Continue with Google
         </Button>
 
-        <p className="text-xs text-muted-foreground text-center">
+        <p className="mt-6 text-xs text-muted-foreground text-center">
           By signing in with Google, you share your email address and basic
           profile info with PoolChem.{" "}
           <a
@@ -134,15 +155,6 @@ export default function LoginPage() {
           .
         </p>
 
-        <p className="text-xs text-muted-foreground text-center">
-          Don&apos;t have an account?{" "}
-          <a
-            href="/signup"
-            className="underline underline-offset-2 hover:text-foreground transition-colors"
-          >
-            Create one
-          </a>
-        </p>
       </div>
     </div>
   )
