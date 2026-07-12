@@ -322,7 +322,11 @@ export async function cancelVisit(
  * visit belongs to `companyId` (via its pool). When `techId` is provided, it
  * must also belong to `companyId`.
  *
+ * Only visits that are DRAFT or IN_PROGRESS can be updated. CANCELLED and
+ * COMPLETED visits are rejected.
+ *
  * @returns The updated visit, or `null` if the visit was not found.
+ * @throws {Error} If the visit is CANCELLED or COMPLETED.
  * @throws {Error} If the given `techId` does not belong to the company.
  */
 export async function updateVisit(
@@ -335,6 +339,13 @@ export async function updateVisit(
     include: { pool: true },
   });
   if (!visit) return null;
+
+  if (
+    visit.status === ServiceVisitStatus.CANCELLED ||
+    visit.status === ServiceVisitStatus.COMPLETED
+  ) {
+    throw new Error("Cannot edit a cancelled or completed visit.");
+  }
 
   if (data.techId) {
     const tech = await prisma.user.findFirst({

@@ -273,6 +273,10 @@ export function VisitForm({
   }, [handleSubmit, buildPayload, visit.id])
 
   const handleComplete = useCallback(async () => {
+    if (!allFieldsFilled) {
+      toast.error("Please fill in all water readings before completing the report.")
+      return
+    }
     setSaving("complete")
     let didComplete = false
     try {
@@ -288,7 +292,7 @@ export function VisitForm({
     } finally {
       setSaving(null)
     }
-  }, [handleSubmit, buildPayload, visit.id])
+  }, [handleSubmit, buildPayload, visit.id, allFieldsFilled])
 
   return (
     <form className="mt-6 space-y-6">
@@ -500,41 +504,35 @@ export function VisitForm({
         />
       </div>
 
-      {/* Bottom Action Bar */}
+      {/* Action Buttons */}
       {!completed && !isOthersVisit && (
-        <>
-          <div className="h-20" />
+        <div className="flex justify-end gap-3">
+          <Button
+            type="button"
+            variant="outline"
+            size="lg"
+            onClick={handleSaveDraft}
+            disabled={isSubmitting || saving !== null}
+          >
+            {saving === "draft" ? (
+              <Loader2 className="size-4 animate-spin" />
+            ) : null}
+            Save Draft
+          </Button>
 
-          <div className="fixed inset-x-0 bottom-0 z-50 border-t border-border bg-background p-4">
-            <div className="mx-auto flex max-w-5xl items-center justify-end gap-3">
-              <Button
-                type="button"
-                variant="outline"
-                size="lg"
-                onClick={handleSaveDraft}
-                disabled={isSubmitting || saving !== null}
-              >
-                {saving === "draft" ? (
-                  <Loader2 className="size-4 animate-spin" />
-                ) : null}
-                Save Draft
-              </Button>
-
-              <Button
-                type="button"
-                size="lg"
-                className="bg-teal-600 text-white hover:bg-teal-700"
-                onClick={handleComplete}
-                disabled={isSubmitting || saving !== null}
-              >
-                {saving === "complete" ? (
-                  <Loader2 className="size-4 animate-spin" />
-                ) : null}
-                Complete &amp; Send Report
-              </Button>
-            </div>
-          </div>
-        </>
+          <Button
+            type="button"
+            size="lg"
+            className="bg-teal-600 text-white hover:bg-teal-700 disabled:opacity-50"
+            onClick={handleComplete}
+            disabled={!allFieldsFilled || isSubmitting || saving !== null}
+          >
+            {saving === "complete" ? (
+              <Loader2 className="size-4 animate-spin" />
+            ) : null}
+            Complete &amp; Send Report
+          </Button>
+        </div>
       )}
     </form>
   )

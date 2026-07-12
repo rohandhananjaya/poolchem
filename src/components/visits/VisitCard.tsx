@@ -7,6 +7,7 @@ import {
   CheckCircle2,
   Clock,
   MapPin,
+  Pencil,
   Play,
   User,
   XCircle,
@@ -27,6 +28,7 @@ import {
 import { CancelVisitDialog } from "@/components/visits/CancelVisitDialog"
 import {
   cancelVisitAction,
+  updateVisitAction,
 } from "@/app/(dashboard)/schedule/actions"
 import { startVisitAction } from "@/app/(dashboard)/visits/[visitId]/actions"
 
@@ -35,6 +37,7 @@ export interface VisitCardVisit {
   poolName: string
   address: string | null
   status: string
+  scheduledAt?: string | null
   timeLabel?: string | null
   health: { score: number; status: string } | null
   assignedTech?: { id: string; name: string } | null
@@ -46,13 +49,20 @@ export interface VisitCardProps {
   /** Override the time label shown; falls back to `visit.timeLabel`. */
   timeLabel?: string
   currentUserId: string
+  userRole?: string
+  techs?: Array<{ id: string; name: string; email: string }>
 }
 
-export function VisitCard({ visit, timeLabel, currentUserId }: VisitCardProps) {
+export function VisitCard({ visit, timeLabel, currentUserId, userRole, techs }: VisitCardProps) {
   const router = useRouter()
   const [open, setOpen] = React.useState(false)
   const [cancelling, setCancelling] = React.useState(false)
+  const [editing, setEditing] = React.useState(false)
   const [pending, startTransition] = React.useTransition()
+  const dateInputRef = React.useRef<HTMLInputElement>(null)
+  const [selectedTechId, setSelectedTechId] = React.useState<string>(
+    visit.assignedTech?.id ?? visit.techId ?? "",
+  )
 
   const completed = visit.status === "COMPLETED"
   const isCancelled = visit.status === "CANCELLED"
@@ -60,8 +70,16 @@ export function VisitCard({ visit, timeLabel, currentUserId }: VisitCardProps) {
   const inProgress = visit.status === "IN_PROGRESS"
   const assignedTechId = visit.assignedTech?.id ?? visit.techId
   const isOthersVisit = inProgress && !!assignedTechId && assignedTechId !== currentUserId
+  const isOwner = userRole === "OWNER" || userRole === "SUPER_ADMIN"
+  const canEdit = (isDraft || inProgress) && isOwner && !isOthersVisit
 
   const displayTime = timeLabel ?? visit.timeLabel ?? "Unscheduled"
+
+  /** Reset edit state to the visit's current values. */
+  function resetEdit() {
+    setSelectedTechId(visit.assignedTech?.id ?? visit.techId ?? "")
+    setEditing(false)
+  }
 
   function handleStartVisit() {
     startTransition(async () => {
@@ -90,8 +108,29 @@ export function VisitCard({ visit, timeLabel, currentUserId }: VisitCardProps) {
     }
   }
 
+  async function handleUpdateSchedule(formData: FormData) {
+    formData.set("visitId", visit.id)
+    // Only include techId for owners
+    if (isOwner && selectedTechId) {
+      formData.set("techId", selectedTechId)
+    }
+
+    startTransition(async () => {
+      const result = await updateVisitAction({ ok: false }, formData)
+      if (result.ok) {
+        toast.success("Schedule updated.")
+        setEditing(false)
+        setOpen(false)
+        router.refresh()
+      } else if (result.error) {
+        toast.error(result.error)
+      }
+    })
+  }
+
   function resetDialog() {
     setCancelling(false)
+    resetEdit()
   }
 
   return (
@@ -193,6 +232,61 @@ export function VisitCard({ visit, timeLabel, currentUserId }: VisitCardProps) {
               onCancel={handleCancel}
               onBack={() => setCancelling(false)}
             />
+          ) : editing ? (
+            <form action={handleUpdateSchedule} className="space-y-4">
+              <div className="grid gap-1.5">
+                <label htmlFor="edit-date" className="text-sm font-medium">
+                  Date
+                </label>
+                <input
+                  ref={dateInputRef}
+                  id="edit-date"
+                  name="date"
+                  type="date"
+                  defaultValue={
+                    visit.scheduledAt
+                      ? visit.scheduledAt.split("T")[0]
+                      : ""
+                  }
+                  className="flex h-9 w-full min-w-0 rounded-lg border border-input bg-background px-3 py-1 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30"
+                />
+              </div>
+
+              {isOwner && techs ? (
+                <div className="grid gap-1.5">
+                  <label htmlFor="edit-tech" className="text-sm font-medium">
+                    Assign to
+                  </label>
+                  <select
+                    id="edit-tech"
+                    name="techId"
+                    value={selectedTechId}
+                    onChange={(e) => setSelectedTechId(e.target.value)}
+                    className="flex h-9 w-full min-w-0 rounded-lg border border-input bg-background px-3 py-1 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30"
+                  >
+                    <option value="">Anyone can take</option>
+                    {techs.map((tech) => (
+                      <option key={tech.id} value={tech.id}>
+                        {tech.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              ) : null}
+
+              <DialogFooter className="gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={resetEdit}
+                >
+                  Cancel
+                </Button>
+                <Button type="submit" size="lg" disabled={pending}>
+                  {pending ? "Saving…" : "Save"}
+                </Button>
+              </DialogFooter>
+            </form>
           ) : (
             <div className="space-y-4">
               <div className="flex items-center gap-2">
@@ -251,14 +345,29 @@ export function VisitCard({ visit, timeLabel, currentUserId }: VisitCardProps) {
 
               {!isOthersVisit && (isDraft || inProgress) ? (
                 <DialogFooter className="gap-2 sm:justify-between">
-                  <Button
-                    type="button"
-                    variant="destructive"
-                    onClick={() => setCancelling(true)}
-                  >
-                    <XCircle className="size-4" />
-                    Cancel Visit
-                  </Button>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      onClick={() => setCancelling(true)}
+                    >
+                      <XCircle className="size-4" />
+                      Cancel Visit
+                    </Button>
+                    {canEdit && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          setEditing(true)
+                        }}
+                      >
+                        <Pencil className="size-4" />
+                        Edit Schedule
+                      </Button>
+                    )}
+                  </div>
                   {inProgress ? (
                     <Button
                       variant="default"

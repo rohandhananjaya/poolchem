@@ -607,6 +607,47 @@ describe("updateVisit", () => {
     expect(result).toBeNull();
   });
 
+  it("throws when visit is CANCELLED", async () => {
+    prismaMock.serviceVisit.findFirst.mockResolvedValue({
+      id: visitId,
+      pool: { companyId },
+      status: "CANCELLED",
+    });
+
+    await expect(
+      updateVisit(visitId, companyId, { scheduledAt: new Date() }),
+    ).rejects.toThrow(/cancelled or completed/i);
+  });
+
+  it("throws when visit is COMPLETED", async () => {
+    prismaMock.serviceVisit.findFirst.mockResolvedValue({
+      id: visitId,
+      pool: { companyId },
+      status: "COMPLETED",
+    });
+
+    await expect(
+      updateVisit(visitId, companyId, { techId }),
+    ).rejects.toThrow(/cancelled or completed/i);
+  });
+
+  it("allows update for DRAFT visits", async () => {
+    const newDate = new Date("2026-07-20");
+    prismaMock.serviceVisit.findFirst.mockResolvedValue({
+      id: visitId,
+      pool: { companyId },
+      status: "DRAFT",
+    });
+    prismaMock.serviceVisit.update.mockResolvedValue({
+      id: visitId,
+      scheduledAt: newDate,
+    });
+
+    const result = await updateVisit(visitId, companyId, { scheduledAt: newDate });
+
+    expect(result?.id).toBe(visitId);
+  });
+
   it("throws when techId does not belong to the company", async () => {
     prismaMock.serviceVisit.findFirst.mockResolvedValue({
       id: visitId,
