@@ -14,14 +14,9 @@ vi.mock("@/lib/db/visits", () => ({
 vi.mock("next/cache", () => ({
   revalidatePath: vi.fn(),
 }));
-vi.mock("next/navigation", () => ({
-  redirect: vi.fn(),
-}));
-
 const { saveDraftVisit, completeVisit, startVisit, updateVisitStatus, cancelVisit, assertVisitAccess } = await import("@/lib/db/visits");
 const { requireTech } = await import("@/lib/auth");
 const { revalidatePath } = await import("next/cache");
-const { redirect } = await import("next/navigation");
 const { saveDraftAction, completeVisitAction, startVisitAction, updateVisitStatusAction, cancelVisitAction } = await import("./actions");
 
 const mockUser = { id: "user-1", companyId: "company-1", role: "TECH" };
@@ -67,7 +62,7 @@ describe("saveDraftAction", () => {
 });
 
 describe("completeVisitAction", () => {
-  it("calls completeVisit, revalidates and redirects", async () => {
+  it("calls completeVisit and revalidates", async () => {
     vi.mocked(requireTech).mockResolvedValue(mockUser as never);
 
     await completeVisitAction(visitId, {
@@ -90,7 +85,6 @@ describe("completeVisitAction", () => {
       null,
     );
     expect(revalidatePath).toHaveBeenCalledWith(`/visits/${visitId}`);
-    expect(redirect).toHaveBeenCalledWith(`/visits/${visitId}`);
   });
 
   it("throws when unauthenticated", async () => {

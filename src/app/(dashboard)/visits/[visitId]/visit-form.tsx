@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useMemo, useCallback } from "react"
+import { useRouter } from "next/navigation"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod/v4"
@@ -85,6 +86,7 @@ export function VisitForm({
   currentUser,
   techId,
 }: VisitFormProps) {
+  const router = useRouter()
   const completed = visit.status === "COMPLETED"
   const inProgress = visit.status === "IN_PROGRESS"
   const isOthersVisit = inProgress && !!techId && techId !== currentUser.id
@@ -291,14 +293,13 @@ export function VisitForm({
 
   const handleSaveDraft = useCallback(async () => {
     setSaving("draft")
-    let saved = false
     try {
       await handleSubmit(async (data) => {
         await saveDraftAction(visit.id, buildPayload(data))
-        saved = true
       })()
-      if (saved) toast.info("Visit saved as draft")
-    } catch {
+      toast.info("Visit saved as draft")
+    } catch (e) {
+      console.error("Save draft failed:", e)
       toast.error(ERROR_MESSAGES.SAVE_FAILED)
     } finally {
       setSaving(null)
@@ -311,21 +312,19 @@ export function VisitForm({
       return
     }
     setSaving("complete")
-    let didComplete = false
     try {
       await handleSubmit(async (data) => {
         await completeVisitAction(visit.id, buildPayload(data))
-        didComplete = true
       })()
-      // completeVisitAction redirects to the (now completed) visit; the root
-      // Toaster survives that navigation so the success toast still shows.
-      if (didComplete) toast.success("Report sent successfully")
-    } catch {
+      toast.success("Report sent successfully")
+      router.push(`/visits/${visit.id}`)
+    } catch (e) {
+      console.error("Complete visit failed:", e)
       toast.error(ERROR_MESSAGES.SAVE_FAILED)
     } finally {
       setSaving(null)
     }
-  }, [handleSubmit, buildPayload, visit.id, allFieldsFilled])
+  }, [handleSubmit, buildPayload, visit.id, allFieldsFilled, router])
 
   return (
     <form className="mt-6 space-y-6">

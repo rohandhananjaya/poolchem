@@ -1,7 +1,6 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { redirect } from "next/navigation";
 
 import { requireTech } from "@/lib/auth";
 import {
@@ -44,7 +43,6 @@ export async function completeVisitAction(
   await assertVisitAccess(visitId, user.companyId, user.id);
   await completeVisit(visitId, data.readings, data.chemicals, data.notes || null);
   revalidatePath(`/visits/${visitId}`);
-  redirect(`/visits/${visitId}`);
 }
 
 /**
