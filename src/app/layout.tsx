@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Inter, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "@/components/ui/sonner";
+import { CookieConsentBanner } from "@/components/cookie-consent-banner";
 
 // Inter drives all headings, UI labels, and body text — clean and highly
 // legible on phones in bright outdoor light. Variable font, so every weight
@@ -39,6 +40,7 @@ export default function RootLayout({
       <body className="min-h-full flex flex-col">
         {children}
         <Toaster />
+        <CookieConsentBanner />
       </body>
     </html>
   );

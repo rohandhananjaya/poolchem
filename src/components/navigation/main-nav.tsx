@@ -132,6 +132,14 @@ export function MainNav({ user, company }: MainNavProps) {
           })}
         </nav>
 
+        <div className="border-t border-sidebar-border p-3">
+          <UserMenu
+            user={user}
+            signingOut={signingOut}
+            onSignOut={handleSignOut}
+          />
+        </div>
+
         <div className="border-t border-sidebar-border px-3 py-2">
           <div className="flex items-center justify-center gap-3 text-xs text-sidebar-foreground/50">
             <Link href="/privacy" className="hover:text-sidebar-foreground/90 transition-colors">
@@ -141,14 +149,6 @@ export function MainNav({ user, company }: MainNavProps) {
               Terms
             </Link>
           </div>
-        </div>
-
-        <div className="border-t border-sidebar-border p-3">
-          <UserMenu
-            user={user}
-            signingOut={signingOut}
-            onSignOut={handleSignOut}
-          />
         </div>
       </aside>
 

@@ -128,6 +128,7 @@ export function ProfileForms({
           <TabsList>
             <TabsTrigger value="personal">Personal</TabsTrigger>
             <TabsTrigger value="password">Change Password</TabsTrigger>
+            <TabsTrigger value="privacy">Data & Privacy</TabsTrigger>
           </TabsList>
           <TabsContent value="personal">
             <form action={accountAction} className="grid gap-4">
@@ -185,6 +186,54 @@ export function ProfileForms({
                 <SaveButton pending={passwordPending} />
               </div>
             </form>
+          </TabsContent>
+          <TabsContent value="privacy">
+            <p className="mb-4 text-sm text-muted-foreground">
+              Manage your personal data under GDPR.
+            </p>
+            <div className="flex flex-wrap gap-3">
+              <Button
+                type="button"
+                variant="outline"
+                size="lg"
+                disabled={exporting}
+                onClick={() =>
+                  startExport(async () => {
+                    const result = await exportDataAction()
+                    if (result.ok && result.data) {
+                      const blob = new Blob(
+                        [JSON.stringify(result.data, null, 2)],
+                        { type: "application/json" },
+                      )
+                      const url = URL.createObjectURL(blob)
+                      const a = document.createElement("a")
+                      a.href = url
+                      a.download = `poolchem-export-${new Date().toISOString().slice(0, 10)}.json`
+                      document.body.appendChild(a)
+                      a.click()
+                      document.body.removeChild(a)
+                      URL.revokeObjectURL(url)
+                      toast.success("Your data has been downloaded.")
+                    } else if (result.error) {
+                      toast.error(result.error)
+                    }
+                  })
+                }
+              >
+                <Download />
+                {exporting ? "Exporting…" : "Export my data"}
+              </Button>
+
+              <Button
+                type="button"
+                variant="destructive"
+                size="lg"
+                onClick={() => setDeleteOpen(true)}
+              >
+                <Trash2 />
+                Delete account
+              </Button>
+            </div>
           </TabsContent>
         </Tabs>
       </Card>
@@ -253,56 +302,6 @@ export function ProfileForms({
           )}
         </Card>
       ) : null}
-
-      {/* GDPR: data privacy controls */}
-      <Card
-        title="Data & Privacy"
-        description="Manage your personal data under GDPR."
-      >
-        <div className="flex flex-wrap gap-3">
-          <Button
-            type="button"
-            variant="outline"
-            size="lg"
-            disabled={exporting}
-            onClick={() =>
-              startExport(async () => {
-                const result = await exportDataAction()
-                if (result.ok && result.data) {
-                  const blob = new Blob(
-                    [JSON.stringify(result.data, null, 2)],
-                    { type: "application/json" },
-                  )
-                  const url = URL.createObjectURL(blob)
-                  const a = document.createElement("a")
-                  a.href = url
-                  a.download = `poolchem-export-${new Date().toISOString().slice(0, 10)}.json`
-                  document.body.appendChild(a)
-                  a.click()
-                  document.body.removeChild(a)
-                  URL.revokeObjectURL(url)
-                  toast.success("Your data has been downloaded.")
-                } else if (result.error) {
-                  toast.error(result.error)
-                }
-              })
-            }
-          >
-            <Download />
-            {exporting ? "Exporting…" : "Export my data"}
-          </Button>
-
-          <Button
-            type="button"
-            variant="destructive"
-            size="lg"
-            onClick={() => setDeleteOpen(true)}
-          >
-            <Trash2 />
-            Delete account
-          </Button>
-        </div>
-      </Card>
 
       {/* Sign out */}
       <div>
