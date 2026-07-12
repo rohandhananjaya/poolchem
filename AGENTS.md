@@ -6,24 +6,21 @@ This version has breaking changes — APIs, conventions, and file structure may 
 
 # PoolChem — repo-level facts an agent would miss
 
-## Framework traps
+## Framework traps (critical — never miss these)
 
 - **Next.js 16 Proxy** (NOT `middleware.ts`). File is `src/proxy.ts`, exports `proxy(request)` with `config.matcher`. Guards `/dashboard/*` and `/admin/*`. Do not create `middleware.ts`.
 - **`cookies()` is async** — `createClient()` in `src/lib/supabase/server.ts` must be awaited.
+- **Prisma 7:** no `url` in `schema.prisma`; client generated to `src/generated/prisma/` (import from `@/generated/prisma/client`).
 
-## Prisma 7 (breaking changes from 5/6)
+## Available skills (load the relevant one before deeper work)
 
-- **No `url` in `schema.prisma`.** Connection string lives in `prisma.config.ts` (for Migrate) and passed via driver adapter at runtime in `src/lib/prisma.ts`.
-- **Client generated to `src/generated/prisma/`**, not `node_modules`. Import from `@/generated/prisma/client`. After schema changes: `npx prisma generate` (runs automatically via `postinstall`).
-- SQLite locally — swap `@prisma/adapter-better-sqlite3` for `@prisma/adapter-pg` in `src/lib/prisma.ts` for Postgres.
-
-## Architecture
-
-- **Multi-tenancy invariant:** every query scoped by `companyId`. `ServiceVisit` has no `companyId` — scoped via `visit.pool.companyId`. All `db/` helpers enforce this; reads return `null` on cross-tenant miss, writes throw.
-- **Auth:** Supabase (identity, sessions) bridged to Prisma `User` (app data, role, companyId) **by email**. `getCurrentUser()` in `src/lib/auth.ts` is React-cached — hits DB once per request.
-- **No REST/GraphQL** — all mutations are Server Actions that re-check auth, call a `db/` helper, then `revalidatePath`. Only exception: `GET /api/stats/live` for server polling.
-- Data flow: Server Components / Server Actions → `db/` helpers (`src/lib/db/`) → Prisma singleton (`src/lib/prisma.ts`). `import "server-only"` on `db/`, `auth.ts`, and chemistry types.
-- **`src/lib/pool-chemistry.ts` is pure** — no I/O, no Prisma imports. Only unit-tested file (`src/lib/pool-chemistry.test.ts`). Keep it pure.
+Load with the `skill` tool when your task matches:
+- **prisma-db** — load when touching Prisma schema, client, or migrations
+- **auth-tenancy** — load when editing auth, proxy, or data-access code
+- **solid-principles** — load before any code change
+- **testing-patterns** — load when writing tests
+- **chemistry-engine** — load when editing pool-chemistry logic
+- **ui-design** — load when building/editing UI
 
 ## Pre-existing codebase maps (read these before searching)
 
@@ -31,7 +28,7 @@ These save substantial time — they inventory every exported helper, route, and
 - `src/lib/db/CLAUDE.md` — data-access helper signatures + tenancy rules
 - `src/app/CLAUDE.md` — route map, pages ↔ helpers ↔ Server Actions
 - `src/components/CLAUDE.md` — component inventory by domain
-- `CLAUDE.md` (root) — architecture deep-dive, env setup, full command reference
+- `CLAUDE.md` (root) — critical version notes, commands, overview
 
 Keep these in sync when adding/removing exports, routes, or components.
 
