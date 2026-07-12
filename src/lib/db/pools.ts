@@ -15,6 +15,7 @@ import "server-only";
 
 import { randomUUID } from "node:crypto";
 
+import { PAGE_SIZE } from "@/lib/config";
 import type { Pool } from "@/generated/prisma/client";
 import { Prisma, ServiceVisitStatus } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
@@ -28,7 +29,7 @@ export interface PoolsFilters {
 }
 
 /** How many pools to show per page. */
-export const POOLS_PAGE_SIZE = 10;
+export const POOLS_PAGE_SIZE = PAGE_SIZE;
 
 /**
  * Returns a paginated, filterable list of pools for `companyId`, each annotated

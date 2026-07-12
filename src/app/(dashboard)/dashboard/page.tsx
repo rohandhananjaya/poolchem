@@ -8,10 +8,10 @@ import { getDashboardData } from "@/lib/db/dashboard"
 import { getAdminDashboardData } from "@/lib/db/admin-dashboard"
 import { getServerHealthSummary } from "@/lib/db/admin-diagnostics"
 import { Shell } from "@/components/ui/shell"
+import { DashboardHeader } from "@/components/dashboard/DashboardHeader"
 import { StatsRow } from "@/components/dashboard/StatsRow"
 import { VisitCard } from "@/components/dashboard/VisitCard"
 import { EmptyState } from "@/components/dashboard/EmptyState"
-import { RefreshButton } from "@/components/dashboard/RefreshButton"
 import { ScanFab } from "@/components/dashboard/ScanFab"
 import { PlatformKPIs } from "@/components/admin/PlatformKPIs"
 import { ServerHealthSummary } from "@/components/admin/ServerHealthSummary"
@@ -46,31 +46,20 @@ export default async function DashboardPage() {
   return (
     <>
       <Shell>
-        <header className="mb-6 flex items-start justify-between gap-4">
-          <div className="min-w-0">
-            <h1 className="truncate text-2xl font-semibold tracking-tight text-foreground">
-              {greeting(now)}, {firstName(user.name)}
-            </h1>
-            <p className="mt-0.5 text-sm text-muted-foreground">
-              {format(now, "EEEE, MMMM d")}
-            </p>
-          </div>
+        <DashboardHeader
+          greeting={greeting(now)}
+          name={firstName(user.name)}
+          date={now}
+          userId={user.id}
+        />
 
-          <div className="flex shrink-0 items-center gap-2">
-            <button
-              type="button"
-              aria-label="Notifications"
-              className="inline-flex size-9 items-center justify-center rounded-lg border border-border bg-background text-foreground transition-colors hover:bg-muted focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none"
-            >
-              <Bell className="size-4" />
-            </button>
-            <RefreshButton />
-          </div>
-        </header>
+        <StatsRow
+          stats={stats}
+          today={format(now, "yyyy-MM-dd")}
+          tomorrow={format(new Date(now.getTime() + 86400000), "yyyy-MM-dd")}
+        />
 
-        <StatsRow stats={stats} />
-
-        <section className="mt-8">
+        <section id="today-visits" className="mt-8">
           <h2 className="mb-3 text-base font-semibold text-foreground">
             Today&apos;s Visits
           </h2>

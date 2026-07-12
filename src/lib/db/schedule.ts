@@ -11,6 +11,7 @@
  */
 import "server-only";
 
+import { PAGE_SIZE } from "@/lib/config";
 import { getWaterHealthScore, type WaterHealthStatus } from "@/lib/pool-chemistry";
 import { prisma } from "@/lib/prisma";
 import { ServiceVisitStatus } from "@/generated/prisma/client";
@@ -33,8 +34,8 @@ export interface ScheduledVisit {
 
 /** Filters for the schedule list. */
 export interface ScheduleFilters {
-  /** "scheduled" = exclude CANCELLED (default), "all" = everything, "cancelled" = only cancelled. */
-  status?: "scheduled" | "all" | "cancelled";
+  /** "scheduled" = only DRAFT (default), "all" = everything, "cancelled" = only cancelled, "completed" = only completed. */
+  status?: "scheduled" | "all" | "cancelled" | "completed";
   /** Pool id to narrow results. */
   poolId?: string;
   /** ISO date string (YYYY-MM-DD) — inclusive start. */
@@ -49,18 +50,19 @@ export interface ScheduleFilters {
   techId?: string;
 }
 
-/** How many visits the schedule loads. */
-const SCHEDULE_LIMIT = 200;
+/** How many visits per page on the schedule. */
+export const SCHEDULE_PAGE_SIZE = PAGE_SIZE;
 
 /**
- * Returns the company's visits ordered for the schedule: by planned time
- * (`scheduledAt`) first, then creation time. Visits without a reading have
- * `health: null`.
+ * Returns a paginated list of the company's visits ordered for the schedule:
+ * by planned time (`scheduledAt`) first, then creation time. Visits without a
+ * reading have `health: null`.
  */
 export async function getScheduleData(
   companyId: string,
+  page: number = 1,
   filters?: ScheduleFilters,
-): Promise<ScheduledVisit[]> {
+): Promise<{ visits: ScheduledVisit[]; total: number }> {
   const where: {
     pool: { companyId: string };
     status?: Record<string, unknown> | "DRAFT" | "COMPLETED" | "CANCELLED";
@@ -79,8 +81,10 @@ export async function getScheduleData(
 
   if (filters?.status === "cancelled") {
     where.status = ServiceVisitStatus.CANCELLED;
+  } else if (filters?.status === "completed") {
+    where.status = ServiceVisitStatus.COMPLETED;
   } else if (filters?.status !== "all") {
-    where.status = { not: ServiceVisitStatus.CANCELLED };
+    where.status = ServiceVisitStatus.DRAFT;
   }
 
   if (filters?.poolId) {
@@ -97,18 +101,25 @@ export async function getScheduleData(
     }
   }
 
-  const visits = await prisma.serviceVisit.findMany({
-    where,
-    orderBy: [{ scheduledAt: "asc" }, { createdAt: "asc" }],
-    take: SCHEDULE_LIMIT,
-    include: {
-      pool: { select: { name: true, address: true } },
-      tech: { select: { id: true, name: true } },
-      waterReadings: { orderBy: { createdAt: "desc" }, take: 1 },
-    },
-  });
+  const limit = SCHEDULE_PAGE_SIZE;
+  const skip = (page - 1) * limit;
 
-  return visits.map((visit) => {
+  const [rows, total] = await Promise.all([
+    prisma.serviceVisit.findMany({
+      where,
+      orderBy: [{ scheduledAt: "asc" }, { createdAt: "asc" }],
+      skip,
+      take: limit,
+      include: {
+        pool: { select: { name: true, address: true } },
+        tech: { select: { id: true, name: true } },
+        waterReadings: { orderBy: { createdAt: "desc" }, take: 1 },
+      },
+    }),
+    prisma.serviceVisit.count({ where }),
+  ]);
+
+  const visits = rows.map((visit) => {
     const reading = visit.waterReadings[0] ?? null;
     const health = reading ? getWaterHealthScore(reading) : null;
     return {
@@ -122,4 +133,6 @@ export async function getScheduleData(
       assignedTech: visit.tech ? { id: visit.tech.id, name: visit.tech.name } : null,
     };
   });
+
+  return { visits, total };
 }

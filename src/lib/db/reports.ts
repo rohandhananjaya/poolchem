@@ -8,6 +8,7 @@
  */
 import "server-only";
 
+import { PAGE_SIZE } from "@/lib/config";
 import { getWaterHealthScore } from "@/lib/pool-chemistry";
 import { prisma } from "@/lib/prisma";
 import { ServiceVisitStatus } from "@/generated/prisma/client";
@@ -42,7 +43,7 @@ export interface CompanyReportData {
 }
 
 /** How many reports to show per page. */
-export const REPORTS_PAGE_SIZE = 20;
+export const REPORTS_PAGE_SIZE = PAGE_SIZE;
 
 /**
  * Returns a paginated, filterable list of completed visits for `companyId`.

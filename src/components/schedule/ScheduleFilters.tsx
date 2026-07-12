@@ -5,7 +5,6 @@ import { useCallback } from "react"
 import { RotateCcw } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
 interface PoolOption {
   id: string
@@ -123,13 +122,25 @@ export function ScheduleFilters({ pools }: { pools: PoolOption[] }) {
         </Button>
       </div>
 
-      <Tabs value={currentTab} onValueChange={onTabChange}>
-        <TabsList>
-          <TabsTrigger value="scheduled">Scheduled</TabsTrigger>
-          <TabsTrigger value="all">All</TabsTrigger>
-          <TabsTrigger value="cancelled">Cancelled</TabsTrigger>
-        </TabsList>
-      </Tabs>
+      <div>
+        <label
+          htmlFor="status-filter"
+          className="mb-1 block text-xs font-medium text-muted-foreground"
+        >
+          Status
+        </label>
+        <select
+          id="status-filter"
+          value={currentTab}
+          onChange={(e) => onTabChange(e.target.value)}
+          className="h-8 rounded-lg border border-border bg-background px-2.5 text-sm text-foreground"
+        >
+          <option value="scheduled">Scheduled</option>
+          <option value="all">All</option>
+          <option value="completed">Completed</option>
+          <option value="cancelled">Cancelled</option>
+        </select>
+      </div>
     </div>
   )
 }

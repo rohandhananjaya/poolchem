@@ -5,6 +5,7 @@
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
+  --animate-bell-ring: bell-ring 0.5s ease-in-out;
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
@@ -194,6 +195,14 @@
  * the sidebar/bottom-nav and interactive controls are marked `print:hidden`
  * at the component level; here we reset the page itself for paper.
  */
+@keyframes bell-ring {
+  0%, 100% { transform: rotate(0); }
+  20% { transform: rotate(12deg); }
+  40% { transform: rotate(-12deg); }
+  60% { transform: rotate(8deg); }
+  80% { transform: rotate(-8deg); }
+}
+
 @media print {
   /* Preserve the score/status colors instead of dropping them to save ink. */
   * {
