@@ -4,8 +4,12 @@ vi.mock("@/lib/auth", () => ({
   requireTech: vi.fn(),
 }));
 vi.mock("@/lib/db/visits", () => ({
+  assertVisitAccess: vi.fn().mockResolvedValue("DRAFT"),
   saveDraftVisit: vi.fn(),
   completeVisit: vi.fn(),
+  startVisit: vi.fn(),
+  updateVisitStatus: vi.fn(),
+  cancelVisit: vi.fn(),
 }));
 vi.mock("next/cache", () => ({
   revalidatePath: vi.fn(),

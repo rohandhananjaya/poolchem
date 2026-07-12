@@ -69,11 +69,14 @@ export interface ScheduleVisitCardProps {
   visit: ScheduledVisit
   /** Preformatted date/time label for the visit (e.g. "9:00 AM" or "Jul 12"). */
   timeLabel: string
+  /** Used to determine if this visit is assigned to the current user. */
+  currentUserId: string
 }
 
 export function ScheduleVisitCard({
   visit,
   timeLabel,
+  currentUserId,
 }: ScheduleVisitCardProps) {
   const router = useRouter()
   const [open, setOpen] = React.useState(false)
@@ -86,6 +89,10 @@ export function ScheduleVisitCard({
   const isCompleted = visit.status === "COMPLETED"
   const isCancelled = visit.status === "CANCELLED"
   const inProgress = visit.status === "IN_PROGRESS"
+  const isOthersVisit =
+    inProgress &&
+    !!visit.assignedTech &&
+    visit.assignedTech.id !== currentUserId
 
   const trimmedReason = reason.trim()
   const canCancel = trimmedReason.length > 0
@@ -145,6 +152,11 @@ export function ScheduleVisitCard({
               <span className="inline-flex items-center gap-1.5 text-sm font-medium text-muted-foreground">
                 <XCircle className="size-4" />
                 Cancelled
+              </span>
+            ) : isOthersVisit ? (
+              <span className="inline-flex items-center gap-1.5 text-sm font-medium text-sky-600 dark:text-sky-400">
+                <Play className="size-4" />
+                In Progress
               </span>
             ) : inProgress ? (
               <Button
@@ -300,7 +312,7 @@ export function ScheduleVisitCard({
                     <XCircle className="size-4" />
                     Cancelled
                   </span>
-                ) : inProgress ? (
+                ) : isOthersVisit || inProgress ? (
                   <span className="inline-flex items-center gap-1.5 text-sm font-medium text-sky-600 dark:text-sky-400">
                     <Play className="size-4" />
                     In Progress
@@ -337,7 +349,7 @@ export function ScheduleVisitCard({
                 </p>
               )}
 
-              {isDraft || inProgress ? (
+              {!isOthersVisit && (isDraft || inProgress) ? (
                 <DialogFooter className="gap-2 sm:justify-between">
                   <Button
                     type="button"

@@ -65,17 +65,19 @@ function HealthBadge({ health }: { health: DashboardVisit["health"] }) {
     </span>
   )
 }
-
 export interface VisitCardProps {
   visit: DashboardVisit
+  /** Used to determine if this visit is assigned to the current user. */
+  currentUserId: string
 }
+
 
 /**
  * A single service visit on today's route: client name + address, its time
  * slot, a colored water-health badge, and either a "Start Visit" action or a
  * completed marker.
  */
-export function VisitCard({ visit }: VisitCardProps) {
+export function VisitCard({ visit, currentUserId }: VisitCardProps) {
   const router = useRouter()
   const [open, setOpen] = React.useState(false)
   const [cancelling, setCancelling] = React.useState(false)
@@ -87,6 +89,7 @@ export function VisitCard({ visit }: VisitCardProps) {
   const isCancelled = visit.status === "CANCELLED"
   const isDraft = visit.status === "DRAFT"
   const inProgress = visit.status === "IN_PROGRESS"
+  const isOthersVisit = inProgress && !!visit.techId && visit.techId !== currentUserId
 
   const trimmedReason = reason.trim()
   const canCancel = trimmedReason.length > 0
@@ -146,6 +149,11 @@ export function VisitCard({ visit }: VisitCardProps) {
               <span className="inline-flex items-center gap-1.5 text-sm font-medium text-muted-foreground">
                 <XCircle className="size-4" />
                 Cancelled
+              </span>
+            ) : isOthersVisit ? (
+              <span className="inline-flex items-center gap-1.5 text-sm font-medium text-sky-600 dark:text-sky-400">
+                <Play className="size-4" />
+                In Progress
               </span>
             ) : inProgress ? (
               <Button
@@ -289,6 +297,11 @@ export function VisitCard({ visit }: VisitCardProps) {
                     <XCircle className="size-4" />
                     Cancelled
                   </span>
+                ) : isOthersVisit ? (
+                  <span className="inline-flex items-center gap-1.5 text-sm font-medium text-sky-600 dark:text-sky-400">
+                    <Play className="size-4" />
+                    In Progress
+                  </span>
                 ) : inProgress ? (
                   <span className="inline-flex items-center gap-1.5 text-sm font-medium text-sky-600 dark:text-sky-400">
                     <Play className="size-4" />
@@ -314,7 +327,7 @@ export function VisitCard({ visit }: VisitCardProps) {
                 {visit.timeLabel ?? "Unscheduled"}
               </p>
 
-              {isDraft || inProgress ? (
+              {!isOthersVisit && (isDraft || inProgress) ? (
                 <DialogFooter className="gap-2 sm:justify-between">
                   <Button
                     type="button"

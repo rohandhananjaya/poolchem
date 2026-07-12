@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 
 import { requireTech } from "@/lib/auth";
 import {
+  assertVisitAccess,
   cancelVisit,
   completeVisit,
   saveDraftVisit,
@@ -26,7 +27,9 @@ export async function saveDraftAction(
   data: VisitFormValues,
 ) {
   const user = await requireTech();
+  if (!user.companyId) throw new Error("No company affiliation.");
 
+  await assertVisitAccess(visitId, user.companyId, user.id);
   await saveDraftVisit(visitId, data.readings, data.chemicals, data.notes || null);
   revalidatePath(`/visits/${visitId}`);
 }
@@ -36,7 +39,9 @@ export async function completeVisitAction(
   data: VisitFormValues,
 ) {
   const user = await requireTech();
+  if (!user.companyId) throw new Error("No company affiliation.");
 
+  await assertVisitAccess(visitId, user.companyId, user.id);
   await completeVisit(visitId, data.readings, data.chemicals, data.notes || null);
   revalidatePath(`/visits/${visitId}`);
   redirect(`/visits/${visitId}`);
@@ -50,7 +55,7 @@ export async function startVisitAction(visitId: string) {
   const user = await requireTech();
   if (!user.companyId) throw new Error("No company affiliation.");
 
-  const result = await startVisit(visitId, user.companyId);
+  const result = await startVisit(visitId, user.companyId, user.id);
   if (!result) throw new Error("Visit not found or already started.");
   revalidatePath(`/visits/${visitId}`);
 }
@@ -66,6 +71,7 @@ export async function updateVisitStatusAction(
   const user = await requireTech();
   if (!user.companyId) throw new Error("No company affiliation.");
 
+  await assertVisitAccess(visitId, user.companyId, user.id);
   const result = await updateVisitStatus(visitId, user.companyId, status);
   if (!result) throw new Error("Visit not found.");
   revalidatePath(`/visits/${visitId}`);
@@ -75,6 +81,7 @@ export async function cancelVisitAction(visitId: string, reason: string) {
   const user = await requireTech();
   if (!user.companyId) throw new Error("No company affiliation.");
 
+  await assertVisitAccess(visitId, user.companyId, user.id);
   const result = await cancelVisit(visitId, user.companyId, reason);
   if (!result) throw new Error("Visit not found.");
   revalidatePath(`/visits/${visitId}`);

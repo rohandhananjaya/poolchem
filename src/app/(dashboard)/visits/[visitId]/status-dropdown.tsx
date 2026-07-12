@@ -25,6 +25,8 @@ import { cancelVisitAction, updateVisitStatusAction } from "./actions"
 interface StatusDropdownProps {
   visitId: string
   currentStatus: "DRAFT" | "IN_PROGRESS" | "CANCELLED"
+  currentUserId: string
+  techId: string | null
 }
 
 const OPTIONS: Array<{
@@ -39,8 +41,15 @@ const OPTIONS: Array<{
 export function StatusDropdown({
   visitId,
   currentStatus,
+  currentUserId,
+  techId,
 }: StatusDropdownProps) {
   const router = useRouter()
+
+  // Only the assigned tech may change the status of an IN_PROGRESS visit.
+  const isOthersVisit =
+    currentStatus === "IN_PROGRESS" && !!techId && techId !== currentUserId
+  if (isOthersVisit) return null
   const [pending, startTransition] = React.useTransition()
   const [cancelDialogOpen, setCancelDialogOpen] = React.useState(false)
   const [cancelReason, setCancelReason] = React.useState("")
@@ -65,10 +74,7 @@ export function StatusDropdown({
       try {
         await cancelVisitAction(visitId, cancelReason.trim())
         toast.success("Visit cancelled.")
-        setCancelDialogOpen(false)
-        setCancelReason("")
-        setIsCustom(false)
-        router.refresh()
+        router.push("/dashboard")
       } catch {
         toast.error("Could not cancel visit.")
       }

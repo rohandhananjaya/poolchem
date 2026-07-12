@@ -218,11 +218,16 @@ export async function getLastVisitReadings(
 
 /**
  * Marks a visit as IN_PROGRESS. Only visits in DRAFT status can be started.
+ * When a tech starts a visit they become the assigned tech (`techId`).
  * Scoped to `companyId` via the pool relation.
  *
  * @returns The updated visit, or `null` if not found or not scoped.
  */
-export async function startVisit(visitId: string, companyId: string) {
+export async function startVisit(
+  visitId: string,
+  companyId: string,
+  techId?: string | null,
+) {
   const visit = await prisma.serviceVisit.findFirst({
     where: { id: visitId, pool: { companyId }, status: ServiceVisitStatus.DRAFT },
   });
@@ -230,8 +235,39 @@ export async function startVisit(visitId: string, companyId: string) {
 
   return prisma.serviceVisit.update({
     where: { id: visitId },
-    data: { status: ServiceVisitStatus.IN_PROGRESS },
+    data: {
+      status: ServiceVisitStatus.IN_PROGRESS,
+      techId: techId ?? visit.techId,
+    },
   });
+}
+
+/**
+ * Asserts the current user is allowed to modify a visit. For IN_PROGRESS
+ * visits the user must be the assigned tech. Throws on violation.
+ *
+ * @returns The visit's status for callers to branch on.
+ */
+export async function assertVisitAccess(
+  visitId: string,
+  companyId: string,
+  userId: string,
+): Promise<ServiceVisitStatus> {
+  const visit = await prisma.serviceVisit.findFirst({
+    where: { id: visitId, pool: { companyId } },
+    select: { status: true, techId: true },
+  });
+  if (!visit) throw new Error("Visit not found.");
+
+  if (
+    visit.status === ServiceVisitStatus.IN_PROGRESS &&
+    visit.techId &&
+    visit.techId !== userId
+  ) {
+    throw new Error("This visit is in progress by another tech.");
+  }
+
+  return visit.status;
 }
 
 /**

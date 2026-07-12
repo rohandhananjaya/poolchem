@@ -75,14 +75,18 @@ interface VisitFormProps {
   visit: SerializedVisit
   lastReadings: VisitReadings | null
   currentUser: { id: string; name: string }
+  techId: string | null
 }
 
 export function VisitForm({
   visit,
   lastReadings,
   currentUser,
+  techId,
 }: VisitFormProps) {
   const completed = visit.status === "COMPLETED"
+  const inProgress = visit.status === "IN_PROGRESS"
+  const isOthersVisit = inProgress && !!techId && techId !== currentUser.id
   const existingReading = visit.waterReadings[0] ?? null
 
   const defaultReadings = existingReading
@@ -115,7 +119,7 @@ export function VisitForm({
       readings: defaultReadings as FormData["readings"],
       notes: visit.notes ?? "",
     },
-    disabled: completed,
+    disabled: completed || isOthersVisit,
   })
 
   // react-hook-form mutates the nested `readings` object in place, so
@@ -294,7 +298,7 @@ export function VisitForm({
           <h2 className="text-sm font-semibold text-card-foreground">
             Log Readings
           </h2>
-          {!completed && (
+          {!completed && !isOthersVisit && (
             <Button
               type="button"
               variant="outline"
@@ -313,9 +317,9 @@ export function VisitForm({
             label="pH"
             unit=""
             control={control}
-            disabled={completed}
+            disabled={completed || isOthersVisit}
             lastReading={
-              completed ? null : lastReadings?.ph ?? undefined
+              completed || isOthersVisit ? null : lastReadings?.ph ?? undefined
             }
           />
           <WaterReadingInput
@@ -323,9 +327,9 @@ export function VisitForm({
             label="Free Chlorine"
             unit="ppm"
             control={control}
-            disabled={completed}
+            disabled={completed || isOthersVisit}
             lastReading={
-              completed
+              completed || isOthersVisit
                 ? null
                 : lastReadings?.freeChlorine ?? undefined
             }
@@ -335,9 +339,9 @@ export function VisitForm({
             label="Total Alkalinity"
             unit="ppm"
             control={control}
-            disabled={completed}
+            disabled={completed || isOthersVisit}
             lastReading={
-              completed
+              completed || isOthersVisit
                 ? null
                 : lastReadings?.totalAlkalinity ?? undefined
             }
@@ -347,9 +351,9 @@ export function VisitForm({
             label="Calcium Hardness"
             unit="ppm"
             control={control}
-            disabled={completed}
+            disabled={completed || isOthersVisit}
             lastReading={
-              completed
+              completed || isOthersVisit
                 ? null
                 : lastReadings?.calciumHardness ?? undefined
             }
@@ -359,9 +363,9 @@ export function VisitForm({
             label="Cyanuric Acid"
             unit="ppm"
             control={control}
-            disabled={completed}
+            disabled={completed || isOthersVisit}
             lastReading={
-              completed
+              completed || isOthersVisit
                 ? null
                 : lastReadings?.cyanuricAcid ?? undefined
             }
@@ -371,9 +375,9 @@ export function VisitForm({
             label="Temperature"
             unit="°F"
             control={control}
-            disabled={completed}
+            disabled={completed || isOthersVisit}
             lastReading={
-              completed
+              completed || isOthersVisit
                 ? null
                 : lastReadings?.temperature ?? undefined
             }
@@ -437,7 +441,7 @@ export function VisitForm({
           <h2 className="text-sm font-semibold text-card-foreground">
             Chemical Recommendations
           </h2>
-          {!completed && (
+          {!completed && !isOthersVisit && (
             <AddChemicalDialog onAdd={handleAddChemical} />
           )}
         </div>
@@ -446,7 +450,7 @@ export function VisitForm({
           poolVolume={visit.pool.volume}
           checked={checkedChemicals}
           onToggle={handleToggleChemical}
-          disabled={completed}
+          disabled={completed || isOthersVisit}
         />
 
         {manualChemicals.length > 0 && (
@@ -471,7 +475,7 @@ export function VisitForm({
                     )}
                   </div>
                 </div>
-                {!completed && (
+                  {!completed && !isOthersVisit && (
                   <button
                     type="button"
                     onClick={() => handleRemoveChemical(i)}
@@ -492,12 +496,12 @@ export function VisitForm({
         <VisitNotes
           value={notes ?? ""}
           onChange={(val) => setValue("notes", val)}
-          disabled={completed}
+          disabled={completed || isOthersVisit}
         />
       </div>
 
       {/* Bottom Action Bar */}
-      {!completed && (
+      {!completed && !isOthersVisit && (
         <>
           <div className="h-20" />
 

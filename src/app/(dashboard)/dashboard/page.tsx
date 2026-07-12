@@ -69,7 +69,7 @@ export default async function DashboardPage() {
           ) : (
             <div className="space-y-3">
               {visits.map((visit) => (
-                <VisitCard key={visit.id} visit={visit} />
+                <VisitCard key={visit.id} visit={visit} currentUserId={user.id} />
               ))}
             </div>
           )}

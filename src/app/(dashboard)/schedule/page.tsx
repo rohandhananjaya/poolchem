@@ -201,6 +201,7 @@ export default async function SchedulePage({
                       key={visit.id}
                       visit={visit}
                       timeLabel={timeLabelFor(visit)}
+                      currentUserId={user.id}
                     />
                   ))}
                 </div>

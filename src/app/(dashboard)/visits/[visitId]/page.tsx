@@ -73,6 +73,8 @@ export default async function VisitPage({
               <StatusDropdown
                 visitId={visit.id}
                 currentStatus={visit.status as "DRAFT" | "IN_PROGRESS" | "CANCELLED"}
+                currentUserId={user.id}
+                techId={visit.techId}
               />
             )}
             {visit.status === "CANCELLED" && visit.cancellationReason && (
@@ -119,6 +121,7 @@ export default async function VisitPage({
         visit={JSON.parse(JSON.stringify(visit))}
         lastReadings={lastReadings ? JSON.parse(JSON.stringify(lastReadings)) : null}
         currentUser={{ id: user.id, name: user.name }}
+        techId={visit.techId}
       />
     </div>
   )

@@ -27,6 +27,8 @@ export interface DashboardVisit {
   /** Street address, or `null` when the pool has none on file. */
   address: string | null;
   status: ServiceVisitStatus;
+  /** The assigned tech's ID, or `null` when unassigned. */
+  techId: string | null;
   /** Formatted service time, or `null` to render as "Unscheduled". */
   timeLabel: string | null;
   /** Water-health summary, or `null` when the visit has no reading yet. */
@@ -113,6 +115,7 @@ export async function getDashboardData(
       poolName: visit.pool.name,
       address: visit.pool.address,
       status: visit.status,
+      techId: visit.techId,
       // Show the scheduled date when one is set (the form has no time picker);
       // otherwise show the completion time for completed visits, or null
       // ("Unscheduled") for ad-hoc uncompleted visits.

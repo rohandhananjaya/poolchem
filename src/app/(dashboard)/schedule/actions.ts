@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 
 import { requireTech } from "@/lib/auth";
-import { cancelVisit, createVisit, updateVisit } from "@/lib/db/visits";
+import { assertVisitAccess, cancelVisit, createVisit, updateVisit } from "@/lib/db/visits";
 
 /** Result returned to `useActionState` on the client. */
 export interface ScheduleFormState {
@@ -90,6 +90,7 @@ export async function cancelVisitAction(
   }
 
   try {
+    await assertVisitAccess(visitId, user.companyId, user.id);
     const result = await cancelVisit(visitId, user.companyId, reason.trim());
     if (!result) {
       return { ok: false, error: "Visit not found." };
