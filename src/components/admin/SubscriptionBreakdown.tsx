@@ -3,6 +3,7 @@
 import * as React from "react"
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts"
 
+import { cssVar } from "@/lib/utils"
 import type { SubscriptionBreakdownItem } from "@/lib/db/admin-dashboard"
 
 const STATUS_LABELS: Record<string, string> = {
@@ -12,11 +13,6 @@ const STATUS_LABELS: Record<string, string> = {
   incomplete: "Incomplete",
   past_due: "Past Due",
   none: "No Subscription",
-}
-
-function cssVar(name: string, fallback: string): string {
-  if (typeof document === "undefined") return fallback
-  return getComputedStyle(document.documentElement).getPropertyValue(name).trim() || fallback
 }
 
 export function SubscriptionBreakdown({

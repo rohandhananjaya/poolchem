@@ -4,6 +4,7 @@ import { format, subDays } from "date-fns"
 
 import { prisma } from "@/lib/prisma"
 import { ServiceVisitStatus } from "@/generated/prisma/client"
+import { todayRange } from "@/lib/date-utils"
 
 export interface RegistrationTrendItem {
   date: string
@@ -44,14 +45,6 @@ export interface AdminDashboardData {
 
   recentUsers: RecentUser[]
   subscriptionBreakdown: SubscriptionBreakdownItem[]
-}
-
-function todayRange(): { gte: Date; lt: Date } {
-  const now = new Date()
-  const gte = new Date(now.getFullYear(), now.getMonth(), now.getDate())
-  const lt = new Date(gte)
-  lt.setDate(lt.getDate() + 1)
-  return { gte, lt }
 }
 
 function daysAgoRange(days: number): { gte: Date; lt: Date } {

@@ -8,20 +8,14 @@ import { createAdminClient, deleteAuthUserByEmail } from "@/lib/supabase/admin";
 import { createCompany, deleteCompany, getCompanyById, updateCompany } from "@/lib/db/company";
 import { createUser, deleteUser, updateUser, updateUserAdmin, updateUserRole } from "@/lib/db/users";
 import type { UserRole } from "@/generated/prisma/client";
+import { formText, formOptionalText } from "@/lib/utils";
+
+const text = formText;
+const optionalText = formOptionalText;
 
 export interface FormState {
   ok: boolean;
   error?: string;
-}
-
-function text(formData: FormData, key: string): string {
-  const value = formData.get(key);
-  return typeof value === "string" ? value.trim() : "";
-}
-
-function optionalText(formData: FormData, key: string): string | null {
-  const value = text(formData, key);
-  return value === "" ? null : value;
 }
 
 export async function updateCompanyAction(
@@ -30,25 +24,25 @@ export async function updateCompanyAction(
 ): Promise<FormState> {
   await requireSuperAdmin();
 
-  const companyId = text(formData, "companyId");
+  const companyId = formText(formData, "companyId");
   if (!companyId) {
     return { ok: false, error: "Company ID is required." };
   }
 
-  const name = text(formData, "name");
-  const email = text(formData, "email");
+  const name = formText(formData, "name");
+  const email = formText(formData, "email");
   if (name === "") return { ok: false, error: "Company name is required." };
   if (email === "") return { ok: false, error: "Company email is required." };
 
-  const subscriptionStatus = optionalText(formData, "subscriptionStatus");
+  const subscriptionStatus = formOptionalText(formData, "subscriptionStatus");
   const active = formData.get("active") === "on";
 
   try {
     await updateCompany(companyId, {
       name,
       email,
-      phone: optionalText(formData, "phone"),
-      address: optionalText(formData, "address"),
+      phone: formOptionalText(formData, "phone"),
+      address: formOptionalText(formData, "address"),
       subscriptionStatus,
       active,
     });
@@ -65,8 +59,8 @@ export async function createCompanyAction(
 ): Promise<FormState> {
   await requireSuperAdmin();
 
-  const name = text(formData, "name");
-  const email = text(formData, "email");
+  const name = formText(formData, "name");
+  const email = formText(formData, "email");
   if (name === "") return { ok: false, error: "Company name is required." };
   if (email === "") return { ok: false, error: "Company email is required." };
 
@@ -74,8 +68,8 @@ export async function createCompanyAction(
     await createCompany({
       name,
       email,
-      phone: optionalText(formData, "phone"),
-      address: optionalText(formData, "address"),
+      phone: formOptionalText(formData, "phone"),
+      address: formOptionalText(formData, "address"),
     });
     revalidatePath("/admin/companies");
     return { ok: true };
@@ -90,12 +84,12 @@ export async function deleteCompanyAction(
 ): Promise<FormState> {
   await requireSuperAdmin();
 
-  const companyId = text(formData, "companyId");
+  const companyId = formText(formData, "companyId");
   if (!companyId) {
     return { ok: false, error: "Company ID is required." };
   }
 
-  const confirmName = text(formData, "confirmName");
+  const confirmName = formText(formData, "confirmName");
 
   const company = await getCompanyById(companyId);
   if (!company) {
@@ -121,11 +115,11 @@ export async function createUserAction(
 ): Promise<FormState> {
   await requireSuperAdmin();
 
-  const companyId = text(formData, "companyId");
-  const name = text(formData, "name");
-  const email = text(formData, "email");
-  const role = text(formData, "role") as UserRole;
-  const password = text(formData, "password");
+  const companyId = formText(formData, "companyId");
+  const name = formText(formData, "name");
+  const email = formText(formData, "email");
+  const role = formText(formData, "role") as UserRole;
+  const password = formText(formData, "password");
 
   if (!companyId) return { ok: false, error: "Company ID is required." };
   if (name === "") return { ok: false, error: "Name is required." };
@@ -174,9 +168,9 @@ export async function updateUserAction(
 ): Promise<FormState> {
   const currentUser = await requireSuperAdmin();
 
-  const userId = text(formData, "userId");
-  const companyId = text(formData, "companyId");
-  const name = text(formData, "name");
+  const userId = formText(formData, "userId");
+  const companyId = formText(formData, "companyId");
+  const name = formText(formData, "name");
 
   if (!userId) return { ok: false, error: "User ID is required." };
   if (name === "") return { ok: false, error: "Name is required." };
@@ -193,8 +187,8 @@ export async function updateUserAction(
     return { ok: false, error: "Cannot modify another SUPER_ADMIN." };
   }
 
-  const role = text(formData, "role") as UserRole | "";
-  const phone = text(formData, "phone") || null;
+  const role = formText(formData, "role") as UserRole | "";
+  const phone = formText(formData, "phone") || null;
 
   try {
     await updateUserAdmin(userId, companyId, {
@@ -215,8 +209,8 @@ export async function deleteUserAction(
 ): Promise<FormState> {
   const currentUser = await requireSuperAdmin();
 
-  const userId = text(formData, "userId");
-  const companyId = text(formData, "companyId");
+  const userId = formText(formData, "userId");
+  const companyId = formText(formData, "companyId");
 
   if (!userId) return { ok: false, error: "User ID is required." };
   if (!companyId) return { ok: false, error: "Company ID is required." };

@@ -5,6 +5,7 @@ import Link from "next/link"
 import { format } from "date-fns"
 import { LayoutDashboard, MapPin } from "lucide-react"
 
+import { ActiveBadge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { EditPoolDialog } from "./EditPoolDialog"
 
@@ -42,15 +43,7 @@ export function PoolRow({ pool, canManage = false }: PoolRowProps) {
             <h3 className="truncate text-base font-semibold text-card-foreground">
               {pool.name}
             </h3>
-            {isActive ? (
-              <span className="inline-flex items-center rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-medium text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300">
-                Active
-              </span>
-            ) : (
-              <span className="inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
-                Inactive
-              </span>
-            )}
+            {<ActiveBadge active={isActive} />}
           </div>
 
           {pool.address ? (

@@ -13,6 +13,11 @@ const {
   saveDraftVisit,
   getVisitHistory,
   getLastVisitReadings,
+  startVisit,
+  updateVisitStatus,
+  cancelVisit,
+  assertVisitAccess,
+  updateVisit,
 } = await import("@/lib/db/visits");
 
 const companyId = "company-1";
@@ -400,5 +405,217 @@ describe("getLastVisitReadings", () => {
     prismaMock.serviceVisit.findMany.mockResolvedValue([]);
     const result = await getLastVisitReadings(poolId);
     expect(result).toBeNull();
+  });
+});
+
+describe("startVisit", () => {
+  it("marks a DRAFT visit as IN_PROGRESS and assigns tech", async () => {
+    prismaMock.serviceVisit.findFirst.mockResolvedValue({
+      id: visitId,
+      status: "DRAFT",
+      techId: null,
+    });
+    prismaMock.serviceVisit.update.mockResolvedValue({
+      id: visitId,
+      status: "IN_PROGRESS",
+      techId,
+    });
+
+    const result = await startVisit(visitId, companyId, techId);
+
+    expect(prismaMock.serviceVisit.findFirst).toHaveBeenCalledWith({
+      where: { id: visitId, pool: { companyId }, status: "DRAFT" },
+    });
+    expect(prismaMock.serviceVisit.update).toHaveBeenCalledWith({
+      where: { id: visitId },
+      data: { status: "IN_PROGRESS", techId },
+    });
+    expect(result?.status).toBe("IN_PROGRESS");
+  });
+
+  it("keeps existing techId when none provided", async () => {
+    prismaMock.serviceVisit.findFirst.mockResolvedValue({
+      id: visitId,
+      status: "DRAFT",
+      techId,
+    });
+    prismaMock.serviceVisit.update.mockResolvedValue({
+      id: visitId,
+      status: "IN_PROGRESS",
+      techId,
+    });
+
+    await startVisit(visitId, companyId);
+
+    expect(prismaMock.serviceVisit.update).toHaveBeenCalledWith({
+      where: { id: visitId },
+      data: { status: "IN_PROGRESS", techId },
+    });
+  });
+
+  it("returns null when visit is not DRAFT or not scoped", async () => {
+    prismaMock.serviceVisit.findFirst.mockResolvedValue(null);
+
+    const result = await startVisit(visitId, companyId);
+    expect(result).toBeNull();
+  });
+});
+
+describe("updateVisitStatus", () => {
+  it("updates status when visit is found and scoped", async () => {
+    prismaMock.serviceVisit.findFirst.mockResolvedValue({
+      id: visitId,
+      status: "IN_PROGRESS",
+    });
+    prismaMock.serviceVisit.update.mockResolvedValue({
+      id: visitId,
+      status: "COMPLETED",
+    });
+
+    const result = await updateVisitStatus(visitId, companyId, "COMPLETED" as never);
+
+    expect(prismaMock.serviceVisit.update).toHaveBeenCalledWith({
+      where: { id: visitId },
+      data: { status: "COMPLETED" },
+    });
+    expect(result?.status).toBe("COMPLETED");
+  });
+
+  it("returns null when visit is not found", async () => {
+    prismaMock.serviceVisit.findFirst.mockResolvedValue(null);
+
+    const result = await updateVisitStatus(visitId, "wrong-company", "COMPLETED" as never);
+    expect(result).toBeNull();
+  });
+});
+
+describe("cancelVisit", () => {
+  it("cancels a visit with a reason", async () => {
+    prismaMock.serviceVisit.findFirst.mockResolvedValue({ id: visitId });
+    prismaMock.serviceVisit.update.mockResolvedValue({
+      id: visitId,
+      status: "CANCELLED",
+      cancellationReason: "Client requested",
+    });
+
+    const result = await cancelVisit(visitId, companyId, "Client requested");
+
+    expect(prismaMock.serviceVisit.update).toHaveBeenCalledWith({
+      where: { id: visitId },
+      data: { status: "CANCELLED", cancellationReason: "Client requested" },
+    });
+    expect(result?.status).toBe("CANCELLED");
+  });
+
+  it("returns null when visit not found", async () => {
+    prismaMock.serviceVisit.findFirst.mockResolvedValue(null);
+
+    const result = await cancelVisit(visitId, companyId, "No reason");
+    expect(result).toBeNull();
+  });
+});
+
+describe("assertVisitAccess", () => {
+  it("returns status when visit is found", async () => {
+    prismaMock.serviceVisit.findFirst.mockResolvedValue({
+      status: "DRAFT",
+      techId: null,
+    });
+
+    const result = await assertVisitAccess(visitId, companyId, techId);
+    expect(result).toBe("DRAFT");
+  });
+
+  it("throws when visit is in progress by another tech", async () => {
+    prismaMock.serviceVisit.findFirst.mockResolvedValue({
+      status: "IN_PROGRESS",
+      techId: "other-tech",
+    });
+
+    await expect(
+      assertVisitAccess(visitId, companyId, techId),
+    ).rejects.toThrow(/in progress by another tech/i);
+  });
+
+  it("allows the assigned tech to access an IN_PROGRESS visit", async () => {
+    prismaMock.serviceVisit.findFirst.mockResolvedValue({
+      status: "IN_PROGRESS",
+      techId,
+    });
+
+    const result = await assertVisitAccess(visitId, companyId, techId);
+    expect(result).toBe("IN_PROGRESS");
+  });
+
+  it("throws when visit is not found", async () => {
+    prismaMock.serviceVisit.findFirst.mockResolvedValue(null);
+
+    await expect(
+      assertVisitAccess(visitId, companyId, techId),
+    ).rejects.toThrow(/visit not found/i);
+  });
+});
+
+describe("updateVisit", () => {
+  it("updates scheduledAt and techId", async () => {
+    const newDate = new Date("2026-07-20");
+    prismaMock.serviceVisit.findFirst.mockResolvedValue({
+      id: visitId,
+      pool: { companyId },
+    });
+    prismaMock.user.findFirst.mockResolvedValue({ id: techId, companyId });
+    prismaMock.serviceVisit.update.mockResolvedValue({
+      id: visitId,
+      scheduledAt: newDate,
+      techId,
+    });
+
+    const result = await updateVisit(visitId, companyId, {
+      scheduledAt: newDate,
+      techId,
+    });
+
+    expect(prismaMock.serviceVisit.update).toHaveBeenCalledWith({
+      where: { id: visitId },
+      data: { scheduledAt: newDate, techId },
+    });
+    expect(result?.techId).toBe(techId);
+  });
+
+  it("unassigns tech when techId is null", async () => {
+    prismaMock.serviceVisit.findFirst.mockResolvedValue({
+      id: visitId,
+      pool: { companyId },
+    });
+    prismaMock.serviceVisit.update.mockResolvedValue({
+      id: visitId,
+      techId: null,
+    });
+
+    await updateVisit(visitId, companyId, { techId: null });
+
+    expect(prismaMock.serviceVisit.update).toHaveBeenCalledWith({
+      where: { id: visitId },
+      data: { techId: null },
+    });
+  });
+
+  it("returns null when visit not found", async () => {
+    prismaMock.serviceVisit.findFirst.mockResolvedValue(null);
+
+    const result = await updateVisit(visitId, companyId, { scheduledAt: new Date() });
+    expect(result).toBeNull();
+  });
+
+  it("throws when techId does not belong to the company", async () => {
+    prismaMock.serviceVisit.findFirst.mockResolvedValue({
+      id: visitId,
+      pool: { companyId },
+    });
+    prismaMock.user.findFirst.mockResolvedValue(null);
+
+    await expect(
+      updateVisit(visitId, companyId, { techId: "other-tech" }),
+    ).rejects.toThrow(/not found for company/i);
   });
 });

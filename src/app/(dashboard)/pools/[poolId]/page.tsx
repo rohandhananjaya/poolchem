@@ -1,6 +1,7 @@
 import { notFound, redirect } from "next/navigation"
 import { Waves } from "lucide-react"
 
+import { EmptyState } from "@/components/ui/empty-state"
 import { requireTech } from "@/lib/auth"
 import { getPoolById } from "@/lib/db/pools"
 import { getVisitHistory } from "@/lib/db/visits"
@@ -66,17 +67,11 @@ export default async function PoolAnalysisPage({
     <Shell title={`${pool.name} — Analysis`} backHref="/pools" backLabel="Pools">
       <div className="space-y-6">
         {scoredVisits.length === 0 ? (
-          <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border bg-card/50 px-6 py-16 text-center">
-            <div className="flex size-16 items-center justify-center rounded-full bg-muted text-muted-foreground">
-              <Waves className="size-8" />
-            </div>
-            <p className="mt-4 text-sm font-medium text-foreground">
-              No completed visits yet.
-            </p>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Complete a service visit to see analysis and trends.
-            </p>
-          </div>
+          <EmptyState
+            icon={<Waves className="size-8" />}
+            title="No completed visits yet."
+            description="Complete a service visit to see analysis and trends."
+          />
         ) : (
           <PoolAnalysis
             pool={{

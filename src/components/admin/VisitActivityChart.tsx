@@ -11,12 +11,8 @@ import {
   ResponsiveContainer,
 } from "recharts"
 
+import { cssVar } from "@/lib/utils"
 import type { VisitTrendItem } from "@/lib/db/admin-dashboard"
-
-function cssVar(name: string, fallback: string): string {
-  if (typeof document === "undefined") return fallback
-  return getComputedStyle(document.documentElement).getPropertyValue(name).trim() || fallback
-}
 
 export function VisitActivityChart({
   data,

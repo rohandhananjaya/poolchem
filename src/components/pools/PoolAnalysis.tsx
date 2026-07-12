@@ -24,6 +24,8 @@ import {
 } from "recharts"
 
 import { cn } from "@/lib/utils"
+import { healthBadgeClasses } from "@/components/ui/badge"
+import { ActiveBadge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { ScoreSparkline } from "@/components/reports/ScoreSparkline"
 import type { ReportScorePoint } from "@/lib/reports/generate-report"
@@ -99,14 +101,6 @@ function paramColor(status: string): string {
   return "text-rose-600 dark:text-rose-400"
 }
 
-/* ── badge helper for water-health score ────────────────────────── */
-function scoreBadgeClasses(score: number): string {
-  if (score >= 90) return "bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300"
-  if (score >= 75) return "bg-lime-100 text-lime-700 dark:bg-lime-950 dark:text-lime-300"
-  if (score >= 50) return "bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300"
-  return "bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-300"
-}
-
 /* ── component ──────────────────────────────────────────────────── */
 export function PoolAnalysis({ pool, scoredVisits, scoreHistory, lastReadings }: PoolAnalysisProps) {
   /* flatten the last 10 visits into chart data points */
@@ -132,15 +126,7 @@ export function PoolAnalysis({ pool, scoredVisits, scoreHistory, lastReadings }:
               <h2 className="truncate text-lg font-semibold text-card-foreground">
                 {pool.name}
               </h2>
-              {pool.isActive ? (
-                <span className="inline-flex shrink-0 items-center rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-medium text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300">
-                  Active
-                </span>
-              ) : (
-                <span className="inline-flex shrink-0 items-center rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
-                  Inactive
-                </span>
-              )}
+              {<ActiveBadge active={pool.isActive} />}
             </div>
 
             {pool.address ? (
@@ -322,7 +308,7 @@ export function PoolAnalysis({ pool, scoredVisits, scoreHistory, lastReadings }:
                   <span
                     className={cn(
                       "mt-1 inline-flex rounded-full px-2 py-0.5 text-xs font-semibold tabular-nums",
-                      scoreBadgeClasses(visit.waterHealth.score),
+                      healthBadgeClasses(visit.waterHealth.score),
                     )}
                   >
                     {visit.waterHealth.score}

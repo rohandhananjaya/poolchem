@@ -1,45 +1,5 @@
-import Link from "next/link"
-import { ChevronRight } from "lucide-react"
+import { StatTile } from "@/components/ui/stat-tile"
 import type { DashboardStats } from "@/lib/db/dashboard"
-
-function StatTile({
-  label,
-  value,
-  hint,
-  href,
-}: {
-  label: string
-  value: string
-  hint?: string
-  href?: string
-}) {
-  const content = (
-    <div className="flex items-center justify-between gap-2 rounded-xl border border-border bg-card p-4 transition-colors hover:bg-muted">
-      <div className="min-w-0">
-        <p className="text-xs font-medium text-muted-foreground">{label}</p>
-        <p className="mt-1 flex items-baseline gap-1.5">
-          <span className="font-mono text-2xl font-bold tabular-nums text-card-foreground">
-            {value}
-          </span>
-          {hint ? (
-            <span className="text-base font-normal text-muted-foreground">
-              {hint}
-            </span>
-          ) : null}
-        </p>
-      </div>
-      {href ? (
-        <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
-      ) : null}
-    </div>
-  )
-
-  if (href) {
-    return <Link href={href}>{content}</Link>
-  }
-
-  return content
-}
 
 export interface StatsRowProps {
   stats: DashboardStats

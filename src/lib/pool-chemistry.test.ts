@@ -319,7 +319,114 @@ describe("getChemicalRecommendations", () => {
   });
 });
 
-describe("getIdealRange", () => {
+describe("calculateLSI — edge cases", () => {
+  it("handles negative pH without crashing", () => {
+    const result = calculateLSI(-1, 80, 300, 100);
+    expect(result.status).toBe("CORROSIVE");
+  });
+
+  it("handles NaN inputs without crashing", () => {
+    const result = calculateLSI(NaN, 80, 300, 100);
+    expect(typeof result.lsi).toBe("number");
+    expect(typeof result.status).toBe("string");
+  });
+
+  it("handles negative temperature", () => {
+    const result = calculateLSI(7.5, -10, 300, 100);
+    expect(result.status).toBe("CORROSIVE");
+  });
+
+  it("handles extremely high temperature", () => {
+    const result = calculateLSI(7.5, 200, 300, 100);
+    expect(result.lsi).toBeGreaterThan(0.3);
+    expect(result.status).toBe("SCALING");
+  });
+
+  it("handles negative calcium hardness", () => {
+    const result = calculateLSI(7.5, 80, -100, 100);
+    expect(typeof result.lsi).toBe("number");
+    expect(typeof result.status).toBe("string");
+  });
+
+  it("handles negative TDS", () => {
+    const result = calculateLSI(7.5, 80, 300, 100, -500);
+    expect(result.lsi).toBeDefined();
+    expect(typeof result.lsi).toBe("number");
+  });
+});
+
+describe("getWaterHealthScore — edge cases", () => {
+  it("scores POOR at score exactly 49 (boundary)", () => {
+    const result = getWaterHealthScore({
+      ph: 8.6,
+      freeChlorine: 0,
+      totalAlkalinity: 20,
+      calciumHardness: 50,
+      cyanuricAcid: 150,
+    });
+    expect(result.score).toBeLessThan(50);
+    expect(result.status).toBe("POOR");
+  });
+
+  it("handles negative reading values", () => {
+    const result = getWaterHealthScore({
+      ...idealReadings,
+      ph: -1,
+    });
+    expect(result.score).toBeLessThan(100);
+    expect(result.issues).toHaveLength(1);
+  });
+
+  it("handles undefined pH gracefully", () => {
+    const { ph: _, ...noPh } = idealReadings;
+    const result = getWaterHealthScore(noPh as WaterReadingInput);
+    expect(typeof result.score).toBe("number");
+    expect(typeof result.status).toBe("string");
+  });
+
+  it("handles empty readings object", () => {
+    const result = getWaterHealthScore({} as WaterReadingInput);
+    expect(typeof result.score).toBe("number");
+    expect(typeof result.status).toBe("string");
+  });
+
+  it("handles extremely high pH (14)", () => {
+    const result = getWaterHealthScore({ ...idealReadings, ph: 14 });
+    expect(result.score).toBe(70);
+    expect(result.status).toBe("FAIR");
+  });
+});
+
+describe("getChemicalRecommendations — edge cases", () => {
+  it("handles zero pool volume without crashing", () => {
+    const recs = getChemicalRecommendations({ ...idealReadings, ph: 7.3 }, 0);
+    expect(recs).toHaveLength(1);
+    expect(recs[0].amount).toBe(0);
+  });
+
+  it("handles negative pool volume", () => {
+    const recs = getChemicalRecommendations({ ...idealReadings, ph: 7.3 }, -1000);
+    expect(recs).toHaveLength(1);
+  });
+
+  it("handles undefined temperature in readings", () => {
+    const { temperature: _, ...noTemp } = idealReadings;
+    const recs = getChemicalRecommendations(noTemp as WaterReadingInput, 10_000);
+    expect(recs).toEqual([]);
+  });
+
+  it("handles high CYA combined with low pH", () => {
+    const recs = getChemicalRecommendations(
+      { ...idealReadings, cyanuricAcid: 90, ph: 7.3 },
+      10_000,
+    );
+    expect(recs.length).toBeGreaterThanOrEqual(1);
+    const cyaRec = recs.find((r) => r.chemical === "N/A");
+    expect(cyaRec).toBeDefined();
+  });
+});
+
+describe("getIdealRange — all aliases", () => {
   it("returns bounds for canonical keys", () => {
     expect(getIdealRange("ph")).toEqual({ min: 7.4, max: 7.6, unit: "" });
     expect(getIdealRange("freeChlorine")).toEqual({
@@ -353,5 +460,46 @@ describe("getIdealRange", () => {
 
   it("throws for empty string", () => {
     expect(() => getIdealRange("")).toThrow(/unknown/i);
+  });
+
+  it("accepts all totalAlkalinity aliases", () => {
+    const expected = getIdealRange("totalAlkalinity");
+    expect(getIdealRange("TA")).toEqual(expected);
+    expect(getIdealRange("ta")).toEqual(expected);
+    expect(getIdealRange("total_alkalinity")).toEqual(expected);
+    expect(getIdealRange("total-alkalinity")).toEqual(expected);
+  });
+
+  it("accepts all calciumHardness aliases", () => {
+    const expected = getIdealRange("calciumHardness");
+    expect(getIdealRange("CH")).toEqual(expected);
+    expect(getIdealRange("ch")).toEqual(expected);
+    expect(getIdealRange("calcium_hardness")).toEqual(expected);
+    expect(getIdealRange("calcium-hardness")).toEqual(expected);
+  });
+
+  it("accepts all cyanuricAcid aliases", () => {
+    const expected = getIdealRange("cyanuricAcid");
+    expect(getIdealRange("CYA")).toEqual(expected);
+    expect(getIdealRange("cya")).toEqual(expected);
+    expect(getIdealRange("cyanuric_acid")).toEqual(expected);
+    expect(getIdealRange("cyanuric-acid")).toEqual(expected);
+    expect(getIdealRange("stabilizer")).toEqual(expected);
+  });
+
+  it("accepts all freeChlorine aliases", () => {
+    const expected = getIdealRange("freeChlorine");
+    expect(getIdealRange("free chlorine")).toEqual(expected);
+    expect(getIdealRange("free-chlorine")).toEqual(expected);
+    expect(getIdealRange("free_chlorine")).toEqual(expected);
+    expect(getIdealRange("chlorine")).toEqual(expected);
+    expect(getIdealRange("FC")).toEqual(expected);
+    expect(getIdealRange("fc")).toEqual(expected);
+  });
+
+  it("accepts all pH aliases", () => {
+    const expected = getIdealRange("ph");
+    expect(getIdealRange("pH")).toEqual(expected);
+    expect(getIdealRange("PH")).toEqual(expected);
   });
 });

@@ -5,25 +5,9 @@ import { useRouter } from "next/navigation"
 import { RefreshCw } from "lucide-react"
 
 import { cn } from "@/lib/utils"
+import { StatTile } from "@/components/ui/stat-tile"
 import { Button } from "@/components/ui/button"
 import type { AdminDashboardData } from "@/lib/db/admin-dashboard"
-
-function StatTile({
-  label,
-  value,
-}: {
-  label: string
-  value: string
-}) {
-  return (
-    <div className="rounded-xl border border-border bg-card p-4">
-      <p className="text-xs font-medium text-muted-foreground">{label}</p>
-      <p className="mt-1 text-2xl font-semibold tabular-nums text-card-foreground">
-        {value}
-      </p>
-    </div>
-  )
-}
 
 export function PlatformKPIs({ data }: { data: AdminDashboardData }) {
   const router = useRouter()

@@ -18,6 +18,7 @@ import {
 } from "@/lib/pool-chemistry";
 import { prisma } from "@/lib/prisma";
 import { ServiceVisitStatus } from "@/generated/prisma/client";
+import { todayRange } from "@/lib/date-utils";
 
 /** A single visit as rendered by {@link VisitCard} — primitives only. */
 export interface DashboardVisit {
@@ -50,15 +51,6 @@ export interface DashboardStats {
 export interface DashboardData {
   visits: DashboardVisit[];
   stats: DashboardStats;
-}
-
-/** Local midnight-to-midnight window for "today". */
-function todayRange(): { gte: Date; lt: Date } {
-  const now = new Date();
-  const gte = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const lt = new Date(gte);
-  lt.setDate(lt.getDate() + 1);
-  return { gte, lt };
 }
 
 /**

@@ -5,31 +5,11 @@ import { useCallback } from "react"
 import { RotateCcw } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
+import { useFilterPush } from "@/hooks/use-filter-push"
 
 interface PoolOption {
   id: string
   name: string
-}
-
-function useFilterPush() {
-  const router = useRouter()
-  const pathname = usePathname()
-  const searchParams = useSearchParams()
-
-  return useCallback(
-    (updates: Record<string, string | null>) => {
-      const params = new URLSearchParams()
-      for (const [key, value] of searchParams.entries()) {
-        if (key !== "page") params.set(key, value)
-      }
-      for (const [key, value] of Object.entries(updates)) {
-        if (value) params.set(key, value)
-        else params.delete(key)
-      }
-      router.push(`${pathname}?${params.toString()}`)
-    },
-    [router, pathname, searchParams],
-  )
 }
 
 export function ScheduleFilters({ pools }: { pools: PoolOption[] }) {

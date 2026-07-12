@@ -2,6 +2,7 @@
 
 import { formatDistanceToNow } from "date-fns"
 
+import { initials } from "@/lib/utils"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import type { RecentUser } from "@/lib/db/admin-dashboard"
 
@@ -9,13 +10,6 @@ const ROLE_LABELS: Record<string, string> = {
   SUPER_ADMIN: "Platform Admin",
   OWNER: "Owner",
   TECH: "Technician",
-}
-
-function initials(name: string): string {
-  const parts = name.trim().split(/\s+/).filter(Boolean)
-  if (parts.length === 0) return "?"
-  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase()
-  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
 }
 
 export function RecentRegistrations({

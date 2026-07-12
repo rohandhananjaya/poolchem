@@ -7,15 +7,13 @@ import { requireOwner } from "@/lib/auth";
 import { createAdminClient, deleteAuthUserByEmail } from "@/lib/supabase/admin";
 import { createUser, deleteUser, updateUserAdmin } from "@/lib/db/users";
 import type { UserRole } from "@/generated/prisma/client";
+import { formText } from "@/lib/utils";
+
+const text = formText;
 
 export interface FormState {
   ok: boolean;
   error?: string;
-}
-
-function text(formData: FormData, key: string): string {
-  const value = formData.get(key);
-  return typeof value === "string" ? value.trim() : "";
 }
 
 export async function createTeamUserAction(
@@ -27,11 +25,11 @@ export async function createTeamUserAction(
     return { ok: false, error: "You must belong to a company to add users." };
   }
 
-  const name = text(formData, "name");
-  const email = text(formData, "email");
-  const role = text(formData, "role") as UserRole;
-  const password = text(formData, "password");
-  const phone = text(formData, "phone") || null;
+  const name = formText(formData, "name");
+  const email = formText(formData, "email");
+  const role = formText(formData, "role") as UserRole;
+  const password = formText(formData, "password");
+  const phone = formText(formData, "phone") || null;
 
   if (name === "") return { ok: false, error: "Name is required." };
   if (email === "") return { ok: false, error: "Email is required." };
@@ -84,8 +82,8 @@ export async function updateTeamUserAction(
     return { ok: false, error: "You must belong to a company to manage users." };
   }
 
-  const userId = text(formData, "userId");
-  const name = text(formData, "name");
+  const userId = formText(formData, "userId");
+  const name = formText(formData, "name");
 
   if (!userId) return { ok: false, error: "User ID is required." };
   if (name === "") return { ok: false, error: "Name is required." };
@@ -103,12 +101,12 @@ export async function updateTeamUserAction(
   }
 
   // Cannot promote to SUPER_ADMIN
-  const role = text(formData, "role") as UserRole | "";
+  const role = formText(formData, "role") as UserRole | "";
   if (role === "SUPER_ADMIN") {
     return { ok: false, error: "Cannot promote a user to SUPER_ADMIN." };
   }
 
-  const phone = text(formData, "phone") || null;
+  const phone = formText(formData, "phone") || null;
 
   try {
     await updateUserAdmin(userId, currentUser.companyId, {
@@ -132,7 +130,7 @@ export async function deleteTeamUserAction(
     return { ok: false, error: "You must belong to a company to manage users." };
   }
 
-  const userId = text(formData, "userId");
+  const userId = formText(formData, "userId");
   if (!userId) return { ok: false, error: "User ID is required." };
 
   // Cannot delete yourself

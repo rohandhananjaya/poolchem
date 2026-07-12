@@ -3,20 +3,14 @@
 import { revalidatePath } from "next/cache";
 import { requireOwner } from "@/lib/auth";
 import { createPool, updatePool, deletePool, getPoolById } from "@/lib/db/pools";
+import { formText, formOptionalText } from "@/lib/utils";
+
+const text = formText;
+const optionalText = formOptionalText;
 
 export interface FormState {
   ok: boolean;
   error?: string;
-}
-
-function text(formData: FormData, key: string): string {
-  const value = formData.get(key);
-  return typeof value === "string" ? value.trim() : "";
-}
-
-function optionalText(formData: FormData, key: string): string | null {
-  const value = text(formData, key);
-  return value === "" ? null : value;
 }
 
 export async function createPoolAction(
@@ -28,7 +22,7 @@ export async function createPoolAction(
     return { ok: false, error: "No company affiliation." };
   }
 
-  const name = text(formData, "name");
+  const name = formText(formData, "name");
   if (name === "") return { ok: false, error: "Pool name is required." };
 
   const volumeRaw = formData.get("volume");
@@ -43,8 +37,8 @@ export async function createPoolAction(
       {
         name,
         volume,
-        address: optionalText(formData, "address"),
-        notes: optionalText(formData, "notes"),
+        address: formOptionalText(formData, "address"),
+        notes: formOptionalText(formData, "notes"),
       },
       user.companyId,
     );
@@ -64,10 +58,10 @@ export async function updatePoolAction(
     return { ok: false, error: "No company affiliation." };
   }
 
-  const poolId = text(formData, "poolId");
+  const poolId = formText(formData, "poolId");
   if (!poolId) return { ok: false, error: "Pool ID is required." };
 
-  const name = text(formData, "name");
+  const name = formText(formData, "name");
   if (name === "") return { ok: false, error: "Pool name is required." };
 
   const volumeRaw = formData.get("volume");
@@ -83,8 +77,8 @@ export async function updatePoolAction(
     await updatePool(poolId, {
       name,
       volume,
-      address: optionalText(formData, "address"),
-      notes: optionalText(formData, "notes"),
+      address: formOptionalText(formData, "address"),
+      notes: formOptionalText(formData, "notes"),
       isActive,
     }, user.companyId);
     revalidatePath("/pools");
@@ -103,10 +97,10 @@ export async function deletePoolAction(
     return { ok: false, error: "No company affiliation." };
   }
 
-  const poolId = text(formData, "poolId");
+  const poolId = formText(formData, "poolId");
   if (!poolId) return { ok: false, error: "Pool ID is required." };
 
-  const confirmName = text(formData, "confirmName");
+  const confirmName = formText(formData, "confirmName");
 
   const pool = await getPoolById(poolId, user.companyId);
   if (!pool) {

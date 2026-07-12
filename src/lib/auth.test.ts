@@ -138,6 +138,20 @@ describe("requireRole", () => {
       requireRole(["OWNER"]),
     ).rejects.toThrow(/requires one of these roles/i);
   });
+
+  it("succeeds when user has one of the allowed roles", async () => {
+    vi.mocked(createClient).mockResolvedValue({
+      auth: {
+        getUser: vi.fn().mockResolvedValue({
+          data: { user: { email: "user@test.com" } },
+        }),
+      },
+    } as never);
+    vi.mocked(prisma.user.findUnique).mockResolvedValue(mockUser as never);
+
+    const result = await requireRole(["TECH", "OWNER"]);
+    expect(result.role).toBe("TECH");
+  });
 });
 
 describe("requireOwner", () => {
@@ -156,6 +170,19 @@ describe("requireOwner", () => {
 
     const result = await requireOwner();
     expect(result.role).toBe("OWNER");
+  });
+
+  it("throws when user is not an OWNER", async () => {
+    vi.mocked(createClient).mockResolvedValue({
+      auth: {
+        getUser: vi.fn().mockResolvedValue({
+          data: { user: { email: "user@test.com" } },
+        }),
+      },
+    } as never);
+    vi.mocked(prisma.user.findUnique).mockResolvedValue(mockUser as never);
+
+    await expect(requireOwner()).rejects.toThrow(/requires one of these roles/i);
   });
 });
 
@@ -180,6 +207,22 @@ describe("requireTech", () => {
       vi.clearAllMocks();
     }
   });
+
+  it("throws when user is not TECH/OWNER/SUPER_ADMIN", async () => {
+    vi.mocked(createClient).mockResolvedValue({
+      auth: {
+        getUser: vi.fn().mockResolvedValue({
+          data: { user: { email: "user@test.com" } },
+        }),
+      },
+    } as never);
+    vi.mocked(prisma.user.findUnique).mockResolvedValue({
+      ...mockUser,
+      role: "UNKNOWN_ROLE",
+    } as never);
+
+    await expect(requireTech()).rejects.toThrow(/requires one of these roles/i);
+  });
 });
 
 describe("requireSuperAdmin", () => {
@@ -198,6 +241,19 @@ describe("requireSuperAdmin", () => {
 
     const result = await requireSuperAdmin();
     expect(result.role).toBe("SUPER_ADMIN");
+  });
+
+  it("throws when user is not a SUPER_ADMIN", async () => {
+    vi.mocked(createClient).mockResolvedValue({
+      auth: {
+        getUser: vi.fn().mockResolvedValue({
+          data: { user: { email: "user@test.com" } },
+        }),
+      },
+    } as never);
+    vi.mocked(prisma.user.findUnique).mockResolvedValue(mockUser as never);
+
+    await expect(requireSuperAdmin()).rejects.toThrow(/SUPER_ADMIN/i);
   });
 });
 
@@ -262,6 +318,24 @@ describe("getCompanyId", () => {
 
     const result = await getCompanyId();
     expect(result).toBe("company-1");
+  });
+
+  it("returns null for SUPER_ADMIN (no company)", async () => {
+    vi.mocked(createClient).mockResolvedValue({
+      auth: {
+        getUser: vi.fn().mockResolvedValue({
+          data: { user: { email: "admin@test.com" } },
+        }),
+      },
+    } as never);
+    vi.mocked(prisma.user.findUnique).mockResolvedValue({
+      ...mockUser,
+      role: "SUPER_ADMIN",
+      companyId: null,
+    } as never);
+
+    const result = await getCompanyId();
+    expect(result).toBeNull();
   });
 });
 

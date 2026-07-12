@@ -6,23 +6,15 @@ import { requireAuth, requireOwner } from "@/lib/auth";
 import { updateCompany } from "@/lib/db/company";
 import { updateUser } from "@/lib/db/users";
 import { createClient } from "@/lib/supabase/server";
+import { formText, formOptionalText } from "@/lib/utils";
+
+const text = formText;
+const optionalText = formOptionalText;
 
 /** Result returned to `useActionState` on the client. */
 export interface FormState {
   ok: boolean;
   error?: string;
-}
-
-/** Reads a required, trimmed text field from a form; returns "" when absent. */
-function text(formData: FormData, key: string): string {
-  const value = formData.get(key);
-  return typeof value === "string" ? value.trim() : "";
-}
-
-/** Reads an optional text field: trimmed string, or `null` when empty. */
-function optionalText(formData: FormData, key: string): string | null {
-  const value = text(formData, key);
-  return value === "" ? null : value;
 }
 
 /** Updates the signed-in user's own account (name only). */
@@ -32,7 +24,7 @@ export async function updateAccountAction(
 ): Promise<FormState> {
   const user = await requireAuth();
 
-  const name = text(formData, "name");
+  const name = formText(formData, "name");
   if (name === "") {
     return { ok: false, error: "Name is required." };
   }
@@ -56,8 +48,8 @@ export async function updateCompanyAction(
     return { ok: false, error: "No company affiliation." };
   }
 
-  const name = text(formData, "name");
-  const email = text(formData, "email");
+  const name = formText(formData, "name");
+  const email = formText(formData, "email");
   if (name === "") return { ok: false, error: "Company name is required." };
   if (email === "") return { ok: false, error: "Company email is required." };
 
@@ -65,8 +57,8 @@ export async function updateCompanyAction(
     await updateCompany(user.companyId, {
       name,
       email,
-      phone: optionalText(formData, "phone"),
-      address: optionalText(formData, "address"),
+      phone: formOptionalText(formData, "phone"),
+      address: formOptionalText(formData, "address"),
     });
     revalidatePath("/profile");
     return { ok: true };
@@ -82,9 +74,9 @@ export async function updatePasswordAction(
 ): Promise<FormState> {
   const user = await requireAuth();
 
-  const currentPassword = text(formData, "currentPassword");
-  const newPassword = text(formData, "newPassword");
-  const confirmPassword = text(formData, "confirmPassword");
+  const currentPassword = formText(formData, "currentPassword");
+  const newPassword = formText(formData, "newPassword");
+  const confirmPassword = formText(formData, "confirmPassword");
 
   if (!currentPassword) {
     return { ok: false, error: "Current password is required." };

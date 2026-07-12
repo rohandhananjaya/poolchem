@@ -13,9 +13,9 @@ import {
 } from "lucide-react"
 import { toast } from "sonner"
 
-import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { CardRow } from "@/components/ui/card-row"
+import { HealthBadge } from "@/components/ui/badge"
 import {
   Dialog,
   DialogContent,
@@ -24,78 +24,44 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
+import { CancelVisitDialog } from "@/components/visits/CancelVisitDialog"
 import {
   cancelVisitAction,
-  type ScheduleFormState,
 } from "@/app/(dashboard)/schedule/actions"
 import { startVisitAction } from "@/app/(dashboard)/visits/[visitId]/actions"
-import type { ScheduledVisit } from "@/lib/db/schedule"
 
-const INITIAL_STATE: ScheduleFormState = { ok: false }
-
-/** Maps a 0–100 water-health score to a traffic-light badge tone. */
-function healthClasses(score: number): string {
-  if (score >= 75) {
-    return "bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300"
-  }
-  if (score >= 50) {
-    return "bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300"
-  }
-  return "bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-300"
+export interface VisitCardVisit {
+  id: string
+  poolName: string
+  address: string | null
+  status: string
+  timeLabel?: string | null
+  health: { score: number; status: string } | null
+  assignedTech?: { id: string; name: string } | null
+  techId?: string | null
 }
 
-function HealthBadge({ health }: { health: ScheduledVisit["health"] }) {
-  if (!health) {
-    return (
-      <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
-        No reading
-      </span>
-    )
-  }
-  return (
-    <span
-      className={cn(
-        "shrink-0 rounded-full px-2 py-0.5 text-xs font-semibold tabular-nums",
-        healthClasses(health.score),
-      )}
-      title={`Water health: ${health.status.toLowerCase()}`}
-    >
-      {health.score}
-    </span>
-  )
-}
-
-export interface ScheduleVisitCardProps {
-  visit: ScheduledVisit
-  /** Preformatted date/time label for the visit (e.g. "9:00 AM" or "Jul 12"). */
-  timeLabel: string
-  /** Used to determine if this visit is assigned to the current user. */
+export interface VisitCardProps {
+  visit: VisitCardVisit
+  /** Override the time label shown; falls back to `visit.timeLabel`. */
+  timeLabel?: string
   currentUserId: string
 }
 
-export function ScheduleVisitCard({
-  visit,
-  timeLabel,
-  currentUserId,
-}: ScheduleVisitCardProps) {
+export function VisitCard({ visit, timeLabel, currentUserId }: VisitCardProps) {
   const router = useRouter()
   const [open, setOpen] = React.useState(false)
   const [cancelling, setCancelling] = React.useState(false)
-  const [reason, setReason] = React.useState("")
-  const [isCustom, setIsCustom] = React.useState(false)
   const [pending, startTransition] = React.useTransition()
 
-  const isDraft = visit.status === "DRAFT"
-  const isCompleted = visit.status === "COMPLETED"
+  const completed = visit.status === "COMPLETED"
   const isCancelled = visit.status === "CANCELLED"
+  const isDraft = visit.status === "DRAFT"
   const inProgress = visit.status === "IN_PROGRESS"
-  const isOthersVisit =
-    inProgress &&
-    !!visit.assignedTech &&
-    visit.assignedTech.id !== currentUserId
+  const assignedTechId = visit.assignedTech?.id ?? visit.techId
+  const isOthersVisit = inProgress && !!assignedTechId && assignedTechId !== currentUserId
 
-  const trimmedReason = reason.trim()
-  const canCancel = trimmedReason.length > 0
+  const displayTime = timeLabel ?? visit.timeLabel ?? "Unscheduled"
 
   function handleStartVisit() {
     startTransition(async () => {
@@ -108,31 +74,24 @@ export function ScheduleVisitCard({
     })
   }
 
-  function handleCancel() {
-    if (!canCancel) return
-
+  async function handleCancel(reason: string) {
     const formData = new FormData()
     formData.set("visitId", visit.id)
-    formData.set("reason", trimmedReason)
+    formData.set("reason", reason)
 
-    startTransition(async () => {
-      const result = await cancelVisitAction(INITIAL_STATE, formData)
-      if (result.ok) {
-        toast.success("Visit cancelled.")
-        setOpen(false)
-        setCancelling(false)
-        setReason("")
-        router.refresh()
-      } else if (result.error) {
-        toast.error(result.error)
-      }
-    })
+    const result = await cancelVisitAction({ ok: false }, formData)
+    if (result.ok) {
+      toast.success("Visit cancelled.")
+      setOpen(false)
+      setCancelling(false)
+      router.refresh()
+    } else if (result.error) {
+      toast.error(result.error)
+    }
   }
 
   function resetDialog() {
     setCancelling(false)
-    setReason("")
-    setIsCustom(false)
   }
 
   return (
@@ -143,7 +102,7 @@ export function ScheduleVisitCard({
         className="cursor-pointer"
         actions={
           <div className="flex items-center gap-2">
-            {isCompleted ? (
+            {completed ? (
               <span className="inline-flex items-center gap-1.5 text-sm font-medium text-emerald-600 dark:text-emerald-400">
                 <CheckCircle2 className="size-4" />
                 Completed
@@ -185,22 +144,22 @@ export function ScheduleVisitCard({
         }
       >
         <div className="flex items-center gap-2">
-          <h3 className="truncate font-medium text-card-foreground">
+          <h3 className="truncate text-lg font-semibold text-card-foreground">
             {visit.poolName}
           </h3>
-          <HealthBadge health={visit.health} />
+          <HealthBadge score={visit.health?.score ?? null} />
         </div>
 
         {visit.address ? (
-          <p className="mt-1 flex items-center gap-1.5 text-sm text-muted-foreground">
-            <MapPin className="size-3.5 shrink-0" />
+          <p className="mt-1 flex items-center gap-1.5 text-base font-medium text-muted-foreground">
+            <MapPin className="size-4 shrink-0" />
             <span className="truncate">{visit.address}</span>
           </p>
         ) : null}
 
         <p className="mt-1 flex items-center gap-1.5 text-xs text-muted-foreground">
           <Clock className="size-3.5 shrink-0" />
-          {timeLabel}
+          {displayTime}
         </p>
 
         {visit.assignedTech ? (
@@ -208,12 +167,12 @@ export function ScheduleVisitCard({
             <User className="size-3.5 shrink-0" />
             {visit.assignedTech.name}
           </p>
-        ) : (
+        ) : visit.techId === null && visit.assignedTech !== undefined ? (
           <p className="mt-0.5 flex items-center gap-1.5 text-xs italic text-muted-foreground">
             <User className="size-3.5 shrink-0" />
             Unassigned — anyone can take
           </p>
-        )}
+        ) : null}
       </CardRow>
 
       <Dialog
@@ -230,79 +189,15 @@ export function ScheduleVisitCard({
           </DialogHeader>
 
           {cancelling ? (
-            <div className="space-y-4">
-              <p className="text-sm text-muted-foreground">
-                Are you sure you want to cancel this visit? A reason is required.
-              </p>
-              <div className="grid gap-1.5">
-                <label
-                  htmlFor="cancel-reason-select"
-                  className="text-sm font-medium text-foreground"
-                >
-                  Reason for cancellation
-                </label>
-                <select
-                  id="cancel-reason-select"
-                  value={isCustom ? "__custom__" : reason}
-                  onChange={(e) => {
-                    const val = e.target.value
-                    if (val === "__custom__") {
-                      setIsCustom(true)
-                      setReason("")
-                    } else {
-                      setIsCustom(false)
-                      setReason(val)
-                    }
-                  }}
-                  className="flex h-9 w-full rounded-lg border border-input bg-background px-3 py-1 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 dark:bg-input/30"
-                >
-                  <option value="" disabled>
-                    Select a reason…
-                  </option>
-                  <option value="Customer rescheduled">Customer rescheduled</option>
-                  <option value="Pool closed / winterized">Pool closed / winterized</option>
-                  <option value="Customer not home">Customer not home</option>
-                  <option value="Weather conditions">Weather conditions</option>
-                  <option value="Duplicate visit">Duplicate visit</option>
-                  <option value="Access issue (gate/lock)">Access issue (gate/lock)</option>
-                  <option value="__custom__">Other…</option>
-                </select>
-                {isCustom ? (
-                  <input
-                    id="cancel-reason-custom"
-                    type="text"
-                    value={reason}
-                    onChange={(e) => setReason(e.target.value)}
-                    placeholder="Type a reason…"
-                    autoFocus
-                    className="flex h-9 w-full rounded-lg border border-input bg-background px-3 py-1 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 placeholder:text-muted-foreground dark:bg-input/30"
-                  />
-                ) : null}
-              </div>
-              <DialogFooter>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  onClick={() => setCancelling(false)}
-                  disabled={pending}
-                >
-                  Back
-                </Button>
-                <Button
-                  type="button"
-                  variant="destructive"
-                  disabled={!canCancel || pending}
-                  onClick={handleCancel}
-                >
-                  {pending ? "Cancelling…" : "Confirm Cancel"}
-                </Button>
-              </DialogFooter>
-            </div>
+            <CancelVisitDialog
+              onCancel={handleCancel}
+              onBack={() => setCancelling(false)}
+            />
           ) : (
             <div className="space-y-4">
               <div className="flex items-center gap-2">
-                <HealthBadge health={visit.health} />
-                {isCompleted ? (
+                <HealthBadge score={visit.health?.score ?? null} />
+                {completed ? (
                   <span className="inline-flex items-center gap-1.5 text-sm font-medium text-emerald-600 dark:text-emerald-400">
                     <CheckCircle2 className="size-4" />
                     Completed
@@ -312,7 +207,12 @@ export function ScheduleVisitCard({
                     <XCircle className="size-4" />
                     Cancelled
                   </span>
-                ) : isOthersVisit || inProgress ? (
+                ) : isOthersVisit ? (
+                  <span className="inline-flex items-center gap-1.5 text-sm font-medium text-sky-600 dark:text-sky-400">
+                    <Play className="size-4" />
+                    In Progress
+                  </span>
+                ) : inProgress ? (
                   <span className="inline-flex items-center gap-1.5 text-sm font-medium text-sky-600 dark:text-sky-400">
                     <Play className="size-4" />
                     In Progress
@@ -334,7 +234,7 @@ export function ScheduleVisitCard({
 
               <p className="flex items-center gap-1.5 text-sm text-muted-foreground">
                 <Clock className="size-3.5 shrink-0" />
-                {timeLabel}
+                {displayTime}
               </p>
 
               {visit.assignedTech ? (
@@ -342,12 +242,12 @@ export function ScheduleVisitCard({
                   <User className="size-3.5 shrink-0" />
                   {visit.assignedTech.name}
                 </p>
-              ) : (
+              ) : visit.assignedTech !== undefined ? (
                 <p className="flex items-center gap-1.5 text-sm italic text-muted-foreground">
                   <User className="size-3.5 shrink-0" />
                   Unassigned
                 </p>
-              )}
+              ) : null}
 
               {!isOthersVisit && (isDraft || inProgress) ? (
                 <DialogFooter className="gap-2 sm:justify-between">

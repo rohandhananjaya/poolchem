@@ -42,7 +42,7 @@ describe("getCompanyReportData", () => {
     expect(result.recentVisits[0].poolName).toBe("Pool A");
     expect(result.recentVisits[0].score).toBe(100);
     expect(prismaMock.serviceVisit.findMany).toHaveBeenCalledWith(
-      expect.objectContaining({ skip: 0, take: 20 }),
+      expect.objectContaining({ skip: 0, take: 10 }),
     );
   });
 
