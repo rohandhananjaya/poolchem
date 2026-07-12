@@ -133,6 +133,16 @@ export default function LoginPage() {
           </a>
           .
         </p>
+
+        <p className="text-xs text-muted-foreground text-center">
+          Don&apos;t have an account?{" "}
+          <a
+            href="/signup"
+            className="underline underline-offset-2 hover:text-foreground transition-colors"
+          >
+            Create one
+          </a>
+        </p>
       </div>
     </div>
   )

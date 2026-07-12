@@ -3,6 +3,8 @@ import "server-only"
 import * as os from "os"
 
 import { prisma } from "@/lib/prisma"
+import type { AuditLogWithUser } from "@/lib/db/admin-audit"
+import { getAllAuditLogs } from "@/lib/db/admin-audit"
 
 export interface ServerInfo {
   hostname: string
@@ -41,7 +43,14 @@ export interface SystemLogEntry {
   context: string | null
   stack: string | null
   metadata: string | null
+  companyId: string | null
+  userId: string | null
   createdAt: Date
+}
+
+export interface CompanyOption {
+  id: string
+  name: string
 }
 
 export interface DiagnosticsData {
@@ -49,6 +58,8 @@ export interface DiagnosticsData {
   database: DatabaseInfo
   logSummary: LogSummary
   recentLogs: SystemLogEntry[]
+  companies: CompanyOption[]
+  auditLogs: AuditLogWithUser[]
 }
 
 function getCpuLoad(): number {
@@ -105,25 +116,30 @@ async function getDatabaseInfo(): Promise<DatabaseInfo> {
   }
 }
 
-async function getLogSummary(): Promise<LogSummary> {
+async function getLogSummary(companyId?: string): Promise<LogSummary> {
   const now = new Date()
   const dayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000)
   const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
 
+  const where = (companyId ? { companyId } : {}) as Record<string, unknown>
+  const timeWhere = (gte: Date) => ({ ...where, createdAt: { gte } }) as Record<string, unknown>
+
   const [total, errors24h, warnings24h, info24h, errors7d, warnings7d] = await Promise.all([
-    prisma.systemLog.count(),
-    prisma.systemLog.count({ where: { level: "ERROR", createdAt: { gte: dayAgo } } }),
-    prisma.systemLog.count({ where: { level: "WARNING", createdAt: { gte: dayAgo } } }),
-    prisma.systemLog.count({ where: { level: "INFO", createdAt: { gte: dayAgo } } }),
-    prisma.systemLog.count({ where: { level: "ERROR", createdAt: { gte: weekAgo } } }),
-    prisma.systemLog.count({ where: { level: "WARNING", createdAt: { gte: weekAgo } } }),
+    prisma.systemLog.count({ where }),
+    prisma.systemLog.count({ where: { ...timeWhere(dayAgo), level: "ERROR" } }),
+    prisma.systemLog.count({ where: { ...timeWhere(dayAgo), level: "WARNING" } }),
+    prisma.systemLog.count({ where: { ...timeWhere(dayAgo), level: "INFO" } }),
+    prisma.systemLog.count({ where: { ...timeWhere(weekAgo), level: "ERROR" } }),
+    prisma.systemLog.count({ where: { ...timeWhere(weekAgo), level: "WARNING" } }),
   ])
 
   return { total, errors24h, warnings24h, info24h, errors7d, warnings7d }
 }
 
-async function getRecentLogs(limit = 50): Promise<SystemLogEntry[]> {
+async function getRecentLogs(limit = 50, companyId?: string): Promise<SystemLogEntry[]> {
+  const where = companyId ? { companyId } : {}
   const logs = await prisma.systemLog.findMany({
+    where,
     orderBy: { createdAt: "desc" },
     take: limit,
   })
@@ -134,8 +150,18 @@ async function getRecentLogs(limit = 50): Promise<SystemLogEntry[]> {
     context: l.context,
     stack: l.stack,
     metadata: l.metadata,
+    companyId: l.companyId,
+    userId: l.userId,
     createdAt: l.createdAt,
   }))
+}
+
+async function getCompaniesList(): Promise<CompanyOption[]> {
+  const companies = await prisma.company.findMany({
+    select: { id: true, name: true },
+    orderBy: { name: "asc" },
+  })
+  return companies
 }
 
 export async function getServerDiagnostics(): Promise<DiagnosticsData> {
@@ -155,13 +181,15 @@ export async function getServerDiagnostics(): Promise<DiagnosticsData> {
     processUptimeSeconds: Math.floor(process.uptime()),
   }
 
-  const [database, logSummary, recentLogs] = await Promise.all([
+  const [database, logSummary, recentLogs, companies, auditLogs] = await Promise.all([
     getDatabaseInfo(),
     getLogSummary(),
     getRecentLogs(),
+    getCompaniesList(),
+    getAllAuditLogs(),
   ])
 
-  return { server, database, logSummary, recentLogs }
+  return { server, database, logSummary, recentLogs, companies, auditLogs }
 }
 
 /** Lightweight version for the dashboard overview (no full log list). */

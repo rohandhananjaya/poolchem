@@ -10,6 +10,8 @@ interface LogEntry {
   context?: string
   stack?: string
   metadata?: Record<string, unknown>
+  companyId?: string
+  userId?: string
 }
 
 function serializeMeta(meta?: Record<string, unknown>): string | undefined {
@@ -30,6 +32,8 @@ async function log(entry: LogEntry): Promise<void> {
         context: entry.context ?? null,
         stack: entry.stack ?? null,
         metadata: serializeMeta(entry.metadata),
+        companyId: entry.companyId ?? null,
+        userId: entry.userId ?? null,
       },
     })
   } catch {
@@ -38,15 +42,46 @@ async function log(entry: LogEntry): Promise<void> {
 }
 
 export const logger = {
-  error(message: string, context?: string, meta?: Record<string, unknown>) {
-    log({ level: "ERROR", message, context, stack: new Error().stack, metadata: meta })
+  error(
+    message: string,
+    opts?: { context?: string; metadata?: Record<string, unknown>; companyId?: string; userId?: string },
+  ) {
+    log({
+      level: "ERROR",
+      message,
+      context: opts?.context,
+      stack: new Error().stack,
+      metadata: opts?.metadata,
+      companyId: opts?.companyId,
+      userId: opts?.userId,
+    })
   },
 
-  warn(message: string, context?: string, meta?: Record<string, unknown>) {
-    log({ level: "WARNING", message, context, metadata: meta })
+  warn(
+    message: string,
+    opts?: { context?: string; metadata?: Record<string, unknown>; companyId?: string; userId?: string },
+  ) {
+    log({
+      level: "WARNING",
+      message,
+      context: opts?.context,
+      metadata: opts?.metadata,
+      companyId: opts?.companyId,
+      userId: opts?.userId,
+    })
   },
 
-  info(message: string, context?: string, meta?: Record<string, unknown>) {
-    log({ level: "INFO", message, context, metadata: meta })
+  info(
+    message: string,
+    opts?: { context?: string; metadata?: Record<string, unknown>; companyId?: string; userId?: string },
+  ) {
+    log({
+      level: "INFO",
+      message,
+      context: opts?.context,
+      metadata: opts?.metadata,
+      companyId: opts?.companyId,
+      userId: opts?.userId,
+    })
   },
 }

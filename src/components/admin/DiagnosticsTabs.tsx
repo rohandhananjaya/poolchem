@@ -1,12 +1,13 @@
 "use client"
 
-import { Server, ScrollText, Database } from "lucide-react"
+import { Server, ScrollText, Database, History } from "lucide-react"
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { LiveServerCharts } from "@/components/admin/LiveServerCharts"
 import { ServerHealthDetails } from "@/components/admin/ServerHealthDetails"
 import { LogSummaryCards } from "@/components/admin/LogSummaryCards"
 import { SystemLogViewer } from "@/components/admin/SystemLogViewer"
+import { TenantLogViewer } from "@/components/admin/TenantLogViewer"
 import type { DiagnosticsData } from "@/lib/db/admin-diagnostics"
 
 export function DiagnosticsTabs({
@@ -23,7 +24,11 @@ export function DiagnosticsTabs({
         </TabsTrigger>
         <TabsTrigger value="recent-logs" className="cursor-pointer gap-2">
           <ScrollText className="size-4" />
-          Recent Logs
+          System Logs
+        </TabsTrigger>
+        <TabsTrigger value="audit-logs" className="cursor-pointer gap-2">
+          <History className="size-4" />
+          Audit Logs
         </TabsTrigger>
         <TabsTrigger value="database-tables" className="cursor-pointer gap-2">
           <Database className="size-4" />
@@ -41,7 +46,16 @@ export function DiagnosticsTabs({
       <TabsContent value="recent-logs">
         <div className="space-y-4">
           <LogSummaryCards logSummary={diagnostics.logSummary} />
-          <SystemLogViewer logs={diagnostics.recentLogs} />
+          <SystemLogViewer logs={diagnostics.recentLogs} companies={diagnostics.companies} />
+        </div>
+      </TabsContent>
+
+      <TabsContent value="audit-logs">
+        <div className="space-y-4">
+          <p className="text-xs text-muted-foreground">
+            All admin actions across all tenants. Filter by company on each entry.
+          </p>
+          <TenantLogViewer logs={diagnostics.auditLogs} companies={diagnostics.companies} />
         </div>
       </TabsContent>
 

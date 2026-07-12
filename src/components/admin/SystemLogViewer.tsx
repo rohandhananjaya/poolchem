@@ -1,9 +1,9 @@
 "use client"
 
 import * as React from "react"
-import { AlertCircle, AlertTriangle, Info } from "lucide-react"
+import { AlertCircle, AlertTriangle, Info, Building2 } from "lucide-react"
 
-import type { SystemLogEntry } from "@/lib/db/admin-diagnostics"
+import type { SystemLogEntry, CompanyOption } from "@/lib/db/admin-diagnostics"
 
 const LEVEL_ICONS = {
   ERROR: AlertCircle,
@@ -16,7 +16,7 @@ const LEVEL_STYLES = {
     "border-red-200 bg-red-50 text-red-700 dark:border-red-900 dark:bg-red-950 dark:text-red-400",
   WARNING:
     "border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-400",
-  INFO: "border-blue-200 bg-blue-50 text-blue-700 dark:border-blue-900 dark:bg-blue-950 dark:text-blue-400",
+  INFO: "border-blue-200 bg-blue-50 text-blue-700 dark:border-blue-200 dark:bg-blue-950 dark:text-blue-400",
 } as const
 
 function formatTimestamp(date: Date): string {
@@ -29,11 +29,28 @@ function formatTimestamp(date: Date): string {
   }).format(date)
 }
 
-export function SystemLogViewer({ logs }: { logs: SystemLogEntry[] }) {
-  const [filter, setFilter] = React.useState<string>("ALL")
+const companyName = (companies: CompanyOption[], id: string | null): string | null => {
+  if (!id) return null
+  return companies.find((c) => c.id === id)?.name ?? id
+}
+
+export function SystemLogViewer({
+  logs,
+  companies,
+}: {
+  logs: SystemLogEntry[]
+  companies: CompanyOption[]
+}) {
+  const [levelFilter, setLevelFilter] = React.useState<string>("ALL")
+  const [companyFilter, setCompanyFilter] = React.useState<string>("ALL")
   const [expanded, setExpanded] = React.useState<Set<string>>(new Set())
 
-  const filtered = filter === "ALL" ? logs : logs.filter((l) => l.level === filter)
+  const filtered = logs.filter((l) => {
+    if (levelFilter !== "ALL" && l.level !== levelFilter) return false
+    if (companyFilter === "__none") return l.companyId === null
+    if (companyFilter !== "ALL" && l.companyId !== companyFilter) return false
+    return true
+  })
 
   function toggleExpand(id: string) {
     setExpanded((prev) => {
@@ -46,14 +63,14 @@ export function SystemLogViewer({ logs }: { logs: SystemLogEntry[] }) {
 
   return (
     <div className="space-y-3">
-      <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2">
         {["ALL", "ERROR", "WARNING", "INFO"].map((level) => (
           <button
             key={level}
             type="button"
-            onClick={() => setFilter(level)}
+            onClick={() => setLevelFilter(level)}
             className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${
-              filter === level
+              levelFilter === level
                 ? "bg-primary text-primary-foreground"
                 : "bg-muted text-muted-foreground hover:bg-muted/80"
             }`}
@@ -61,6 +78,23 @@ export function SystemLogViewer({ logs }: { logs: SystemLogEntry[] }) {
             {level === "ALL" ? "All" : level}
           </button>
         ))}
+
+        <div className="ml-auto flex items-center gap-2">
+          <Building2 className="size-3.5 text-muted-foreground" />
+          <select
+            value={companyFilter}
+            onChange={(e) => setCompanyFilter(e.target.value)}
+            className="rounded-lg border border-border bg-background px-2.5 py-1.5 text-xs text-foreground"
+          >
+            <option value="ALL">All Companies</option>
+            {companies.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name}
+              </option>
+            ))}
+            <option value="__none">No company (system)</option>
+          </select>
+        </div>
       </div>
 
       <div className="space-y-2">
@@ -102,8 +136,18 @@ export function SystemLogViewer({ logs }: { logs: SystemLogEntry[] }) {
                   {formatTimestamp(log.createdAt)}
                 </time>
               </button>
-              {isExpanded && (log.stack || log.metadata) ? (
-                <div className="border-t border-border px-3 pb-3 pt-2">
+              {isExpanded ? (
+                <div className="border-t border-border px-3 pb-3 pt-2 space-y-2">
+                  {(log.companyId || log.userId) ? (
+                    <div className="flex flex-wrap gap-3 text-[10px] text-muted-foreground">
+                      {log.companyId ? (
+                        <span>Company: <code className="rounded bg-muted px-1 font-mono">{companyName(companies, log.companyId) ?? log.companyId}</code></span>
+                      ) : null}
+                      {log.userId ? (
+                        <span>User: <code className="rounded bg-muted px-1 font-mono">{log.userId}</code></span>
+                      ) : null}
+                    </div>
+                  ) : null}
                   {log.stack ? (
                     <pre className="max-h-40 overflow-auto rounded bg-muted p-2 text-[10px] text-muted-foreground">
                       {log.stack}

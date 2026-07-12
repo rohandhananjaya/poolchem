@@ -9,6 +9,8 @@ import { createCompany, deleteCompany, getCompanyById, updateCompany } from "@/l
 import { createUser, deleteUser, updateUser, updateUserAdmin, updateUserRole } from "@/lib/db/users";
 import type { UserRole } from "@/generated/prisma/client";
 import { formText, formOptionalText } from "@/lib/utils";
+import { logger } from "@/lib/log";
+import { audit } from "@/lib/audit";
 
 const text = formText;
 const optionalText = formOptionalText;
@@ -22,7 +24,7 @@ export async function updateCompanyAction(
   _prev: FormState,
   formData: FormData,
 ): Promise<FormState> {
-  await requireSuperAdmin();
+  const currentUser = await requireSuperAdmin();
 
   const companyId = formText(formData, "companyId");
   if (!companyId) {
@@ -38,6 +40,7 @@ export async function updateCompanyAction(
   const active = formData.get("active") === "on";
 
   try {
+    const prev = await getCompanyById(companyId);
     await updateCompany(companyId, {
       name,
       email,
@@ -46,9 +49,12 @@ export async function updateCompanyAction(
       subscriptionStatus,
       active,
     });
+    await audit.company(currentUser.id, companyId, "updated", { name, email, prevName: prev?.name });
+    logger.info("Company updated", { context: "admin.companies.updateCompanyAction", companyId, userId: currentUser.id, metadata: { companyId, name, email } });
     revalidatePath("/admin/companies");
     return { ok: true };
-  } catch {
+  } catch (err) {
+    logger.error("Failed to update company", { context: "admin.companies.updateCompanyAction", companyId, userId: currentUser.id, metadata: { companyId, name } });
     return { ok: false, error: "Could not update company. Please try again." };
   }
 }
@@ -57,7 +63,7 @@ export async function createCompanyAction(
   _prev: FormState,
   formData: FormData,
 ): Promise<FormState> {
-  await requireSuperAdmin();
+  const currentUser = await requireSuperAdmin();
 
   const name = formText(formData, "name");
   const email = formText(formData, "email");
@@ -65,15 +71,18 @@ export async function createCompanyAction(
   if (email === "") return { ok: false, error: "Company email is required." };
 
   try {
-    await createCompany({
+    const created = await createCompany({
       name,
       email,
       phone: formOptionalText(formData, "phone"),
       address: formOptionalText(formData, "address"),
     });
+    await audit.company(currentUser.id, created.id, "created", { name, email });
+    logger.info("Company created", { context: "admin.companies.createCompanyAction", companyId: created.id, userId: currentUser.id, metadata: { name, email } });
     revalidatePath("/admin/companies");
     return { ok: true };
-  } catch {
+  } catch (err) {
+    logger.error("Failed to create company", { context: "admin.companies.createCompanyAction", userId: currentUser.id, metadata: { name, email } });
     return { ok: false, error: "Could not create company. Please try again." };
   }
 }
@@ -82,7 +91,7 @@ export async function deleteCompanyAction(
   _prev: FormState,
   formData: FormData,
 ): Promise<FormState> {
-  await requireSuperAdmin();
+  const currentUser = await requireSuperAdmin();
 
   const companyId = formText(formData, "companyId");
   if (!companyId) {
@@ -102,9 +111,12 @@ export async function deleteCompanyAction(
 
   try {
     await deleteCompany(companyId);
+    await audit.company(currentUser.id, companyId, "deleted", { name: company.name });
+    logger.info("Company deleted", { context: "admin.companies.deleteCompanyAction", companyId, userId: currentUser.id, metadata: { companyId, name: company.name } });
     revalidatePath("/admin/companies");
     return { ok: true };
-  } catch {
+  } catch (err) {
+    logger.error("Failed to delete company", { context: "admin.companies.deleteCompanyAction", companyId, userId: currentUser.id, metadata: { companyId } });
     return { ok: false, error: "Could not delete company. Please try again." };
   }
 }
@@ -113,7 +125,7 @@ export async function createUserAction(
   _prev: FormState,
   formData: FormData,
 ): Promise<FormState> {
-  await requireSuperAdmin();
+  const currentUser = await requireSuperAdmin();
 
   const companyId = formText(formData, "companyId");
   const name = formText(formData, "name");
@@ -154,10 +166,13 @@ export async function createUserAction(
       }
     }
 
-    await createUser({ name, email, role, companyId });
+    const createdUser = await createUser({ name, email, role, companyId });
+    await audit.user(currentUser.id, createdUser.id, companyId, "created", { name, email, role });
+    logger.info("User created", { context: "admin.companies.createUserAction", companyId, userId: currentUser.id, metadata: { targetUserId: createdUser.id, name, email, role } });
     revalidatePath("/admin/companies");
     return { ok: true };
-  } catch {
+  } catch (err) {
+    logger.error("Failed to create user", { context: "admin.companies.createUserAction", companyId, userId: currentUser.id, metadata: { name, email, role } });
     return { ok: false, error: "Could not create user. Please try again." };
   }
 }
@@ -196,9 +211,12 @@ export async function updateUserAction(
       role: role && ["OWNER", "TECH"].includes(role) ? (role as UserRole) : undefined,
       phone,
     });
+    await audit.user(currentUser.id, userId, companyId, "updated", { name, role, phone });
+    logger.info("User updated", { context: "admin.companies.updateUserAction", companyId, userId: currentUser.id, metadata: { targetUserId: userId, name, role } });
     revalidatePath("/admin/companies");
     return { ok: true };
-  } catch {
+  } catch (err) {
+    logger.error("Failed to update user", { context: "admin.companies.updateUserAction", companyId, userId: currentUser.id, metadata: { targetUserId: userId, name } });
     return { ok: false, error: "Could not update user. Please try again." };
   }
 }
@@ -227,12 +245,16 @@ export async function deleteUserAction(
   if (!target) return { ok: false, error: "User not found." };
 
   try {
+    const deletedEmail = target.email;
     await deleteUser(userId, companyId);
     // Also remove the Supabase Auth identity so the email can be re-registered.
-    await deleteAuthUserByEmail(target.email);
+    await deleteAuthUserByEmail(deletedEmail);
+    await audit.user(currentUser.id, userId, companyId, "deleted", { email: deletedEmail });
+    logger.info("User deleted", { context: "admin.companies.deleteUserAction", companyId, userId: currentUser.id, metadata: { targetUserId: userId, email: deletedEmail } });
     revalidatePath("/admin/companies");
     return { ok: true };
-  } catch {
+  } catch (err) {
+    logger.error("Failed to delete user", { context: "admin.companies.deleteUserAction", companyId, userId: currentUser.id, metadata: { targetUserId: userId } });
     return { ok: false, error: "Could not delete user. Please try again." };
   }
 }

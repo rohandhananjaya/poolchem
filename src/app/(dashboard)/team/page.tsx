@@ -1,12 +1,15 @@
 import { redirect } from "next/navigation"
-import { Mail, Phone, Shield } from "lucide-react"
+import { Mail, Phone, Shield, Clock } from "lucide-react"
 
+import type { User, Invitation } from "@/generated/prisma/client"
 import { initials } from "@/lib/utils"
 import { requireOwner } from "@/lib/auth"
 import { getUsersByCompany } from "@/lib/db/users"
+import { getInvitationsByCompany } from "@/lib/db/invitations"
 import { Shell } from "@/components/ui/shell"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { CreateUserDialog } from "./create-user-dialog"
+import { InviteUserDialog } from "./invite-user-dialog"
 import { UserListClient } from "./user-list-client"
 
 export const dynamic = "force-dynamic"
@@ -22,7 +25,10 @@ export default async function TeamPage() {
     redirect("/admin")
   }
 
-  const users = await getUsersByCompany(user.companyId)
+  const [users, invitations]: [User[], Invitation[]] = await Promise.all([
+    getUsersByCompany(user.companyId),
+    getInvitationsByCompany(user.companyId),
+  ])
 
   return (
     <Shell title="Team">
@@ -33,11 +39,47 @@ export default async function TeamPage() {
               {users.length} user{users.length !== 1 ? "s" : ""} in your company
             </p>
           </div>
-          <CreateUserDialog />
+          <div className="flex items-center gap-2">
+            <InviteUserDialog />
+            <CreateUserDialog />
+          </div>
         </header>
 
-        <div className="space-y-3">
-          {users.map((member) => (
+        {invitations.length > 0 ? (
+          <section>
+            <h2 className="mb-3 text-xs font-medium uppercase tracking-wider text-muted-foreground">
+              Pending invitations ({invitations.length})
+            </h2>
+            <div className="space-y-2">
+              {invitations.map((inv: { id: string; name: string; email: string; role: string }) => (
+                <div
+                  key={inv.id}
+                  className="flex items-center gap-3 rounded-xl border border-dashed border-border bg-card/50 px-4 py-3"
+                >
+                  <Clock className="size-4 text-muted-foreground shrink-0" />
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-medium text-foreground truncate">
+                      {inv.name}
+                    </p>
+                    <p className="text-xs text-muted-foreground truncate">
+                      {inv.email}
+                    </p>
+                  </div>
+                  <span className="shrink-0 text-[10px] uppercase tracking-wider text-muted-foreground">
+                    {ROLE_LABELS[inv.role] ?? inv.role}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </section>
+        ) : null}
+
+        <section>
+          <h2 className="mb-3 text-xs font-medium uppercase tracking-wider text-muted-foreground">
+            Team members
+          </h2>
+          <div className="space-y-3">
+            {users.map((member) => (
             <div
               key={member.id}
               className="rounded-xl border border-border bg-card p-4"
@@ -91,6 +133,7 @@ export default async function TeamPage() {
             </div>
           ))}
         </div>
+        </section>
       </div>
     </Shell>
   )

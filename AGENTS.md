@@ -6,42 +6,26 @@ This version has breaking changes — APIs, conventions, and file structure may 
 
 # PoolChem — repo-level facts an agent would miss
 
-## Framework traps (critical — never miss these)
+## Framework traps
 
-- **Next.js 16 Proxy** (NOT `middleware.ts`). File is `src/proxy.ts`, exports `proxy(request)` with `config.matcher`. Guards `/dashboard/*` and `/admin/*`. Do not create `middleware.ts`.
+- **Proxy** (NOT `middleware.ts`): `src/proxy.ts`, guards `/dashboard/*` `/admin/*`.
 - **`cookies()` is async** — `createClient()` in `src/lib/supabase/server.ts` must be awaited.
-- **Prisma 7:** no `url` in `schema.prisma`; client generated to `src/generated/prisma/` (import from `@/generated/prisma/client`).
+- **Prisma 7:** no `url` in schema; client at `@/generated/prisma/client`.
 
-## Available skills (load the relevant one before deeper work)
+## Skills (load with `skill` tool)
 
-Load with the `skill` tool when your task matches:
-- **prisma-db** — load when touching Prisma schema, client, or migrations
-- **auth-tenancy** — load when editing auth, proxy, or data-access code
-- **solid-principles** — load before any code change
-- **testing-patterns** — load when writing tests
-- **chemistry-engine** — load when editing pool-chemistry logic
-- **ui-design** — load when building/editing UI
+- **prisma-db** — Prisma schema, client, migrations
+- **auth-tenancy** — auth, proxy, data-access code
+- **solid-principles** — before any code change
+- **testing-patterns** — when writing tests
+- **chemistry-engine** — pool-chemistry logic
+- **ui-design** — building/editing UI
 
-## Pre-existing codebase maps (read these before searching)
+## Codebase maps (read before searching)
 
-These save substantial time — they inventory every exported helper, route, and component:
-- `src/lib/db/CLAUDE.md` — data-access helper signatures + tenancy rules
-- `src/app/CLAUDE.md` — route map, pages ↔ helpers ↔ Server Actions
-- `src/components/CLAUDE.md` — component inventory by domain
-- `CLAUDE.md` (root) — critical version notes, commands, overview
+- `src/lib/db/CLAUDE.md` — helper signatures + tenancy
+- `src/app/CLAUDE.md` — route map, pages ↔ actions
+- `src/components/CLAUDE.md` — component inventory
+- `CLAUDE.md` (root) — overview + commands
 
-Keep these in sync when adding/removing exports, routes, or components.
-
-## Quick commands
-
-```bash
-npm run dev              # dev server on localhost:3000
-npm run build            # runs prisma generate then next build
-npm test                 # vitest run
-npm run test:e2e         # Playwright E2E tests (headless)
-npm run test:e2e:ui      # Playwright E2E tests (headed, watch-ui)
-npx vitest run -t "pattern"   # single test by name
-npx prisma migrate dev --name <x>  # create + apply migration
-```
-
-Env: copy `.env.example` → `.env`. Required: `DATABASE_URL`, `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`.
+Keep in sync when adding/removing exports, routes, or components.

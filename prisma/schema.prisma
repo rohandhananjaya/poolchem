@@ -47,6 +47,8 @@ model Company {
 
   users User[]
   pools Pool[]
+  invitations Invitation[]
+  auditLogs AuditLog[]
 
   @@map("companies")
 }
@@ -160,9 +162,48 @@ model SystemLog {
   context   String?
   stack     String?
   metadata  String?
+  companyId String?
+  userId    String?
   createdAt DateTime @default(now())
 
   @@index([level])
   @@index([createdAt])
+  @@index([companyId])
   @@map("system_logs")
+}
+
+/// An invitation for a technician to join a company by setting their own password.
+model Invitation {
+  id        String   @id @default(cuid())
+  email     String
+  name      String
+  role      UserRole @default(TECH)
+  token     String   @unique @default(cuid())
+  companyId String
+  accepted  Boolean  @default(false)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@index([token])
+  @@index([companyId])
+  @@map("invitations")
+}
+
+/// Tenant-scoped audit trail for user actions (who did what, when).
+/// Separate from SystemLog which is for system diagnostics (errors/warnings).
+model AuditLog {
+  id        String   @id @default(cuid())
+  companyId String
+  userId    String
+  action    String
+  details   String?
+  createdAt DateTime @default(now())
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@index([companyId, createdAt])
+  @@index([action])
+  @@map("audit_logs")
 }

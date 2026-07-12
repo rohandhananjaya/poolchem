@@ -90,7 +90,7 @@ export default function Home() {
               <Link href="/login">Sign in</Link>
             </Button>
             <Button asChild size="lg">
-              <Link href="/login">Get started</Link>
+              <Link href="/signup">Get started</Link>
             </Button>
           </nav>
         </div>
@@ -121,7 +121,7 @@ export default function Home() {
               </p>
               <div className="mt-9 flex flex-col gap-3 sm:flex-row">
                 <Button asChild size="lg" className="h-11 px-5 text-base">
-                  <Link href="/login">
+                  <Link href="/signup">
                     Start free
                     <ArrowRight className="size-4" />
                   </Link>
@@ -222,7 +222,7 @@ export default function Home() {
                   size="lg"
                   className="h-11 bg-white px-6 text-base text-sky-700 hover:bg-sky-50"
                 >
-                  <Link href="/login">
+                  <Link href="/signup">
                     Get started
                     <ArrowRight className="size-4" />
                   </Link>
