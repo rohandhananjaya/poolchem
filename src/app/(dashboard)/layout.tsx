@@ -4,6 +4,7 @@ import { getCurrentUser } from "@/lib/auth"
 import { getCompanyById } from "@/lib/db/company"
 import { createClient } from "@/lib/supabase/server"
 import { MainNav } from "@/components/navigation/main-nav"
+import { NotificationProvider } from "@/components/notifications/NotificationProvider"
 import type { UserRole } from "@/generated/prisma/client"
 
 export default async function DashboardLayout({
@@ -33,7 +34,9 @@ export default async function DashboardLayout({
       />
       {/* Offset for the fixed desktop sidebar and the fixed mobile bottom bar. */}
       <main className="flex flex-1 flex-col pb-20 md:pb-0 md:pl-64 print:pb-0 print:pl-0">
-        {children}
+        <NotificationProvider userId={user.id}>
+          {children}
+        </NotificationProvider>
       </main>
     </div>
   )
