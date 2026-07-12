@@ -21,7 +21,7 @@ export interface ScheduledVisit {
   id: string;
   poolName: string;
   address: string | null;
-  status: "DRAFT" | "COMPLETED" | "CANCELLED";
+  status: "DRAFT" | "IN_PROGRESS" | "COMPLETED" | "CANCELLED";
   /** Planned time, ISO string, or `null` when the visit was created ad hoc. */
   scheduledAt: string | null;
   /** `scheduledAt ?? createdAt`, ISO string — used to place the visit on a day. */
@@ -34,8 +34,8 @@ export interface ScheduledVisit {
 
 /** Filters for the schedule list. */
 export interface ScheduleFilters {
-  /** "scheduled" = only DRAFT (default), "all" = everything, "cancelled" = only cancelled, "completed" = only completed. */
-  status?: "scheduled" | "all" | "cancelled" | "completed";
+  /** "scheduled" = DRAFT + IN_PROGRESS (default), "all" = everything. */
+  status?: "scheduled" | "all" | "cancelled" | "completed" | "in_progress";
   /** Pool id to narrow results. */
   poolId?: string;
   /** ISO date string (YYYY-MM-DD) — inclusive start. */
@@ -65,7 +65,7 @@ export async function getScheduleData(
 ): Promise<{ visits: ScheduledVisit[]; total: number }> {
   const where: {
     pool: { companyId: string };
-    status?: Record<string, unknown> | "DRAFT" | "COMPLETED" | "CANCELLED";
+    status?: ServiceVisitStatus | { in: ServiceVisitStatus[] };
     poolId?: string;
     scheduledAt?: { gte?: Date; lte?: Date };
     OR?: Array<{ techId: string | null }>;
@@ -83,8 +83,10 @@ export async function getScheduleData(
     where.status = ServiceVisitStatus.CANCELLED;
   } else if (filters?.status === "completed") {
     where.status = ServiceVisitStatus.COMPLETED;
+  } else if (filters?.status === "in_progress") {
+    where.status = ServiceVisitStatus.IN_PROGRESS;
   } else if (filters?.status !== "all") {
-    where.status = ServiceVisitStatus.DRAFT;
+    where.status = { in: [ServiceVisitStatus.DRAFT, ServiceVisitStatus.IN_PROGRESS] };
   }
 
   if (filters?.poolId) {

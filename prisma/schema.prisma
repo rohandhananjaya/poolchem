@@ -25,6 +25,7 @@ enum UserRole {
 
 enum ServiceVisitStatus {
   DRAFT
+  IN_PROGRESS
   COMPLETED
   CANCELLED
 }

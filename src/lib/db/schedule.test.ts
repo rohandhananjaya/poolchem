@@ -54,14 +54,14 @@ describe("getScheduleData", () => {
 
     expect(prismaMock.serviceVisit.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: { pool: { companyId }, status: "DRAFT" },
+        where: { pool: { companyId }, status: { in: ["DRAFT", "IN_PROGRESS"] } },
         orderBy: [{ scheduledAt: "asc" }, { createdAt: "asc" }],
         skip: 0,
         take: SCHEDULE_PAGE_SIZE,
       }),
     );
     expect(prismaMock.serviceVisit.count).toHaveBeenCalledWith(
-      expect.objectContaining({ where: { pool: { companyId }, status: "DRAFT" } }),
+      expect.objectContaining({ where: { pool: { companyId }, status: { in: ["DRAFT", "IN_PROGRESS"] } } }),
     );
   });
 

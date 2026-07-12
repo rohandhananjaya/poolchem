@@ -8,6 +8,7 @@ import { getVisitById, getLastVisitReadings } from "@/lib/db/visits"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { VisitForm } from "./visit-form"
+import { StatusDropdown } from "./status-dropdown"
 
 export default async function VisitPage({
   params,
@@ -25,7 +26,24 @@ export default async function VisitPage({
 
   const lastReadings = await getLastVisitReadings(visit.poolId)
   const completed = visit.status === "COMPLETED"
+  const inProgress = visit.status === "IN_PROGRESS"
   const { from } = await searchParams
+
+  const statusBadgeClass = completed
+    ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300"
+    : inProgress
+      ? "bg-sky-100 text-sky-700 dark:bg-sky-950 dark:text-sky-300"
+      : visit.status === "CANCELLED"
+        ? "bg-muted text-muted-foreground"
+        : "bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300"
+
+  const statusLabel = completed
+    ? "Completed"
+    : inProgress
+      ? "In Progress"
+      : visit.status === "CANCELLED"
+        ? "Cancelled"
+        : "Scheduled"
 
   return (
     <div className="mx-auto w-full max-w-5xl px-4 py-6 md:px-6 md:py-8">
@@ -46,13 +64,22 @@ export default async function VisitPage({
             <span
               className={cn(
                 "shrink-0 rounded-full px-2.5 py-0.5 text-xs font-semibold",
-                completed
-                  ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300"
-                  : "bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300",
+                statusBadgeClass,
               )}
             >
-              {completed ? "Completed" : "In Progress"}
+              {statusLabel}
             </span>
+            {!completed && visit.status !== "CANCELLED" && (
+              <StatusDropdown
+                visitId={visit.id}
+                currentStatus={visit.status as "DRAFT" | "IN_PROGRESS" | "CANCELLED"}
+              />
+            )}
+            {visit.status === "CANCELLED" && visit.cancellationReason && (
+              <p className="mt-1 text-sm text-muted-foreground">
+                Reason: {visit.cancellationReason}
+              </p>
+            )}
           </div>
 
           {visit.pool.address && (

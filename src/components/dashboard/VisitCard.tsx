@@ -3,7 +3,14 @@
 import * as React from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { CalendarClock, CheckCircle2, Clock, MapPin, XCircle } from "lucide-react"
+import {
+  CalendarClock,
+  CheckCircle2,
+  Clock,
+  MapPin,
+  Play,
+  XCircle,
+} from "lucide-react"
 import { toast } from "sonner"
 
 import { cn } from "@/lib/utils"
@@ -21,6 +28,7 @@ import {
   cancelVisitAction,
   type ScheduleFormState,
 } from "@/app/(dashboard)/schedule/actions"
+import { startVisitAction } from "@/app/(dashboard)/visits/[visitId]/actions"
 import type { DashboardVisit } from "@/lib/db/dashboard"
 
 const INITIAL_STATE: ScheduleFormState = { ok: false }
@@ -78,9 +86,21 @@ export function VisitCard({ visit }: VisitCardProps) {
   const completed = visit.status === "COMPLETED"
   const isCancelled = visit.status === "CANCELLED"
   const isDraft = visit.status === "DRAFT"
+  const inProgress = visit.status === "IN_PROGRESS"
 
   const trimmedReason = reason.trim()
   const canCancel = trimmedReason.length > 0
+
+  function handleStartVisit() {
+    startTransition(async () => {
+      try {
+        await startVisitAction(visit.id)
+        router.push(`/visits/${visit.id}`)
+      } catch {
+        toast.error("Could not start visit.")
+      }
+    })
+  }
 
   function handleCancel() {
     if (!canCancel) return
@@ -127,9 +147,27 @@ export function VisitCard({ visit }: VisitCardProps) {
                 <XCircle className="size-4" />
                 Cancelled
               </span>
+            ) : inProgress ? (
+              <Button
+                size="lg"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  router.push(`/visits/${visit.id}`)
+                }}
+              >
+                <Play className="size-4" />
+                Continue
+              </Button>
             ) : (
-              <Button asChild size="lg" onClick={(e) => e.stopPropagation()}>
-                <Link href={`/visits/${visit.id}`}>Start Visit</Link>
+              <Button
+                size="lg"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  handleStartVisit()
+                }}
+                disabled={pending}
+              >
+                {pending ? "Starting…" : "Start Visit"}
               </Button>
             )}
           </div>
@@ -251,6 +289,11 @@ export function VisitCard({ visit }: VisitCardProps) {
                     <XCircle className="size-4" />
                     Cancelled
                   </span>
+                ) : inProgress ? (
+                  <span className="inline-flex items-center gap-1.5 text-sm font-medium text-sky-600 dark:text-sky-400">
+                    <Play className="size-4" />
+                    In Progress
+                  </span>
                 ) : (
                   <span className="inline-flex items-center gap-1.5 text-sm font-medium text-amber-600 dark:text-amber-400">
                     <CalendarClock className="size-4" />
@@ -271,7 +314,7 @@ export function VisitCard({ visit }: VisitCardProps) {
                 {visit.timeLabel ?? "Unscheduled"}
               </p>
 
-              {isDraft ? (
+              {isDraft || inProgress ? (
                 <DialogFooter className="gap-2 sm:justify-between">
                   <Button
                     type="button"
@@ -281,11 +324,29 @@ export function VisitCard({ visit }: VisitCardProps) {
                     <XCircle className="size-4" />
                     Cancel Visit
                   </Button>
-                  <Button asChild variant="default">
-                    <Link href={`/visits/${visit.id}`} onClick={() => setOpen(false)}>
-                      Start Visit
-                    </Link>
-                  </Button>
+                  {inProgress ? (
+                    <Button
+                      variant="default"
+                      onClick={() => {
+                        setOpen(false)
+                        router.push(`/visits/${visit.id}`)
+                      }}
+                    >
+                      <Play className="size-4" />
+                      Continue
+                    </Button>
+                  ) : (
+                    <Button
+                      variant="default"
+                      onClick={() => {
+                        setOpen(false)
+                        handleStartVisit()
+                      }}
+                      disabled={pending}
+                    >
+                      {pending ? "Starting…" : "Start Visit"}
+                    </Button>
+                  )}
                 </DialogFooter>
               ) : null}
             </div>

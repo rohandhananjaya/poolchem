@@ -28,6 +28,8 @@ Get the tenant with `getCompanyId()` / `requireAuth()` from [../auth.ts](../auth
 - `getTodayVisits(companyId)`
 - `getVisitById(visitId, companyId)`
 - `createVisit(poolId, techId\|null, companyId, scheduledAt?)`
+- `startVisit(visitId, companyId) → ServiceVisit | null` — marks a DRAFT visit as `IN_PROGRESS`
+- `updateVisitStatus(visitId, companyId, status) → ServiceVisit | null` — changes visit status
 - `completeVisit(visitId, readings: VisitReadings, chemicals: VisitChemical[], notes?) → CompletedVisit`
 - `saveDraftVisit(visitId, readings, chemicals, notes?)`
 - `getVisitHistory(poolId, limit)`

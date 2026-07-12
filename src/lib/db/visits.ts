@@ -217,6 +217,47 @@ export async function getLastVisitReadings(
 }
 
 /**
+ * Marks a visit as IN_PROGRESS. Only visits in DRAFT status can be started.
+ * Scoped to `companyId` via the pool relation.
+ *
+ * @returns The updated visit, or `null` if not found or not scoped.
+ */
+export async function startVisit(visitId: string, companyId: string) {
+  const visit = await prisma.serviceVisit.findFirst({
+    where: { id: visitId, pool: { companyId }, status: ServiceVisitStatus.DRAFT },
+  });
+  if (!visit) return null;
+
+  return prisma.serviceVisit.update({
+    where: { id: visitId },
+    data: { status: ServiceVisitStatus.IN_PROGRESS },
+  });
+}
+
+/**
+ * Updates the status of a visit. Only DRAFT → IN_PROGRESS → COMPLETED and
+ * any status → CANCELLED transitions are permitted. Scoped to `companyId`
+ * via the pool relation.
+ *
+ * @returns The updated visit, or `null` if not found or not scoped.
+ */
+export async function updateVisitStatus(
+  visitId: string,
+  companyId: string,
+  status: ServiceVisitStatus,
+) {
+  const visit = await prisma.serviceVisit.findFirst({
+    where: { id: visitId, pool: { companyId } },
+  });
+  if (!visit) return null;
+
+  return prisma.serviceVisit.update({
+    where: { id: visitId },
+    data: { status },
+  });
+}
+
+/**
  * Cancels a visit: sets its status to CANCELLED and stores the cancellation
  * reason. Only visits belonging to `companyId` (via the pool relation) can be
  * cancelled.

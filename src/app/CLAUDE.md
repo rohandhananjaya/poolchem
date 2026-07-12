@@ -14,8 +14,8 @@ Next.js 16 App Router. Pattern: **Server Component page → `db/` helper → ren
 ## (dashboard)/ — auth-required route group, shared `layout.tsx` (nav shell)
 - `dashboard/` — home; `getDashboardData(companyId)`
 - `scan/` — QR scan entry. `actions.ts`: `startVisitFromScan`
-- `visits/[visitId]/` — the visit form. `page.tsx` → `visit-form.tsx` (client).
-  `actions.ts`: `saveDraftAction`, `completeVisitAction`
+- `visits/[visitId]/` — the visit form. `page.tsx` → `visit-form.tsx` (client), `status-dropdown.tsx`.
+  `actions.ts`: `saveDraftAction`, `completeVisitAction`, `startVisitAction`, `updateVisitStatusAction`
   - `report/` — generated service report. `page.tsx` uses `generateServiceReport`; `report-actions.tsx` (mailto send + external QR — both MVP placeholders, see [../../to-do.md](../../to-do.md))
 - `schedule/` — upcoming visits; `getScheduleData`. `actions.ts`: `scheduleVisitAction`
 - `reports/` — water-health report history; `getCompanyReportData`
