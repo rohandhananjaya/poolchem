@@ -6,7 +6,7 @@ const sections = [
   {
     title: "1. Who we are",
     content:
-      "PoolChem (\"we\", \"our\", \"us\") operates the PoolChem application and website. We are a pool-service software provider. If you have questions about this policy, contact us at privacy@poolchem.app.",
+      "PoolBench (\"we\", \"our\", \"us\") operates the PoolBench application and website. We are a pool-service software provider. If you have questions about this policy, contact us at privacy@poolbench.app.",
   },
   {
     title: "2. What personal data we collect",
@@ -30,7 +30,7 @@ const sections = [
     title: "4. Why we process your data (legal bases)",
     content: "We process your personal data under the following legal bases:",
     items: [
-      "Contractual necessity (Art. 6(1)(b) GDPR): to deliver the PoolChem service, manage your account, and process transactions.",
+      "Contractual necessity (Art. 6(1)(b) GDPR): to deliver the PoolBench service, manage your account, and process transactions.",
       "Legitimate interest (Art. 6(1)(f) GDPR): to improve our service, ensure security, and communicate with you about your account.",
       "Consent (Art. 6(1)(a) GDPR): for non-essential cookies, marketing communications, and Google OAuth data sharing.",
     ],
@@ -76,7 +76,7 @@ const sections = [
       "Right to restrict processing (Art. 18): limit how we use your data.",
       "Right to data portability (Art. 20): receive your data in a structured, machine-readable format.",
       "Right to object (Art. 21): object to processing based on legitimate interest.",
-      "To exercise any of these rights, contact us at privacy@poolchem.app or use the self-service tools in your account settings.",
+      "To exercise any of these rights, contact us at privacy@poolbench.app or use the self-service tools in your account settings.",
     ],
   },
   {
@@ -106,7 +106,7 @@ export default function PrivacyPage() {
             <span className="flex size-8 items-center justify-center rounded-lg bg-sky-500 text-white shadow-sm">
               <Waves className="size-5" />
             </span>
-            <span className="text-lg">PoolChem</span>
+            <span className="text-lg">PoolBench</span>
           </Link>
           <Button asChild variant="ghost" size="lg">
             <Link href="/login">Sign in</Link>
@@ -123,7 +123,7 @@ export default function PrivacyPage() {
             Last updated: July 12, 2026
           </p>
           <p className="mt-6 text-base leading-7 text-muted-foreground">
-            This Privacy Policy explains how PoolChem collects, uses, processes,
+            This Privacy Policy explains how PoolBench collects, uses, processes,
             and shares your personal data when you use our application and website.
             It applies to all users of the platform, including company owners,
             technicians, and homeowners whose data is stored in the system.
@@ -160,10 +160,10 @@ export default function PrivacyPage() {
             <p className="mt-2 text-base">
               Email:{" "}
               <a
-                href="mailto:privacy@poolchem.app"
+                href="mailto:privacy@poolbench.app"
                 className="text-sky-600 underline hover:text-sky-500 dark:text-sky-400"
               >
-                privacy@poolchem.app
+                privacy@poolbench.app
               </a>
             </p>
           </div>
@@ -177,7 +177,7 @@ export default function PrivacyPage() {
             <span className="flex size-6 items-center justify-center rounded-md bg-sky-500 text-white">
               <Waves className="size-4" />
             </span>
-            PoolChem
+            PoolBench
           </Link>
           <div className="flex items-center gap-4">
             <Link href="/privacy" className="hover:text-foreground transition-colors">
@@ -187,7 +187,7 @@ export default function PrivacyPage() {
               Terms
             </Link>
           </div>
-          <p>© 2026 PoolChem. Water chemistry, handled.</p>
+          <p>© 2026 PoolBench. Water chemistry, handled.</p>
         </div>
       </footer>
     </div>

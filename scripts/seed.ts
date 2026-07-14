@@ -41,12 +41,12 @@ try {
 }
 
 const DEMO = {
-  companyEmail: "demo@poolchem.app",
+  companyEmail: "demo@poolbench.app",
   techEmail: "tech@demo.com",
   techPassword: "password123",
   ownerEmail: "owner@demo.com",
   ownerPassword: "password123",
-  adminEmail: "admin@poolchem.app",
+  adminEmail: "admin@poolbench.app",
   adminPassword: "admin-password-456",
 } as const;
 
@@ -109,7 +109,7 @@ async function provisionAuthUser(
 }
 
 async function main() {
-  console.log("🌱 Seeding PoolChem demo data…\n");
+  console.log("🌱 Seeding PoolBench demo data…\n");
 
   // ---- Reset any existing demo tenant --------------------------------------
   const existing = await prisma.company.findFirst({

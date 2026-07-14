@@ -27,7 +27,7 @@ export default async function InvitePage({
             <span className="flex size-8 items-center justify-center rounded-lg bg-sky-500 text-white shadow-sm">
               <Waves className="size-5" />
             </span>
-            <span className="text-lg">PoolChem</span>
+            <span className="text-lg">PoolBench</span>
           </Link>
           <h1 className="text-2xl font-semibold tracking-tight text-foreground">
             Join {invitation.company.name}

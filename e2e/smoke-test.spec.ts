@@ -1,11 +1,11 @@
 import { test, expect } from "@playwright/test";
 
-test.describe("PoolChem smoke tests", () => {
+test.describe("PoolBench smoke tests", () => {
   test("landing page loads", async ({ page }) => {
     await page.goto("http://localhost:3000", { waitUntil: "networkidle" });
     await expect(page.locator("body")).toBeVisible();
     const title = await page.title();
-    expect(title).toContain("PoolChem");
+    expect(title).toContain("PoolBench");
     await page.screenshot({ path: "e2e/screenshots/landing-page.png", fullPage: true });
   });
 

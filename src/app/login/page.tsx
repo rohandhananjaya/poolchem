@@ -143,7 +143,7 @@ export default function LoginPage() {
 
         <p className="mt-6 text-xs text-muted-foreground text-center">
           By signing in with Google, you share your email address and basic
-          profile info with PoolChem.{" "}
+          profile info with PoolBench.{" "}
           <a
             href="/privacy"
             className="underline underline-offset-2 hover:text-foreground transition-colors"

@@ -4,7 +4,7 @@ import * as React from "react"
 
 import { Button } from "@/components/ui/button"
 
-const STORAGE_KEY = "poolchem-cookie-consent"
+const STORAGE_KEY = "poolbench-cookie-consent"
 
 function getConsent(): boolean {
   if (typeof window === "undefined") return true
@@ -29,7 +29,7 @@ export function CookieConsentBanner() {
     <div className="fixed inset-x-0 bottom-0 z-50 border-t border-border bg-card p-4 print:hidden">
       <div className="mx-auto flex max-w-5xl flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
         <p className="text-sm text-muted-foreground">
-          PoolChem uses essential cookies for authentication.{" "}
+          PoolBench uses essential cookies for authentication.{" "}
           <a
             href="/privacy"
             className="underline underline-offset-2 hover:text-foreground transition-colors"

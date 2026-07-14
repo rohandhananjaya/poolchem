@@ -1,6 +1,6 @@
 ---
 name: auth-tenancy
-description: PoolChem's auth flow (Supabase + Prisma bridge) and multi-tenancy invariant. Read BEFORE editing auth, proxy, or any data-access code. Triggers on: editing src/lib/auth.ts, src/proxy.ts, src/lib/supabase/, any src/lib/db/*.ts file, or src/app/*/actions.ts.
+description: PoolBench's auth flow (Supabase + Prisma bridge) and multi-tenancy invariant. Read BEFORE editing auth, proxy, or any data-access code. Triggers on: editing src/lib/auth.ts, src/proxy.ts, src/lib/supabase/, any src/lib/db/*.ts file, or src/app/*/actions.ts.
 ---
 
 # Auth & Multi-tenancy

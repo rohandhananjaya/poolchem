@@ -39,7 +39,7 @@ Keep in sync when adding/removing an exported helper, route, or component.
 
 ## Architecture summary
 
-PoolChem is a **multi-tenant SaaS** for pool-service companies. Techs record water-test readings during service visits; the app scores water health and recommends chemical doses.
+PoolBench is a **multi-tenant SaaS** for pool-service companies. Techs record water-test readings during service visits; the app scores water health and recommends chemical doses.
 
 **Data flow:** Server Components / Server Actions → `db/` helpers → Prisma. No REST/GraphQL API layer — all mutations are Server Actions that re-check auth, call a `db/` helper, then `revalidatePath`.
 

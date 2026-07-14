@@ -36,7 +36,7 @@ No privacy policy page exists. Must disclose:
 **Status:** ❌ Missing  
 **Files involved:** `src/app/page.tsx:238-246`, `src/app/(dashboard)/layout.tsx`
 
-Current footer only shows: `"© 2026 PoolChem. Water chemistry, handled."` — no links to privacy policy or terms of service.
+Current footer only shows: `"© 2026 PoolBench. Water chemistry, handled."` — no links to privacy policy or terms of service.
 
 ### 5. Self-Service Account Deletion (Right to Erasure — Art. 17)
 

@@ -167,7 +167,7 @@ export default async function ReportPage({
           </div>
           <div className="hidden shrink-0 items-center gap-1.5 text-teal-600 sm:flex print:flex">
             <Droplets className="size-5" />
-            <span className="text-sm font-semibold">PoolChem</span>
+            <span className="text-sm font-semibold">PoolBench</span>
           </div>
         </header>
 

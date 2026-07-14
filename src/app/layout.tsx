@@ -22,9 +22,9 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "PoolChem — Water chemistry, handled",
+  title: "PoolBench — Water chemistry, handled",
   description:
-    "PoolChem turns a quick water test into a health score, the exact chemical doses to fix it, and a shareable report. Built for pool-service companies.",
+    "PoolBench turns a quick water test into a health score, the exact chemical doses to fix it, and a shareable report. Built for pool-service companies.",
 };
 
 export default function RootLayout({

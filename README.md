@@ -1,4 +1,4 @@
-# PoolChem
+# PoolBench
 
 A multi-tenant SaaS for pool-service companies. Technicians record water-test
 readings during service visits; the app scores water health, recommends chemical

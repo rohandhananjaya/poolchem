@@ -30,7 +30,7 @@ export default async function DashboardLayout({
     <div className="flex min-h-svh flex-col">
       <MainNav
         user={{ name: user.name, email: user.email, role: user.role as UserRole, image: avatarUrl }}
-        company={{ name: company?.name ?? "PoolChem", logo: company?.logo ?? null }}
+        company={{ name: company?.name ?? "PoolBench", logo: company?.logo ?? null }}
       />
       {/* Offset for the fixed desktop sidebar and the fixed mobile bottom bar. */}
       <main className="flex flex-1 flex-col pb-20 md:pb-0 md:pl-64 print:pb-0 print:pl-0">

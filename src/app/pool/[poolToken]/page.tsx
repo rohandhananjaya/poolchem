@@ -309,7 +309,7 @@ export default async function HomeownerDashboardPage({
           </p>
           <p className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
             <Droplets className="size-3 text-teal-500" />
-            Powered by PoolChem
+            Powered by PoolBench
           </p>
         </footer>
       </div>

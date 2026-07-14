@@ -1,11 +1,11 @@
 ---
 name: ui-design
-description: PoolChem's UI design system — the canonical rules for building or editing any UI in this app. Read this BEFORE writing a page, component, card, list item, dialog, badge, gauge, stat tile, empty/loading/error state, nav, or before choosing any color, spacing, radius, or typography. Covers Tailwind v4 tokens, the Shell/CardRow layout idioms, the shadcn radix-nova primitives, and the water-brand + score-band color contract that lives OUTSIDE the token layer. Triggers on: build/style a page or component, add a card/badge/dialog/gauge/skeleton, dashboard UI, pick chart or status colors, spacing/typography/dark-mode questions in PoolChem.
+description: PoolBench's UI design system — the canonical rules for building or editing any UI in this app. Read this BEFORE writing a page, component, card, list item, dialog, badge, gauge, stat tile, empty/loading/error state, nav, or before choosing any color, spacing, radius, or typography. Covers Tailwind v4 tokens, the Shell/CardRow layout idioms, the shadcn radix-nova primitives, and the water-brand + score-band color contract that lives OUTSIDE the token layer. Triggers on: build/style a page or component, add a card/badge/dialog/gauge/skeleton, dashboard UI, pick chart or status colors, spacing/typography/dark-mode questions in PoolBench.
 ---
 
-# PoolChem UI Design System
+# PoolBench UI Design System
 
-PoolChem is a mobile-first, multi-tenant pool-service SaaS. Techs use it one-handed, outdoors, in glare; owners view it on desktop. The visual system is **neutral grayscale chrome** (shadcn `radix-nova`, OKLCH tokens) with **teal "water" brand accents** and a **4-band water-health color scale** applied as raw Tailwind utilities. Match the existing idioms below exactly — this app has a consistent look and every new surface should be indistinguishable from what's already there.
+PoolBench is a mobile-first, multi-tenant pool-service SaaS. Techs use it one-handed, outdoors, in glare; owners view it on desktop. The visual system is **neutral grayscale chrome** (shadcn `radix-nova`, OKLCH tokens) with **teal "water" brand accents** and a **4-band water-health color scale** applied as raw Tailwind utilities. Match the existing idioms below exactly — this app has a consistent look and every new surface should be indistinguishable from what's already there.
 
 Stack: Next.js 16 (App Router) · React 19 · Tailwind v4 (CSS-first, **no `tailwind.config`**) · shadcn style `radix-nova`, base color `neutral`, icons `lucide-react` ([components.json](../../../components.json)).
 
