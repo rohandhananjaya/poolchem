@@ -4,6 +4,7 @@ vi.mock("server-only", () => ({}));
 vi.mock("@/lib/db/visits", () => ({
   getVisitById: vi.fn(),
   getVisitHistory: vi.fn(),
+  getPoolNextScheduledVisit: vi.fn(),
 }));
 vi.mock("@/lib/db/company", () => ({
   getCompanyById: vi.fn(),
@@ -12,7 +13,7 @@ vi.mock("next/headers", () => ({
   headers: vi.fn(),
 }));
 
-const { getVisitById, getVisitHistory } = await import("@/lib/db/visits");
+const { getVisitById, getVisitHistory, getPoolNextScheduledVisit } = await import("@/lib/db/visits");
 const { getCompanyById } = await import("@/lib/db/company");
 const { headers } = await import("next/headers");
 const { generateServiceReport } = await import("./generate-report");
@@ -65,6 +66,7 @@ const mockVisit = {
   createdAt: new Date("2026-07-11T10:00:00Z"),
   poolId: mockPool.id,
   publicToken: "report_tok_123",
+  nextServiceDate: null,
 };
 
 beforeEach(() => {
@@ -81,6 +83,7 @@ describe("generateServiceReport", () => {
         waterReadings: mockReadings,
       },
     ]);
+    vi.mocked(getPoolNextScheduledVisit).mockResolvedValue(null);
     vi.mocked(headers).mockResolvedValue(
       new Map([["host", "example.com"], ["x-forwarded-proto", "https"]]) as never,
     );
@@ -99,7 +102,7 @@ describe("generateServiceReport", () => {
       { name: "Chlorine", amount: 1, unit: "gal" },
     ]);
     expect(result!.scoreHistory).toHaveLength(1);
-    expect(result!.nextServiceDate).toBe("2026-07-18T10:00:00.000Z");
+    expect(result!.nextServiceDate).toBeNull();
     expect(result!.homeownerUrl).toContain("example.com");
     expect(result!.homeownerUrl).toContain("/pool/tok_abc");
     expect(result!.reportUrl).toContain("example.com");
@@ -121,6 +124,7 @@ describe("generateServiceReport", () => {
     });
     vi.mocked(getCompanyById).mockResolvedValue(mockCompany);
     vi.mocked(getVisitHistory).mockResolvedValue([]);
+    vi.mocked(getPoolNextScheduledVisit).mockResolvedValue(null);
     vi.mocked(headers).mockResolvedValue(
       new Map([["host", "localhost:3000"]]) as never,
     );
@@ -146,6 +150,7 @@ describe("generateServiceReport", () => {
         waterReadings: mockReadings,
       },
     ]);
+    vi.mocked(getPoolNextScheduledVisit).mockResolvedValue(null);
     vi.mocked(headers).mockResolvedValue(
       new Map([["host", "example.com"]]) as never,
     );
@@ -173,6 +178,7 @@ describe("generateServiceReport", () => {
     });
     vi.mocked(getCompanyById).mockResolvedValue(mockCompany);
     vi.mocked(getVisitHistory).mockResolvedValue([]);
+    vi.mocked(getPoolNextScheduledVisit).mockResolvedValue(null);
     vi.mocked(headers).mockResolvedValue(
       new Map([["host", "example.com"]]) as never,
     );

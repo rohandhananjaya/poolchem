@@ -33,9 +33,7 @@ export default function LoginPage() {
       return
     }
 
-    // Refresh so Server Components re-run with the new session cookie.
-    router.push("/dashboard")
-    router.refresh()
+    router.replace("/dashboard")
   }
 
   async function handleGoogleSignIn() {

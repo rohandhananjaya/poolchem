@@ -1,9 +1,11 @@
 import "server-only";
 
-import { addDays } from "date-fns";
 import { headers } from "next/headers";
 
-import { getVisitByPublicToken } from "@/lib/db/visits";
+import {
+  getVisitByPublicToken,
+  getPoolNextScheduledVisit,
+} from "@/lib/db/visits";
 import {
   calculateLSI,
   getIdealRange,
@@ -17,7 +19,6 @@ import type {
   ServiceReport,
 } from "./generate-report";
 
-const SERVICE_INTERVAL_DAYS = 7;
 const TREND_VISIT_COUNT = 6;
 
 async function getOrigin(): Promise<string> {
@@ -100,6 +101,22 @@ export async function getPublicReport(
 
   const origin = await getOrigin();
 
+  const manualDate = visit.nextServiceDate
+    ? new Date(visit.nextServiceDate)
+    : null;
+  const scheduledDate = await getPoolNextScheduledVisit(visit.poolId);
+
+  let nextServiceDate: string | null = null;
+  if (manualDate && scheduledDate) {
+    nextServiceDate = new Date(
+      Math.max(manualDate.getTime(), scheduledDate.getTime()),
+    ).toISOString();
+  } else if (manualDate) {
+    nextServiceDate = manualDate.toISOString();
+  } else if (scheduledDate) {
+    nextServiceDate = scheduledDate.toISOString();
+  }
+
   return {
     visit: {
       id: visit.id,
@@ -129,10 +146,7 @@ export async function getPublicReport(
       unit: c.unit,
     })),
     scoreHistory: [],
-    nextServiceDate: addDays(
-      visit.createdAt,
-      SERVICE_INTERVAL_DAYS,
-    ).toISOString(),
+    nextServiceDate,
     homeownerUrl: `${origin}/pool/${visit.pool.publicToken}`,
     reportUrl: `${origin}/report/${publicToken}`,
   };

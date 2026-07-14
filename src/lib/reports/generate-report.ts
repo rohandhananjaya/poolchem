@@ -12,11 +12,14 @@
  */
 import "server-only";
 
-import { addDays } from "date-fns";
 import { headers } from "next/headers";
 
 import { getCompanyById } from "@/lib/db/company";
-import { getVisitById, getVisitHistory } from "@/lib/db/visits";
+import {
+  getVisitById,
+  getVisitHistory,
+  getPoolNextScheduledVisit,
+} from "@/lib/db/visits";
 import {
   calculateLSI,
   getIdealRange,
@@ -24,9 +27,6 @@ import {
   type LSIResult,
   type WaterHealthResult,
 } from "@/lib/pool-chemistry";
-
-/** Days between service visits, used to project the next service date. */
-const SERVICE_INTERVAL_DAYS = 7;
 
 /** How many recent visits feed the water-health trend sparkline. */
 const TREND_VISIT_COUNT = 6;
@@ -91,8 +91,8 @@ export interface ServiceReport {
   chemicalsAdded: Array<{ name: string; amount: number; unit: string }>;
   /** Water-health score over recent visits, oldest first (for the sparkline). */
   scoreHistory: ReportScorePoint[];
-  /** Projected next service date, ISO string. */
-  nextServiceDate: string;
+  /** Projected next service date, ISO string, or null when none set/scheduled. */
+  nextServiceDate: string | null;
   /** Absolute URL the homeowner QR code points at. */
   homeownerUrl: string;
   /** Absolute URL for the public shareable report (/report/[publicToken]). */
@@ -212,6 +212,24 @@ export async function generateServiceReport(
 
   const origin = await getOrigin();
 
+  // Determine next service date: tech-set date on this visit, future scheduled
+  // visit for the same pool, or null.
+  const manualDate = visit.nextServiceDate
+    ? new Date(visit.nextServiceDate)
+    : null;
+  const scheduledDate = await getPoolNextScheduledVisit(visit.poolId);
+
+  let nextServiceDate: string | null = null;
+  if (manualDate && scheduledDate) {
+    nextServiceDate = new Date(
+      Math.max(manualDate.getTime(), scheduledDate.getTime()),
+    ).toISOString();
+  } else if (manualDate) {
+    nextServiceDate = manualDate.toISOString();
+  } else if (scheduledDate) {
+    nextServiceDate = scheduledDate.toISOString();
+  }
+
   return {
     visit: {
       id: visit.id,
@@ -241,7 +259,7 @@ export async function generateServiceReport(
       unit: c.unit,
     })),
     scoreHistory,
-    nextServiceDate: addDays(visit.createdAt, SERVICE_INTERVAL_DAYS).toISOString(),
+    nextServiceDate,
     homeownerUrl: `${origin}/pool/${visit.pool.publicToken}`,
     reportUrl: visit.publicToken
       ? `${origin}/report/${visit.publicToken}`

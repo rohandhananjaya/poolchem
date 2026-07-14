@@ -48,6 +48,7 @@ describe("saveDraftAction", () => {
       expect.any(Object),
       [],
       "test",
+      null,
     );
     expect(revalidatePath).toHaveBeenCalledWith(`/visits/${visitId}`);
   });
@@ -75,13 +76,14 @@ describe("completeVisitAction", () => {
         temperature: 80,
       },
       chemicals: [],
-      notes: null,
+      notes: "",
     });
 
     expect(completeVisit).toHaveBeenCalledWith(
       visitId,
       expect.any(Object),
       [],
+      null,
       null,
     );
     expect(revalidatePath).toHaveBeenCalledWith(`/visits/${visitId}`);

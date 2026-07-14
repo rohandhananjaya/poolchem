@@ -15,10 +15,10 @@
  */
 import "server-only";
 
-import { addDays } from "date-fns";
 import { headers } from "next/headers";
 
 import { getPoolByPublicToken } from "@/lib/db/pools";
+import { getPoolNextScheduledVisit } from "@/lib/db/visits";
 import {
   getWaterHealthScore,
   type WaterHealthResult,
@@ -26,9 +26,6 @@ import {
 } from "@/lib/pool-chemistry";
 
 import type { ReportScorePoint } from "./generate-report";
-
-/** Days between service visits, used to project the next service date. */
-const SERVICE_INTERVAL_DAYS = 7;
 
 /** How many recent visits appear in the activity timeline. */
 const TIMELINE_VISIT_COUNT = 5;
@@ -146,6 +143,24 @@ export async function getHomeownerDashboard(
 
   const origin = await getOrigin();
 
+  // Next service: latest of what the last completed visit's tech set, or
+  // a future scheduled visit for this pool. Null if neither exists.
+  const manualDate = latest?.nextServiceDate
+    ? new Date(latest.nextServiceDate)
+    : null;
+  const scheduledDate = await getPoolNextScheduledVisit(pool.id);
+
+  let nextService: string | null = null;
+  if (manualDate && scheduledDate) {
+    nextService = new Date(
+      Math.max(manualDate.getTime(), scheduledDate.getTime()),
+    ).toISOString();
+  } else if (manualDate) {
+    nextService = manualDate.toISOString();
+  } else if (scheduledDate) {
+    nextService = scheduledDate.toISOString();
+  }
+
   return {
     pool: {
       name: pool.name,
@@ -159,9 +174,7 @@ export async function getHomeownerDashboard(
     },
     waterHealth,
     lastServiced: lastServiced ? lastServiced.toISOString() : null,
-    nextService: lastServiced
-      ? addDays(lastServiced, SERVICE_INTERVAL_DAYS).toISOString()
-      : null,
+    nextService,
     timeline,
     scoreHistory,
     shareUrl: `${origin}/pool/${publicToken}`,

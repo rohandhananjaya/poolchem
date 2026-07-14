@@ -52,6 +52,7 @@ interface SerializedVisit {
   id: string
   status: string
   notes: string | null
+  nextServiceDate: string | null
   pool: {
     name: string
     address: string | null
@@ -144,6 +145,12 @@ export function VisitForm({
     ],
   )
   const notes = watch("notes")
+
+  const [nextServiceDate, setNextServiceDate] = useState<string>(
+    visit.nextServiceDate
+      ? new Date(visit.nextServiceDate).toISOString().split("T")[0]
+      : "",
+  )
 
   const initialChemicals: Record<string, boolean> = {}
   if (completed) {
@@ -285,8 +292,9 @@ export function VisitForm({
         ...manualChemicals,
       ],
       notes: data.notes ?? "",
+      nextServiceDate: nextServiceDate || undefined,
     }),
-    [checkedChemicals, recommendations, manualChemicals],
+    [checkedChemicals, recommendations, manualChemicals, nextServiceDate],
   )
 
   const [saving, setSaving] = useState<"draft" | "complete" | null>(null)
@@ -600,6 +608,24 @@ export function VisitForm({
           value={notes ?? ""}
           onChange={(val) => setValue("notes", val)}
           disabled={completed || isOthersVisit}
+        />
+      </div>
+
+      {/* Next Service Date */}
+      <div className="rounded-xl border border-border bg-card p-4">
+        <h2 className="text-sm font-semibold text-card-foreground">
+          Next Service Date
+        </h2>
+        <p className="mb-2 mt-1 text-xs text-muted-foreground">
+          Set the date for the next scheduled service (optional)
+        </p>
+        <input
+          type="date"
+          value={nextServiceDate}
+          onChange={(e) => setNextServiceDate(e.target.value)}
+          min={new Date().toISOString().split("T")[0]}
+          disabled={completed || isOthersVisit}
+          className="block w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground shadow-xs transition-colors placeholder:text-muted-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
         />
       </div>
 

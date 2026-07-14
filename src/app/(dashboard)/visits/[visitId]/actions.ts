@@ -19,6 +19,8 @@ export interface VisitFormValues {
   readings: VisitReadings;
   chemicals: VisitChemical[];
   notes: string;
+  /** YYYY-MM-DD string, or undefined to leave unset. */
+  nextServiceDate?: string;
 }
 
 export async function saveDraftAction(
@@ -29,7 +31,13 @@ export async function saveDraftAction(
   if (!user.companyId) throw new Error("No company affiliation.");
 
   await assertVisitAccess(visitId, user.companyId, user.id);
-  await saveDraftVisit(visitId, data.readings, data.chemicals, data.notes || null);
+  await saveDraftVisit(
+    visitId,
+    data.readings,
+    data.chemicals,
+    data.notes || null,
+    data.nextServiceDate ? new Date(`${data.nextServiceDate}T12:00:00`) : null,
+  );
   revalidatePath(`/visits/${visitId}`);
 }
 
@@ -41,7 +49,13 @@ export async function completeVisitAction(
   if (!user.companyId) throw new Error("No company affiliation.");
 
   await assertVisitAccess(visitId, user.companyId, user.id);
-  await completeVisit(visitId, data.readings, data.chemicals, data.notes || null);
+  await completeVisit(
+    visitId,
+    data.readings,
+    data.chemicals,
+    data.notes || null,
+    data.nextServiceDate ? new Date(`${data.nextServiceDate}T12:00:00`) : null,
+  );
   revalidatePath(`/visits/${visitId}`);
 }
 

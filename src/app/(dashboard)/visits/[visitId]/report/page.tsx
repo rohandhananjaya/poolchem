@@ -111,7 +111,7 @@ export default async function ReportPage({
   if (!report) notFound()
 
   const visitDate = new Date(report.visit.date)
-  const nextServiceDate = new Date(report.nextServiceDate)
+  const nextServiceDate = report.nextServiceDate ? new Date(report.nextServiceDate) : null
   const qrSrc = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&margin=0&data=${encodeURIComponent(
     report.homeownerUrl,
   )}`
@@ -318,13 +318,15 @@ export default async function ReportPage({
 
         {/* Footer: next service + QR */}
         <footer className="mt-8 flex flex-col items-start justify-between gap-4 border-t border-border pt-5 sm:flex-row sm:items-center">
-          <div className="flex items-center gap-2 text-sm">
-            <CalendarClock className="size-4 text-teal-600" />
-            <span className="text-muted-foreground">Next service:</span>
-            <span className="font-semibold text-foreground">
-              {format(nextServiceDate, "EEEE, MMMM d, yyyy")}
-            </span>
-          </div>
+          {nextServiceDate && (
+            <div className="flex items-center gap-2 text-sm">
+              <CalendarClock className="size-4 text-teal-600" />
+              <span className="text-muted-foreground">Next service:</span>
+              <span className="font-semibold text-foreground">
+                {format(nextServiceDate, "EEEE, MMMM d, yyyy")}
+              </span>
+            </div>
+          )}
 
           <div className="flex items-center gap-3">
             <div className="text-right">

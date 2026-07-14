@@ -139,6 +139,7 @@ export async function completeVisit(
   readings: VisitReadings,
   chemicals: VisitChemical[],
   notes?: string | null,
+  nextServiceDate?: Date | null,
 ): Promise<CompletedVisit> {
   const existing = await prisma.serviceVisit.findUnique({
     where: { id: visitId },
@@ -164,6 +165,8 @@ export async function completeVisit(
         status: ServiceVisitStatus.COMPLETED,
         // Leave existing notes untouched when none are supplied.
         notes: notes ?? undefined,
+        nextServiceDate:
+          nextServiceDate !== undefined ? nextServiceDate : undefined,
       },
       include: {
         pool: true,
@@ -216,6 +219,23 @@ export async function getVisitHistory(poolId: string, limit: number) {
     take: limit,
     include: { waterReadings: true, chemicalsAdded: true, tech: true },
   });
+}
+
+/**
+ * Returns the date of the latest future scheduled (non-cancelled) visit for a
+ * pool, or `null` if no upcoming visit is scheduled.
+ */
+export async function getPoolNextScheduledVisit(poolId: string): Promise<Date | null> {
+  const visit = await prisma.serviceVisit.findFirst({
+    where: {
+      poolId,
+      scheduledAt: { gte: new Date() },
+      status: { not: ServiceVisitStatus.CANCELLED },
+    },
+    orderBy: { scheduledAt: "desc" },
+    select: { scheduledAt: true },
+  });
+  return visit?.scheduledAt ?? null;
 }
 
 /**
@@ -400,6 +420,7 @@ export async function saveDraftVisit(
   readings: VisitReadings,
   chemicals: VisitChemical[],
   notes?: string | null,
+  nextServiceDate?: Date | null,
 ) {
   const existing = await prisma.serviceVisit.findUnique({
     where: { id: visitId },
@@ -422,7 +443,11 @@ export async function saveDraftVisit(
 
     return tx.serviceVisit.update({
       where: { id: visitId },
-      data: { notes: notes ?? undefined },
+      data: {
+        notes: notes ?? undefined,
+        nextServiceDate:
+          nextServiceDate !== undefined ? nextServiceDate : undefined,
+      },
       include: {
         pool: true,
         tech: true,

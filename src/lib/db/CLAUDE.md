@@ -30,10 +30,11 @@ Get the tenant with `getCompanyId()` / `requireAuth()` from [../auth.ts](../auth
 - `createVisit(poolId, techId\|null, companyId, scheduledAt?)`
 - `startVisit(visitId, companyId) → ServiceVisit | null` — marks a DRAFT visit as `IN_PROGRESS`
 - `updateVisitStatus(visitId, companyId, status) → ServiceVisit | null` — changes visit status
-- `completeVisit(visitId, readings: VisitReadings, chemicals: VisitChemical[], notes?) → CompletedVisit`
-- `saveDraftVisit(visitId, readings, chemicals, notes?)`
+- `completeVisit(visitId, readings: VisitReadings, chemicals: VisitChemical[], notes?, nextServiceDate?) → CompletedVisit`
+- `saveDraftVisit(visitId, readings, chemicals, notes?, nextServiceDate?)`
 - `getVisitHistory(poolId, limit)`
 - `getLastVisitReadings(poolId) → VisitReadings | null`
+- `getPoolNextScheduledVisit(poolId) → Date | null` — latest future scheduled non-cancelled visit date for a pool
 
 **dashboard.ts**
 - `getDashboardData(companyId) → DashboardData`

@@ -114,6 +114,10 @@ model ServiceVisit {
   // When the visit is planned for. Null for visits created ad hoc (e.g. a tech
   // scanning a pool in the field); set when scheduled from the Schedule page.
   scheduledAt  DateTime?
+  // Date the tech set for the next service when completing the report.
+  // Null means no date was set; the report may still show a date from a future
+  // scheduled visit.
+  nextServiceDate DateTime?
   createdAt    DateTime           @default(now())
   updatedAt    DateTime           @updatedAt
 

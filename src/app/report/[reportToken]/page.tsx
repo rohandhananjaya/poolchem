@@ -103,7 +103,7 @@ export default async function PublicReportPage({
   if (!report) notFound()
 
   const visitDate = new Date(report.visit.date)
-  const nextServiceDate = new Date(report.nextServiceDate)
+  const nextServiceDate = report.nextServiceDate ? new Date(report.nextServiceDate) : null
 
   return (
     <div className="mx-auto w-full max-w-3xl px-4 py-6 md:px-6 md:py-8 print:max-w-none print:px-0 print:py-0">
@@ -287,15 +287,17 @@ export default async function PublicReportPage({
         </section>
 
         {/* Footer */}
-        <footer className="mt-8 flex flex-col items-start justify-between gap-4 border-t border-border pt-5 sm:flex-row sm:items-center">
-          <div className="flex items-center gap-2 text-sm">
-            <CalendarClock className="size-4 text-teal-600" />
-            <span className="text-muted-foreground">Next service:</span>
-            <span className="font-semibold text-foreground">
-              {format(nextServiceDate, "EEEE, MMMM d, yyyy")}
-            </span>
-          </div>
-        </footer>
+        {nextServiceDate && (
+          <footer className="mt-8 flex flex-col items-start justify-between gap-4 border-t border-border pt-5 sm:flex-row sm:items-center">
+            <div className="flex items-center gap-2 text-sm">
+              <CalendarClock className="size-4 text-teal-600" />
+              <span className="text-muted-foreground">Next service:</span>
+              <span className="font-semibold text-foreground">
+                {format(nextServiceDate, "EEEE, MMMM d, yyyy")}
+              </span>
+            </div>
+          </footer>
+        )}
       </article>
 
       {/* Footer branding */}
