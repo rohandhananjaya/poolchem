@@ -1,4 +1,4 @@
-# PoolBench — To-Do
+# Poolbench — To-Do
 
 MVP launch priorities for the US market, assessed 2026-07-11.
 

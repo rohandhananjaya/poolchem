@@ -238,7 +238,7 @@ export async function generateServiceReport(
       notes: visit.notes,
     },
     company: {
-      name: company?.name ?? "PoolBench",
+      name: company?.name ?? "Poolbench",
       logo: company?.logo ?? null,
       email: company?.email ?? "",
       phone: company?.phone ?? null,

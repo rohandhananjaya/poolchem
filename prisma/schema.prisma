@@ -1,4 +1,4 @@
-// Prisma schema for PoolBench — a multi-tenant pool service SaaS.
+// Prisma schema for Poolbench — a multi-tenant pool service SaaS.
 //
 // Using SQLite for local development. We'll migrate to PostgreSQL/Supabase
 // later; keep field types portable (avoid SQLite-only tricks).

@@ -36,7 +36,7 @@ const features = [
     icon: Beaker,
     title: "Chemical dose recommendations",
     description:
-      "Enter the test readings and pool volume; PoolBench returns the exact chemical doses needed to bring the water back into range — in the units on the label.",
+      "Enter the test readings and pool volume; Poolbench returns the exact chemical doses needed to bring the water back into range — in the units on the label.",
   },
   {
     icon: FileText,
@@ -76,7 +76,7 @@ const testimonials = [
     name: "Anshuman Kishore",
     title: "Marketing Manager, Porsche Centre Dubai",
     quote:
-      "PoolBench has completely transformed how our team manages pool chemistry. The health scoring alone saves us hours of manual calculation every week.",
+      "Poolbench has completely transformed how our team manages pool chemistry. The health scoring alone saves us hours of manual calculation every week.",
     rating: 5,
   },
   {
@@ -103,7 +103,7 @@ const blogPosts = [
     comments: 0,
     title: "The Science Behind Langelier Saturation Index",
     excerpt:
-      "Understanding LSI is key to balanced water. Here's how PoolBench calculates it automatically so you don't have to.",
+      "Understanding LSI is key to balanced water. Here's how Poolbench calculates it automatically so you don't have to.",
   },
   {
     image:
@@ -135,7 +135,7 @@ export default function Home() {
             <span className="flex size-9 items-center justify-center rounded-lg bg-sky-500 text-white shadow-sm">
               <Waves className="size-5" />
             </span>
-            <span className="text-lg">PoolBench</span>
+            <span className="text-lg">Poolbench</span>
           </Link>
           <ul className="hidden items-center gap-8 text-sm font-medium text-muted-foreground md:flex">
             <li className="nav-item active">
@@ -217,7 +217,7 @@ export default function Home() {
               <span >every visit</span>.
             </h1>
              <p className="mt-6 max-w-2xl text-lg leading-8 text-white/80 text-pretty md:text-xl [text-shadow:0_2px_2px_rgba(0,0,0,0.4)]">
-              PoolBench turns a quick water test into a health score, the exact
+              Poolbench turns a quick water test into a health score, the exact
               chemical doses to fix it, and a report your customers actually
               understand. Built for pool-service companies and their techs.
             </p>
@@ -325,7 +325,7 @@ export default function Home() {
             </h2>
             <p className="mt-4 text-lg text-muted-foreground text-pretty">
               From the first test strip to the report in the homeowner&apos;s inbox,
-              PoolBench covers the whole visit.
+              Poolbench covers the whole visit.
             </p>
           </div>
           <div className="service-box grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
@@ -389,7 +389,7 @@ export default function Home() {
               Water chemistry, handled
             </h2>
             <p className="mt-4 text-base leading-7 text-muted-foreground">
-              PoolBench was built by pool-service professionals who were tired of
+              Poolbench was built by pool-service professionals who were tired of
               juggling test strips, calculators, and spreadsheets. We set out to
               build a single tool that does the math, tracks the history, and
               generates the reports — so techs can focus on the pool, not the
@@ -438,7 +438,7 @@ export default function Home() {
               Request a Demo
             </h2>
             <p className="mt-4 text-base leading-7 text-white/80">
-              See how PoolBench can streamline your pool-service operation. Fill
+              See how Poolbench can streamline your pool-service operation. Fill
               out the form and we&apos;ll reach out within one business day.
             </p>
             <form
@@ -501,7 +501,7 @@ export default function Home() {
               Our Statistics
             </span>
             <h2 className="mb-0 text-3xl font-bold tracking-tight sm:text-4xl">
-              PoolBench by the numbers
+              Poolbench by the numbers
             </h2>
           </div>
           <div className="static-box grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
@@ -538,7 +538,7 @@ export default function Home() {
               <Play className="ml-1 size-10" />
             </a>
             <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">
-              See PoolBench in Action
+              See Poolbench in Action
             </h2>
             <p className="mx-auto mt-4 max-w-2xl text-base leading-7 text-muted-foreground">
               Watch how a pool-service tech goes from test strip to finished report
@@ -654,7 +654,7 @@ export default function Home() {
                 <span className="flex size-9 items-center justify-center rounded-lg bg-sky-500 text-white">
                   <Waves className="size-5" />
                 </span>
-                <span className="text-lg">PoolBench</span>
+                <span className="text-lg">Poolbench</span>
               </div>
               <ul className="mt-6 space-y-3 text-sm text-sky-100/70">
                 <li className="flex items-center gap-3">
@@ -790,7 +790,7 @@ export default function Home() {
       {/* Copyright */}
       <div className="w-full float-left copyright border-t border-sky-800 bg-sky-950 px-4 py-5 text-center md:px-6">
         <span className="text-sm text-sky-300/70">
-          &copy; 2026 PoolBench. Water chemistry, handled.
+          &copy; 2026 Poolbench. Water chemistry, handled.
         </span>
       </div>
     </div>

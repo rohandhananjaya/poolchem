@@ -1,6 +1,6 @@
 ---
 name: solid-principles
-description: PoolBench's SOLID-first architecture — read BEFORE modifying any code file. Every change must follow SRP, OCP, LSP, ISP, and DIP as detailed below. Triggers on: creating or editing any .ts or .tsx file in src/.
+description: Poolbench's SOLID-first architecture — read BEFORE modifying any code file. Every change must follow SRP, OCP, LSP, ISP, and DIP as detailed below. Triggers on: creating or editing any .ts or .tsx file in src/.
 ---
 
 # SOLID Principles & Scalability Rules

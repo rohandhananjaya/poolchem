@@ -37,7 +37,7 @@ export default function NotFound() {
 
       <p className="mt-8 flex items-center gap-1.5 text-xs text-muted-foreground">
         <Droplets className="size-3.5 text-teal-500" />
-        PoolBench
+        Poolbench
       </p>
     </div>
   )

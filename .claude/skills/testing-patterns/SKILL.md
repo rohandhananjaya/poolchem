@@ -1,6 +1,6 @@
 ---
 name: testing-patterns
-description: PoolBench's test setup, patterns, and conventions. Read BEFORE writing tests. Covers vitest config, mocking, and the patterns used across DB, action, component, and pure-function tests. Triggers on: editing or creating any *.test.ts or *.test.tsx file in src/.
+description: Poolbench's test setup, patterns, and conventions. Read BEFORE writing tests. Covers vitest config, mocking, and the patterns used across DB, action, component, and pure-function tests. Triggers on: editing or creating any *.test.ts or *.test.tsx file in src/.
 ---
 
 # Testing Patterns

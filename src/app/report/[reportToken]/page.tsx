@@ -137,7 +137,7 @@ export default async function PublicReportPage({
           </div>
           <div className="hidden shrink-0 items-center gap-1.5 text-teal-600 sm:flex print:flex">
             <Droplets className="size-5" />
-            <span className="text-sm font-semibold">PoolBench</span>
+            <span className="text-sm font-semibold">Poolbench</span>
           </div>
         </header>
 
@@ -303,7 +303,7 @@ export default async function PublicReportPage({
       {/* Footer branding */}
       <footer className="mt-6 flex items-center justify-center gap-2 text-xs text-muted-foreground print:hidden">
         <Droplets className="size-3 text-teal-500" />
-        Powered by PoolBench
+        Powered by Poolbench
       </footer>
     </div>
   )

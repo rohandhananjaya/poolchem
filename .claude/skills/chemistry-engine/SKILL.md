@@ -1,6 +1,6 @@
 ---
 name: chemistry-engine
-description: PoolBench's pure pool-chemistry domain logic. Read BEFORE editing src/lib/pool-chemistry.ts or any reading/dosing code. This module has no I/O, no Prisma imports — keep it pure. Triggers on: editing src/lib/pool-chemistry.ts, src/lib/pool-chemistry.test.ts, or any file importing from pool-chemistry.
+description: Poolbench's pure pool-chemistry domain logic. Read BEFORE editing src/lib/pool-chemistry.ts or any reading/dosing code. This module has no I/O, no Prisma imports — keep it pure. Triggers on: editing src/lib/pool-chemistry.ts, src/lib/pool-chemistry.test.ts, or any file importing from pool-chemistry.
 ---
 
 # Chemistry Engine

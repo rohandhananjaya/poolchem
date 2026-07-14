@@ -109,7 +109,7 @@ async function provisionAuthUser(
 }
 
 async function main() {
-  console.log("🌱 Seeding PoolBench demo data…\n");
+  console.log("🌱 Seeding Poolbench demo data…\n");
 
   // ---- Reset any existing demo tenant --------------------------------------
   const existing = await prisma.company.findFirst({

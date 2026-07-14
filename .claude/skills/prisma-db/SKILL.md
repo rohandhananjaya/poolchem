@@ -1,6 +1,6 @@
 ---
 name: prisma-db
-description: PoolBench's Prisma 7 schema, connection, and migration patterns. Breaking changes from Prisma 5/6 are enumerated. Triggers on: editing prisma/schema.prisma, src/lib/prisma.ts, prisma.config.ts, or any file importing from @/generated/prisma/client.
+description: Poolbench's Prisma 7 schema, connection, and migration patterns. Breaking changes from Prisma 5/6 are enumerated. Triggers on: editing prisma/schema.prisma, src/lib/prisma.ts, prisma.config.ts, or any file importing from @/generated/prisma/client.
 ---
 
 # Prisma 7 Database Layer

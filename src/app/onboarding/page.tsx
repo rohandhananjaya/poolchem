@@ -31,7 +31,7 @@ export default async function OnboardingPage() {
             <Waves className="size-6" />
           </span>
           <h1 className="text-2xl font-semibold tracking-tight text-foreground mt-4">
-            Welcome to PoolBench{company ? `, ${company.name}` : ""}
+            Welcome to Poolbench{company ? `, ${company.name}` : ""}
           </h1>
           <p className="text-sm text-muted-foreground">
             Let&apos;s get your company set up. You can always change these later.

@@ -4,7 +4,7 @@
 This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` before writing any code. Heed deprecation notices.
 <!-- END:nextjs-agent-rules -->
 
-# PoolBench — repo-level facts an agent would miss
+# Poolbench — repo-level facts an agent would miss
 
 ## Framework traps
 

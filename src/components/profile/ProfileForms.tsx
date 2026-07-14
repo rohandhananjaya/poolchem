@@ -324,7 +324,7 @@ export function ProfileForms({
             <DialogTitle>Delete your account?</DialogTitle>
             <DialogDescription>
               This permanently removes your account and all associated personal
-              data from PoolBench. You will no longer be able to access the app.
+              data from Poolbench. You will no longer be able to access the app.
               This action cannot be undone.
             </DialogDescription>
           </DialogHeader>

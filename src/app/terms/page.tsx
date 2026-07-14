@@ -6,12 +6,12 @@ const sections = [
   {
     title: "1. Acceptance of Terms",
     content:
-      'By accessing or using PoolBench ("the Service"), you agree to be bound by these Terms of Service ("Terms"). If you do not agree, do not use the Service. These Terms apply to all users, including company owners, technicians, and anyone accessing the Service through a homeowner dashboard link.',
+      'By accessing or using Poolbench ("the Service"), you agree to be bound by these Terms of Service ("Terms"). If you do not agree, do not use the Service. These Terms apply to all users, including company owners, technicians, and anyone accessing the Service through a homeowner dashboard link.',
   },
   {
     title: "2. Description of Service",
     content:
-      "PoolBench provides a software platform for pool-service companies to record water test readings, calculate water health scores, recommend chemical doses, generate service reports, and manage scheduling. The Service is accessed via a web application and is provided on a software-as-a-service (SaaS) basis.",
+      "Poolbench provides a software platform for pool-service companies to record water test readings, calculate water health scores, recommend chemical doses, generate service reports, and manage scheduling. The Service is accessed via a web application and is provided on a software-as-a-service (SaaS) basis.",
   },
   {
     title: "3. Accounts",
@@ -54,12 +54,12 @@ const sections = [
   {
     title: "7. Intellectual Property",
     content:
-      "The Service, including its code, design, branding, and underlying technology, is owned by PoolBench and is protected by intellectual property laws. You are granted a limited, non-exclusive, non-transferable license to use the Service during your subscription period.",
+      "The Service, including its code, design, branding, and underlying technology, is owned by Poolbench and is protected by intellectual property laws. You are granted a limited, non-exclusive, non-transferable license to use the Service during your subscription period.",
   },
   {
     title: "8. Limitation of Liability",
     content:
-      "The Service is provided \"as is\" without warranties of any kind, either express or implied. PoolBench is not liable for any indirect, incidental, or consequential damages arising from your use of the Service. Water chemistry recommendations are informational and should be verified by qualified professionals. PoolBench does not guarantee specific water quality outcomes.",
+      "The Service is provided \"as is\" without warranties of any kind, either express or implied. Poolbench is not liable for any indirect, incidental, or consequential damages arising from your use of the Service. Water chemistry recommendations are informational and should be verified by qualified professionals. Poolbench does not guarantee specific water quality outcomes.",
   },
   {
     title: "9. Termination",
@@ -93,7 +93,7 @@ export default function TermsPage() {
             <span className="flex size-8 items-center justify-center rounded-lg bg-sky-500 text-white shadow-sm">
               <Waves className="size-5" />
             </span>
-            <span className="text-lg">PoolBench</span>
+            <span className="text-lg">Poolbench</span>
           </Link>
           <Button asChild variant="ghost" size="lg">
             <Link href="/login">Sign in</Link>
@@ -110,7 +110,7 @@ export default function TermsPage() {
             Last updated: July 12, 2026
           </p>
           <p className="mt-6 text-base leading-7 text-muted-foreground">
-            These Terms of Service govern your use of the PoolBench platform.
+            These Terms of Service govern your use of the Poolbench platform.
             By using the Service, you agree to these Terms. If you are using
             the Service on behalf of a company, you represent that you have
             authority to bind that company to these Terms.
@@ -145,7 +145,7 @@ export default function TermsPage() {
             <span className="flex size-6 items-center justify-center rounded-md bg-sky-500 text-white">
               <Waves className="size-4" />
             </span>
-            PoolBench
+            Poolbench
           </Link>
           <div className="flex items-center gap-4">
             <Link href="/privacy" className="hover:text-foreground transition-colors">
@@ -155,7 +155,7 @@ export default function TermsPage() {
               Terms
             </Link>
           </div>
-          <p>© 2026 PoolBench. Water chemistry, handled.</p>
+          <p>© 2026 Poolbench. Water chemistry, handled.</p>
         </div>
       </footer>
     </div>

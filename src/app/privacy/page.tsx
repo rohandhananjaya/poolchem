@@ -6,7 +6,7 @@ const sections = [
   {
     title: "1. Who we are",
     content:
-      "PoolBench (\"we\", \"our\", \"us\") operates the PoolBench application and website. We are a pool-service software provider. If you have questions about this policy, contact us at privacy@poolbench.app.",
+      "Poolbench (\"we\", \"our\", \"us\") operates the Poolbench application and website. We are a pool-service software provider. If you have questions about this policy, contact us at privacy@poolbench.app.",
   },
   {
     title: "2. What personal data we collect",
@@ -30,7 +30,7 @@ const sections = [
     title: "4. Why we process your data (legal bases)",
     content: "We process your personal data under the following legal bases:",
     items: [
-      "Contractual necessity (Art. 6(1)(b) GDPR): to deliver the PoolBench service, manage your account, and process transactions.",
+      "Contractual necessity (Art. 6(1)(b) GDPR): to deliver the Poolbench service, manage your account, and process transactions.",
       "Legitimate interest (Art. 6(1)(f) GDPR): to improve our service, ensure security, and communicate with you about your account.",
       "Consent (Art. 6(1)(a) GDPR): for non-essential cookies, marketing communications, and Google OAuth data sharing.",
     ],
@@ -106,7 +106,7 @@ export default function PrivacyPage() {
             <span className="flex size-8 items-center justify-center rounded-lg bg-sky-500 text-white shadow-sm">
               <Waves className="size-5" />
             </span>
-            <span className="text-lg">PoolBench</span>
+            <span className="text-lg">Poolbench</span>
           </Link>
           <Button asChild variant="ghost" size="lg">
             <Link href="/login">Sign in</Link>
@@ -123,7 +123,7 @@ export default function PrivacyPage() {
             Last updated: July 12, 2026
           </p>
           <p className="mt-6 text-base leading-7 text-muted-foreground">
-            This Privacy Policy explains how PoolBench collects, uses, processes,
+            This Privacy Policy explains how Poolbench collects, uses, processes,
             and shares your personal data when you use our application and website.
             It applies to all users of the platform, including company owners,
             technicians, and homeowners whose data is stored in the system.
@@ -177,7 +177,7 @@ export default function PrivacyPage() {
             <span className="flex size-6 items-center justify-center rounded-md bg-sky-500 text-white">
               <Waves className="size-4" />
             </span>
-            PoolBench
+            Poolbench
           </Link>
           <div className="flex items-center gap-4">
             <Link href="/privacy" className="hover:text-foreground transition-colors">
@@ -187,7 +187,7 @@ export default function PrivacyPage() {
               Terms
             </Link>
           </div>
-          <p>© 2026 PoolBench. Water chemistry, handled.</p>
+          <p>© 2026 Poolbench. Water chemistry, handled.</p>
         </div>
       </footer>
     </div>
