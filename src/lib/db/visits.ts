@@ -182,6 +182,28 @@ export async function completeVisit(
 }
 
 /**
+ * Returns a completed visit by its `publicToken` — the unscoped access grant for
+ * the public, no-login shareable report link.
+ *
+ * Eager-loads the pool, company, tech, readings and chemicals so the report can
+ * be assembled with one query. Returns `null` for unknown tokens (→ 404).
+ *
+ * The public report page ONLY shows COMPLETED visits. Non-completed visits
+ * return `null` regardless of token validity.
+ */
+export async function getVisitByPublicToken(publicToken: string) {
+  return prisma.serviceVisit.findFirst({
+    where: { publicToken, status: ServiceVisitStatus.COMPLETED },
+    include: {
+      pool: { include: { company: true } },
+      tech: true,
+      waterReadings: true,
+      chemicalsAdded: true,
+    },
+  });
+}
+
+/**
  * Returns a pool's most recent completed visits (newest first), with readings
  * and chemicals attached — the data source for trend charts.
  *

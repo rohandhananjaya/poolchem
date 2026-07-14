@@ -1,6 +1,11 @@
 import { describe, expect, it, beforeEach, vi } from "vitest";
 
 vi.mock("server-only", () => ({}));
+vi.mock("next/navigation", () => ({
+  redirect: vi.fn(() => {
+    throw new Error("NEXT_REDIRECT");
+  }),
+}));
 vi.mock("@/lib/supabase/server", () => ({
   createClient: vi.fn(),
 }));
@@ -110,16 +115,19 @@ describe("requireAuth", () => {
     expect(result).toEqual(mockUser);
   });
 
-  it("throws AuthError when not authenticated", async () => {
-    vi.mocked(createClient).mockResolvedValue({
-      auth: {
-        getUser: vi.fn().mockResolvedValue({
-          data: { user: null },
-        }),
-      },
-    } as never);
+  it("redirects to /login when not authenticated", async () => {
+    vi.mocked(createClient).mockImplementation(() =>
+      Promise.resolve({
+        auth: {
+          getUser: vi.fn().mockResolvedValue({
+            data: { user: null },
+          }),
+          signOut: vi.fn().mockResolvedValue({ error: null }),
+        },
+      } as never),
+    );
 
-    await expect(requireAuth()).rejects.toThrow(/sign in/);
+    await expect(requireAuth()).rejects.toThrow("NEXT_REDIRECT");
   });
 });
 

@@ -106,6 +106,11 @@ model ServiceVisit {
   status       ServiceVisitStatus @default(DRAFT)
   weatherNotes      String?
   cancellationReason String?
+  // Unguessable token for the public, no-login shareable report link
+  // (/report/[publicToken]). Auto-generated for every visit.
+  // Optional for backward-compat with existing rows; always populated for new
+  // visits via the @default. Can be made required after backfilling existing rows.
+  publicToken  String?            @unique @default(uuid())
   // When the visit is planned for. Null for visits created ad hoc (e.g. a tech
   // scanning a pool in the field); set when scheduled from the Schedule page.
   scheduledAt  DateTime?

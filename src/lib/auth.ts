@@ -1,6 +1,7 @@
 import "server-only";
 
 import { cache } from "react";
+import { redirect } from "next/navigation";
 
 import type { User, UserRole } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
@@ -37,7 +38,9 @@ export const getCurrentUser = cache(async (): Promise<User | null> => {
 export async function requireAuth(): Promise<User> {
   const user = await getCurrentUser();
   if (!user) {
-    throw new AuthError();
+    const supabase = await createClient();
+    await supabase.auth.signOut();
+    redirect("/login");
   }
   return user;
 }

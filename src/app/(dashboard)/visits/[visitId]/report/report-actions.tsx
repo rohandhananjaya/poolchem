@@ -10,6 +10,8 @@ export interface ReportActionsProps {
   homeownerEmail: string
   /** Pool name, used in the email subject. */
   poolName: string
+  /** Absolute URL for the public, no-login shareable report link. */
+  reportUrl: string
 }
 
 /**
@@ -19,29 +21,29 @@ export interface ReportActionsProps {
  *
  * Hidden when printing (`print:hidden`) so it never appears on paper.
  */
-export function ReportActions({ homeownerEmail, poolName }: ReportActionsProps) {
+export function ReportActions({ homeownerEmail, poolName, reportUrl }: ReportActionsProps) {
   const [copied, setCopied] = useState(false)
 
   const handleCopyLink = useCallback(async () => {
     try {
-      await navigator.clipboard.writeText(window.location.href)
+      await navigator.clipboard.writeText(reportUrl)
       setCopied(true)
       window.setTimeout(() => setCopied(false), 2000)
     } catch {
       // Clipboard can be unavailable (insecure context / denied permission).
-      window.prompt("Copy this report link:", window.location.href)
+      window.prompt("Copy this report link:", reportUrl)
     }
-  }, [])
+  }, [reportUrl])
 
   // Placeholder for the auto-send email integration: opens the user's mail
   // client with a draft. Swap for a server-side transactional send later.
   const handleEmail = useCallback(() => {
     const subject = encodeURIComponent(`Service report — ${poolName}`)
     const body = encodeURIComponent(
-      `Hi,\n\nHere is your latest pool service report:\n${window.location.href}\n`,
+      `Hi,\n\nHere is your latest pool service report:\n${reportUrl}\n`,
     )
     window.location.href = `mailto:${homeownerEmail}?subject=${subject}&body=${body}`
-  }, [homeownerEmail, poolName])
+  }, [homeownerEmail, poolName, reportUrl])
 
   return (
     <div className="flex flex-wrap items-center gap-2 print:hidden">

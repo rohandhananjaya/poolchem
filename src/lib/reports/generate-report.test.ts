@@ -64,6 +64,7 @@ const mockVisit = {
   notes: "All good",
   createdAt: new Date("2026-07-11T10:00:00Z"),
   poolId: mockPool.id,
+  publicToken: "report_tok_123",
 };
 
 beforeEach(() => {
@@ -101,6 +102,8 @@ describe("generateServiceReport", () => {
     expect(result!.nextServiceDate).toBe("2026-07-18T10:00:00.000Z");
     expect(result!.homeownerUrl).toContain("example.com");
     expect(result!.homeownerUrl).toContain("/pool/tok_abc");
+    expect(result!.reportUrl).toContain("example.com");
+    expect(result!.reportUrl).toContain("/report/report_tok_123");
   });
 
   it("returns null when visit is not found", async () => {

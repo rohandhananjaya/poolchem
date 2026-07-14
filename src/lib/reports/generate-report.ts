@@ -95,6 +95,8 @@ export interface ServiceReport {
   nextServiceDate: string;
   /** Absolute URL the homeowner QR code points at. */
   homeownerUrl: string;
+  /** Absolute URL for the public shareable report (/report/[publicToken]). */
+  reportUrl: string;
 }
 
 /** The ordered parameters shown in the results table with their labels/units. */
@@ -241,5 +243,8 @@ export async function generateServiceReport(
     scoreHistory,
     nextServiceDate: addDays(visit.createdAt, SERVICE_INTERVAL_DAYS).toISOString(),
     homeownerUrl: `${origin}/pool/${visit.pool.publicToken}`,
+    reportUrl: visit.publicToken
+      ? `${origin}/report/${visit.publicToken}`
+      : `${origin}/visits/${visit.id}/report`,
   };
 }

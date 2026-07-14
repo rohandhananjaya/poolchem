@@ -9,6 +9,7 @@ Next.js 16 App Router. Pattern: **Server Component page → `db/` helper → ren
 - `page.tsx` — marketing/landing
 - `login/page.tsx` — password + Google OAuth
 - `pool/[poolToken]/page.tsx` — **public** homeowner dashboard (no auth); reads via `getPoolByPublicToken` / `getHomeownerDashboard`
+- `report/[reportToken]/page.tsx` — **public** shareable service report (no auth); reads via `getPublicReport`
 - `not-found.tsx`, `error.tsx`, `layout.tsx` (root)
 
 ## (dashboard)/ — auth-required route group, shared `layout.tsx` (nav shell)

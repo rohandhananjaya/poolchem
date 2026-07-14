@@ -2,12 +2,24 @@ import Link from "next/link";
 import {
   Activity,
   ArrowRight,
+  Award,
   Beaker,
+  Building2,
   CalendarClock,
+  Check,
+  ChevronRight,
+  Clock,
   Droplets,
   FileText,
+  Mail,
+  MapPin,
+  Phone,
+  Play,
   QrCode,
+  Send,
   ShieldCheck,
+  Star,
+  Users,
   Waves,
 } from "lucide-react";
 
@@ -52,95 +64,263 @@ const features = [
   },
 ];
 
-const steps = [
+const stats = [
+  { icon: Waves, value: "10K+", label: "Pools Tracked" },
+  { icon: FileText, value: "50K+", label: "Reports Generated" },
+  { icon: Users, value: "500+", label: "Companies Using" },
+  { icon: Award, value: "99.9%", label: "Uptime" },
+];
+
+const testimonials = [
   {
-    step: "01",
-    title: "Test the water",
-    description:
-      "Your tech records pH, chlorine, alkalinity, hardness and stabilizer — right from their phone at the pool.",
+    name: "Anshuman Kishore",
+    title: "Marketing Manager, Porsche Centre Dubai",
+    quote:
+      "PoolChem has completely transformed how our team manages pool chemistry. The health scoring alone saves us hours of manual calculation every week.",
+    rating: 5,
   },
   {
-    step: "02",
-    title: "Get the verdict",
-    description:
-      "PoolChem scores the water and recommends the precise chemicals and amounts to bring it into balance.",
+    name: "Clare Smyth",
+    title: "Pool Service Owner",
+    quote:
+      "My techs love the QR code scan feature. They walk up, scan, and everything they need is right there. The reports have also been a huge hit with our residential clients.",
+    rating: 5,
   },
   {
-    step: "03",
-    title: "Share the report",
-    description:
-      "Complete the visit and send the homeowner a polished report with everything that was measured and added.",
+    name: "Jamie Oliver",
+    title: "Facilities Manager",
+    quote:
+      "Being able to track water health trends over time has helped us catch issues before they become problems. Highly recommended for any multi-pool operation.",
+    rating: 5,
+  },
+];
+
+const blogPosts = [
+  {
+    image:
+      "https://images.unsplash.com/photo-1566847438217-76e6d1f5f6f0?w=600&h=400&fit=crop",
+    date: "June 15, 2026",
+    comments: 0,
+    title: "The Science Behind Langelier Saturation Index",
+    excerpt:
+      "Understanding LSI is key to balanced water. Here's how PoolChem calculates it automatically so you don't have to.",
+  },
+  {
+    image:
+      "https://images.unsplash.com/photo-1575428652377-a2d80e2277fc?w=600&h=400&fit=crop",
+    date: "May 28, 2026",
+    comments: 2,
+    title: "5 Signs Your Pool Service Needs a Digital Upgrade",
+    excerpt:
+      "From lost paper reports to inconsistent dosing — if these sound familiar, it's time to digitize your workflow.",
+  },
+  {
+    image:
+      "https://images.unsplash.com/photo-1582213782179-e0d53f98f2ca?w=600&h=400&fit=crop",
+    date: "April 10, 2026",
+    comments: 1,
+    title: "Why Water Chemistry Matters for Equipment Longevity",
+    excerpt:
+      "Balanced water doesn't just look good — it protects your pumps, filters, and heaters from premature wear.",
   },
 ];
 
 export default function Home() {
   return (
-    <div className="flex min-h-full flex-1 flex-col bg-background text-foreground">
+    <div className="w-full float-left bg-background text-foreground">
       {/* Header */}
-      <header className="sticky top-0 z-40 border-b border-border/60 bg-background/80 backdrop-blur-md">
-        <div className="mx-auto flex h-16 w-full max-w-6xl items-center justify-between px-4 md:px-6">
-          <Link href="/" className="flex items-center gap-2 font-semibold tracking-tight">
-            <span className="flex size-8 items-center justify-center rounded-lg bg-sky-500 text-white shadow-sm">
+      <header className="w-full float-left header-con border-b border-border/60 bg-white shadow-sm dark:bg-card">
+        <div className="mx-auto flex h-16 w-full max-w-7xl items-center justify-between px-4 md:px-6">
+          <Link href="/" className="navbar-brand flex items-center gap-2 font-semibold tracking-tight">
+            <span className="flex size-9 items-center justify-center rounded-lg bg-sky-500 text-white shadow-sm">
               <Waves className="size-5" />
             </span>
             <span className="text-lg">PoolChem</span>
           </Link>
-          <nav className="flex items-center gap-2">
-            <Button asChild variant="ghost" size="lg">
-              <Link href="/login">Sign in</Link>
-            </Button>
-            <Button asChild size="lg">
-              <Link href="/signup">Get started</Link>
-            </Button>
-          </nav>
+          <ul className="hidden items-center gap-8 text-sm font-medium text-muted-foreground md:flex">
+            <li className="nav-item active">
+              <Link href="/" className="text-foreground hover:text-sky-600 transition-colors">
+                Home
+              </Link>
+            </li>
+            <li className="nav-item">
+              <Link href="#features" className="hover:text-sky-600 transition-colors">
+                Features
+              </Link>
+            </li>
+            <li className="nav-item">
+              <Link href="#about" className="hover:text-sky-600 transition-colors">
+                About
+              </Link>
+            </li>
+            <li className="nav-item">
+              <Link href="#blog" className="hover:text-sky-600 transition-colors">
+                Blog
+              </Link>
+            </li>
+            <li className="nav-item">
+              <Link href="#contact" className="hover:text-sky-600 transition-colors">
+                Contact
+              </Link>
+            </li>
+          </ul>
+          <div className="header-btn flex items-center gap-4">
+            <div className="quote-btn">
+              <Button asChild size="lg" className="h-10 bg-sky-600 px-5 text-sm text-white hover:bg-sky-700">
+                <Link href="/signup">
+                  Request a Demo
+                  <ArrowRight className="ml-1 size-3.5" />
+                </Link>
+              </Button>
+            </div>
+            <div className="phone-num hidden items-center gap-1.5 text-sm font-medium text-muted-foreground md:flex">
+              <Phone className="size-3.5 text-sky-600" />
+              <a href="tel:+15551234567" className="hover:text-foreground transition-colors">
+                +1 (555) 123-4567
+              </a>
+            </div>
+          </div>
         </div>
       </header>
 
-      <main className="flex-1">
-        {/* Hero */}
-        <section className="relative overflow-hidden">
-          {/* Ambient water gradient */}
-          <div
-            aria-hidden
-            className="pointer-events-none absolute inset-0 -z-10 bg-gradient-to-b from-sky-50 via-background to-background dark:from-sky-950/30 dark:via-background dark:to-background"
-          />
-          <div className="mx-auto w-full max-w-6xl px-4 py-20 md:px-6 md:py-28">
-            <div className="mx-auto flex max-w-3xl flex-col items-center text-center">
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-sky-200 bg-sky-50 px-3 py-1 text-xs font-medium text-sky-700 dark:border-sky-900 dark:bg-sky-950/50 dark:text-sky-300">
-                <Droplets className="size-3.5" />
-                Water chemistry, handled
-              </span>
-              <h1 className="mt-6 text-4xl font-semibold tracking-tight text-balance sm:text-5xl md:text-6xl">
-                Perfectly balanced pools,{" "}
-                <span className="text-sky-600 dark:text-sky-400">every visit</span>.
-              </h1>
-              <p className="mt-6 max-w-xl text-lg leading-8 text-muted-foreground text-pretty">
-                PoolChem turns a quick water test into a health score, the exact
-                chemical doses to fix it, and a report your customers actually
-                understand. Built for pool-service companies and their techs.
-              </p>
-              <div className="mt-9 flex flex-col gap-3 sm:flex-row">
-                <Button asChild size="lg" className="h-11 px-5 text-base">
-                  <Link href="/signup">
-                    Start free
-                    <ArrowRight className="size-4" />
-                  </Link>
-                </Button>
-                <Button asChild variant="outline" size="lg" className="h-11 px-5 text-base">
-                  <Link href="/login">Sign in</Link>
-                </Button>
-              </div>
-              <p className="mt-4 text-sm text-muted-foreground">
-                No credit card required. Set up your company in minutes.
-              </p>
-            </div>
-          </div>
-        </section>
+      {/* Hero */}
+      <section className="w-full float-left banner-con relative overflow-hidden bg-cover bg-top bg-no-repeat text-white"
+        style={{ backgroundImage: "url(/images/pool-bg.jpg)" }}>
 
-        {/* Features */}
-        <section className="mx-auto w-full max-w-6xl px-4 py-16 md:px-6 md:py-24">
-          <div className="mx-auto max-w-2xl text-center">
-            <h2 className="text-3xl font-semibold tracking-tight sm:text-4xl">
+        {/* Social sidebar */}
+        <ul className="fixed left-6 top-1/2 z-10 hidden -translate-y-1/2 flex-col items-center gap-5 md:flex">
+          <li>
+            <a href="https://facebook.com" target="_blank" rel="noopener noreferrer" className="flex size-9 items-center justify-center rounded-full border border-white/30 text-white/80 transition-colors hover:border-white hover:text-white">
+              <svg className="size-4" fill="currentColor" viewBox="0 0 24 24"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
+            </a>
+          </li>
+          <li>
+            <a href="https://x.com" target="_blank" rel="noopener noreferrer" className="flex size-9 items-center justify-center rounded-full border border-white/30 text-white/80 transition-colors hover:border-white hover:text-white">
+              <svg className="size-4" fill="currentColor" viewBox="0 0 24 24"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+            </a>
+          </li>
+          <li>
+            <a href="https://instagram.com" target="_blank" rel="noopener noreferrer" className="flex size-9 items-center justify-center rounded-full border border-white/30 text-white/80 transition-colors hover:border-white hover:text-white">
+              <svg className="size-4" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z"/></svg>
+            </a>
+          </li>
+        </ul>
+
+        <div className="mx-auto w-full max-w-7xl px-4 py-24 md:px-6 md:py-32">
+          <div className="banner-title flex max-w-3xl flex-col items-start text-left">
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-white/20 bg-white/10 px-4 py-1 text-xs font-medium text-white/90 backdrop-blur-sm">
+              <Droplets className="size-3.5" />
+              Water chemistry, handled
+            </span>
+            <h1 className="mt-6 text-4xl font-bold tracking-tight text-balance sm:text-5xl md:text-6xl lg:text-7xl">
+              Perfectly balanced pools,{" "}
+              <span >every visit</span>.
+            </h1>
+             <p className="mt-6 max-w-2xl text-lg leading-8 text-white/80 text-pretty md:text-xl [text-shadow:0_2px_2px_rgba(0,0,0,0.4)]">
+              PoolChem turns a quick water test into a health score, the exact
+              chemical doses to fix it, and a report your customers actually
+              understand. Built for pool-service companies and their techs.
+            </p>
+            <div className="mt-10 flex flex-col gap-4 sm:flex-row">
+              <Button
+                asChild
+                size="lg"
+                className="h-12 bg-white px-7 text-base font-semibold text-sky-700 shadow-lg hover:bg-sky-50"
+              >
+                <Link href="/signup">
+                  Start free
+                  <ArrowRight className="ml-1.5 size-4" />
+                </Link>
+              </Button>
+              <Button
+                asChild
+                size="lg"
+                className="h-12 bg-sky-600 px-7 text-base font-semibold text-white shadow-lg hover:bg-sky-700"
+              >
+                <Link href="#features">
+                  See how it works
+                  <ArrowRight className="ml-1.5 size-4" />
+                </Link>
+              </Button>
+            </div>
+            <p className="mt-5 text-sm text-white/60">
+              No credit card required. Set up your company in minutes.
+            </p>
+          </div>
+        </div>
+
+        {/* Wave SVG */}
+        <div className="banner-wave absolute bottom-0 left-0 w-full overflow-hidden leading-none">
+          <svg
+            className="waves relative block w-full"
+            style={{ height: "80px", maxHeight: "140px" }}
+            viewBox="0 24 150 28"
+            preserveAspectRatio="none"
+            shapeRendering="auto"
+          >
+            <defs>
+              <path
+                id="gentle-wave"
+                d="M-160 44c30 0 58-18 88-18s 58 18 88 18 58-18 88-18 58 18 88 18 v44h-352z"
+              />
+            </defs>
+            <use
+              href="#gentle-wave"
+              x={48}
+              y={0}
+              fill="rgba(14,165,233,0.7)"
+              className="animate-wave-flow"
+              style={{ animationDuration: "7s" }}
+            />
+            <use
+              href="#gentle-wave"
+              x={48}
+              y={3}
+              fill="rgba(255,255,255,0.5)"
+              className="animate-wave-flow"
+              style={{ animationDuration: "5.5s" }}
+            />
+            <use
+              href="#gentle-wave"
+              x={48}
+              y={5}
+              fill="rgba(255,255,255,0.3)"
+              className="animate-wave-flow"
+              style={{ animationDuration: "4s" }}
+            />
+            <use
+              href="#gentle-wave"
+              x={48}
+              y={7}
+              fill="#f0f9ff"
+              className="animate-wave-flow"
+              style={{ animationDuration: "3.5s" }}
+            />
+          </svg>
+        </div>
+
+        {/* Scroll down indicator */}
+        <a
+          href="#features"
+          className="top-btn absolute -bottom-6 left-1/2 z-10 hidden -translate-x-1/2 animate-bounce md:block"
+        >
+          <span className="flex size-10 items-center justify-center rounded-full bg-white/20 text-white backdrop-blur-sm">
+            <ArrowRight className="size-4 rotate-90" />
+          </span>
+        </a>
+      </section>
+
+      {/* Services / Features */}
+      <section
+        id="features"
+        className="w-full float-left service-con bg-white px-4 py-20 dark:bg-background md:px-6 md:py-28"
+      >
+        <div className="mx-auto max-w-7xl">
+          <div className="generic-title mx-auto mb-14 max-w-2xl text-center">
+            <span className="d-inline-block mb-2 inline-block text-xs font-semibold uppercase tracking-widest text-sky-600 dark:text-sky-400">
+              Our Services
+            </span>
+            <h2 className="mb-0 text-3xl font-bold tracking-tight sm:text-4xl">
               Everything a service call needs
             </h2>
             <p className="mt-4 text-lg text-muted-foreground text-pretty">
@@ -148,111 +328,471 @@ export default function Home() {
               PoolChem covers the whole visit.
             </p>
           </div>
-          <div className="mt-14 grid gap-px overflow-hidden rounded-2xl border border-border bg-border sm:grid-cols-2 lg:grid-cols-3">
+          <div className="service-box grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
             {features.map((feature) => (
               <div
                 key={feature.title}
-                className="flex flex-col gap-4 bg-card p-6 transition-colors hover:bg-muted/40 md:p-8"
+                className="service-item group overflow-hidden rounded-2xl border border-border bg-card transition-all hover:-translate-y-1 hover:shadow-lg"
               >
-                <span className="flex size-11 items-center justify-center rounded-xl bg-sky-50 text-sky-600 dark:bg-sky-950/60 dark:text-sky-400">
-                  <feature.icon className="size-5.5" />
-                </span>
-                <h3 className="text-lg font-semibold tracking-tight">
-                  {feature.title}
-                </h3>
-                <p className="text-sm leading-6 text-muted-foreground">
-                  {feature.description}
-                </p>
+                <div className="service-img relative overflow-hidden">
+                  <div className="flex h-48 items-center justify-center bg-gradient-to-br from-sky-50 to-sky-100 dark:from-sky-950/40 dark:to-sky-900/20">
+                    <span className="flex size-16 items-center justify-center rounded-2xl bg-white/80 text-sky-600 shadow-sm backdrop-blur-sm dark:bg-sky-900/70 dark:text-sky-300">
+                      <feature.icon className="size-7" />
+                    </span>
+                  </div>
+                </div>
+                <div className="service-content p-6">
+                  <h3 className="text-lg font-semibold tracking-tight">
+                    {feature.title}
+                  </h3>
+                  <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                    {feature.description}
+                  </p>
+                  <Link
+                    href="/signup"
+                    className="mt-4 inline-flex items-center gap-1.5 text-sm font-medium text-sky-600 transition-colors hover:text-sky-700 dark:text-sky-400 dark:hover:text-sky-300"
+                  >
+                    Read More
+                    <ChevronRight className="size-3.5" />
+                  </Link>
+                </div>
               </div>
             ))}
           </div>
-        </section>
+        </div>
+      </section>
 
-        {/* How it works */}
-        <section className="border-y border-border bg-muted/30">
-          <div className="mx-auto w-full max-w-6xl px-4 py-16 md:px-6 md:py-24">
-            <div className="mx-auto max-w-2xl text-center">
-              <h2 className="text-3xl font-semibold tracking-tight sm:text-4xl">
-                Three steps, poolside
-              </h2>
-              <p className="mt-4 text-lg text-muted-foreground text-pretty">
-                No spreadsheets, no guesswork, no calculator on the truck.
-              </p>
-            </div>
-            <div className="mt-14 grid gap-8 md:grid-cols-3">
-              {steps.map((step) => (
-                <div key={step.step} className="relative flex flex-col gap-3">
-                  <span className="font-mono text-sm font-semibold text-sky-600 dark:text-sky-400">
-                    {step.step}
-                  </span>
-                  <h3 className="text-xl font-semibold tracking-tight">
-                    {step.title}
-                  </h3>
-                  <p className="text-sm leading-6 text-muted-foreground">
-                    {step.description}
-                  </p>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        {/* CTA */}
-        <section className="mx-auto w-full max-w-6xl px-4 py-20 md:px-6 md:py-28">
-          <div className="relative overflow-hidden rounded-3xl bg-sky-600 px-6 py-14 text-center shadow-lg md:px-16 md:py-20">
-            <div
-              aria-hidden
-              className="pointer-events-none absolute -right-16 -top-16 size-64 rounded-full bg-sky-400/40 blur-3xl"
-            />
-            <div
-              aria-hidden
-              className="pointer-events-none absolute -bottom-20 -left-10 size-64 rounded-full bg-sky-300/30 blur-3xl"
-            />
+      {/* About */}
+      <section
+        id="about"
+        className="w-full float-left about-con bg-muted/30 px-4 py-20 md:px-6 md:py-28"
+      >
+        <div className="mx-auto flex max-w-7xl flex-col items-center gap-12 lg:flex-row">
+          <div className="about-img w-full max-w-lg lg:w-1/2">
             <div className="relative">
-              <h2 className="text-3xl font-semibold tracking-tight text-white text-balance sm:text-4xl">
-                Give every tech a chemist in their pocket
-              </h2>
-              <p className="mx-auto mt-4 max-w-xl text-lg text-sky-50/90 text-pretty">
-                Join the pool-service companies using PoolChem to balance water
-                faster and keep customers happy.
-              </p>
-              <div className="mt-9 flex justify-center">
-                <Button
-                  asChild
-                  size="lg"
-                  className="h-11 bg-white px-6 text-base text-sky-700 hover:bg-sky-50"
-                >
-                  <Link href="/signup">
-                    Get started
-                    <ArrowRight className="size-4" />
-                  </Link>
-                </Button>
+              <img
+                src="https://images.unsplash.com/photo-1576013551627-0cc20b1c5e7c?w=600&h=500&fit=crop"
+                alt="Pool service"
+                className="about-small-img h-auto w-full rounded-2xl object-cover shadow-lg"
+                style={{ aspectRatio: "600/500" }}
+              />
+              <div className="about-icon absolute -bottom-4 -right-4 flex size-20 items-center justify-center rounded-2xl bg-sky-500 text-white shadow-lg">
+                <Waves className="size-9" />
               </div>
             </div>
           </div>
-        </section>
-      </main>
+          <div className="about-content w-full max-w-xl lg:w-1/2">
+            <span className="mb-2 inline-block text-xs font-semibold uppercase tracking-widest text-sky-600 dark:text-sky-400">
+              About Us
+            </span>
+            <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">
+              Water chemistry, handled
+            </h2>
+            <p className="mt-4 text-base leading-7 text-muted-foreground">
+              PoolChem was built by pool-service professionals who were tired of
+              juggling test strips, calculators, and spreadsheets. We set out to
+              build a single tool that does the math, tracks the history, and
+              generates the reports — so techs can focus on the pool, not the
+              paperwork.
+            </p>
+            <div className="generic-list mt-6 space-y-3">
+              {[
+                "Real-time water health scoring with LSI verdict",
+                "Precise chemical dose recommendations",
+                "Professional shareable service reports",
+                "QR-code visit start for instant pool history",
+              ].map((item) => (
+                <div key={item} className="flex items-start gap-3">
+                  <Check className="mt-0.5 size-5 shrink-0 text-sky-600 dark:text-sky-400" />
+                  <span className="text-sm text-muted-foreground">{item}</span>
+                </div>
+              ))}
+            </div>
+            <div className="generic-btn mt-8">
+              <Button
+                asChild
+                size="lg"
+                className="h-11 bg-sky-600 px-6 text-base text-white hover:bg-sky-700"
+              >
+                <Link href="/signup">
+                  Learn More
+                  <ArrowRight className="ml-1.5 size-4" />
+                </Link>
+              </Button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Request a Demo / Quote Form */}
+      <section
+        id="contact"
+        className="w-full float-left mian-form-con bg-gradient-to-br from-sky-600 to-sky-500 px-4 py-20 text-white md:px-6 md:py-28"
+      >
+        <div className="form-box mx-auto flex max-w-5xl flex-col items-center gap-10 lg:flex-row">
+          <div className="form-con w-full max-w-lg lg:w-1/2">
+            <span className="mb-2 inline-block text-xs font-semibold uppercase tracking-widest text-sky-200">
+              Get Started
+            </span>
+            <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">
+              Request a Demo
+            </h2>
+            <p className="mt-4 text-base leading-7 text-white/80">
+              See how PoolChem can streamline your pool-service operation. Fill
+              out the form and we&apos;ll reach out within one business day.
+            </p>
+            <form
+              className="contact-form mt-8"
+              action="#"
+            >
+              <div className="space-y-4">
+                <input
+                  type="text"
+                  placeholder="Name"
+                  className="w-full rounded-xl border border-white/20 bg-white/10 px-4 py-3 text-sm text-white placeholder:text-white/50 backdrop-blur-sm focus:border-white/40 focus:outline-none focus:ring-2 focus:ring-white/20"
+                />
+                <input
+                  type="email"
+                  placeholder="Email"
+                  className="w-full rounded-xl border border-white/20 bg-white/10 px-4 py-3 text-sm text-white placeholder:text-white/50 backdrop-blur-sm focus:border-white/40 focus:outline-none focus:ring-2 focus:ring-white/20"
+                />
+                <input
+                  type="text"
+                  placeholder="Company"
+                  className="w-full rounded-xl border border-white/20 bg-white/10 px-4 py-3 text-sm text-white placeholder:text-white/50 backdrop-blur-sm focus:border-white/40 focus:outline-none focus:ring-2 focus:ring-white/20"
+                />
+                <input
+                  type="tel"
+                  placeholder="Phone"
+                  className="w-full rounded-xl border border-white/20 bg-white/10 px-4 py-3 text-sm text-white placeholder:text-white/50 backdrop-blur-sm focus:border-white/40 focus:outline-none focus:ring-2 focus:ring-white/20"
+                />
+                <textarea
+                  placeholder="Message"
+                  rows={4}
+                  className="w-full rounded-xl border border-white/20 bg-white/10 px-4 py-3 text-sm text-white placeholder:text-white/50 backdrop-blur-sm focus:border-white/40 focus:outline-none focus:ring-2 focus:ring-white/20"
+                />
+                <button
+                  type="submit"
+                  className="submit-btn inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-white px-6 text-base font-semibold text-sky-700 shadow-lg transition-colors hover:bg-sky-50"
+                >
+                  Submit Now
+                  <ArrowRight className="size-4" />
+                </button>
+              </div>
+            </form>
+          </div>
+          <div className="form-icon hidden w-full max-w-sm lg:block lg:w-1/2">
+            <div className="flex items-center justify-center">
+              <div className="form-clean-box relative">
+                <div className="flex size-72 items-center justify-center rounded-full bg-white/10 backdrop-blur-sm">
+                  <Waves className="size-32 text-white/60" />
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Statistics */}
+      <section className="w-full float-left static-con bg-white px-4 py-20 dark:bg-background md:px-6 md:py-28">
+        <div className="mx-auto max-w-7xl">
+          <div className="generic-title mx-auto mb-14 max-w-2xl text-center">
+            <span className="mb-2 inline-block text-xs font-semibold uppercase tracking-widest text-sky-600 dark:text-sky-400">
+              Our Statistics
+            </span>
+            <h2 className="mb-0 text-3xl font-bold tracking-tight sm:text-4xl">
+              PoolChem by the numbers
+            </h2>
+          </div>
+          <div className="static-box grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+            {stats.map((stat) => (
+              <div
+                key={stat.label}
+                className="static-box-item flex flex-col items-center rounded-2xl border border-border bg-card p-8 text-center transition-all hover:-translate-y-1 hover:shadow-md"
+              >
+                <span className="flex size-14 items-center justify-center rounded-2xl bg-sky-50 text-sky-600 dark:bg-sky-950/60 dark:text-sky-400">
+                  <stat.icon className="size-6" />
+                </span>
+                <div className="staic-value mt-4 font-mono text-3xl font-bold tabular-nums tracking-tight text-foreground">
+                  {stat.value}
+                </div>
+                <small className="mt-1 text-sm text-muted-foreground">
+                  {stat.label}
+                </small>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Video Section */}
+      <section className="w-full float-left vedio-con relative overflow-hidden bg-muted/30 px-4 py-20 md:px-6 md:py-28">
+        <div className="mx-auto max-w-4xl">
+          <div className="vedio-content text-center">
+            <a
+              href="https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="icon group mx-auto mb-10 flex size-24 items-center justify-center rounded-full bg-sky-600 text-white shadow-lg transition-transform hover:scale-110"
+            >
+              <Play className="ml-1 size-10" />
+            </a>
+            <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">
+              See PoolChem in Action
+            </h2>
+            <p className="mx-auto mt-4 max-w-2xl text-base leading-7 text-muted-foreground">
+              Watch how a pool-service tech goes from test strip to finished report
+              in under five minutes — all from their phone.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      {/* Testimonials */}
+      <section className="w-full float-left tesimonials-con bg-white px-4 py-20 dark:bg-background md:px-6 md:py-28">
+        <div className="mx-auto max-w-7xl">
+          <div className="generic-title mx-auto mb-14 max-w-2xl text-center">
+            <span className="mb-2 inline-block text-xs font-semibold uppercase tracking-widest text-sky-600 dark:text-sky-400">
+              Testimonials
+            </span>
+            <h2 className="mb-0 text-3xl font-bold tracking-tight sm:text-4xl">
+              What Our Clients are Saying
+            </h2>
+          </div>
+          <div className="slider-box grid gap-8 md:grid-cols-3">
+            {testimonials.map((t) => (
+              <div
+                key={t.name}
+                className="review-details-box rounded-2xl border border-border bg-card p-8 transition-all hover:-translate-y-1 hover:shadow-md"
+              >
+                <div className="stars-img mb-4 flex gap-1">
+                  {Array.from({ length: t.rating }).map((_, i) => (
+                    <Star
+                      key={i}
+                      className="size-4 fill-amber-400 text-amber-400"
+                    />
+                  ))}
+                </div>
+                <p className="text-sm leading-7 text-muted-foreground">
+                  &ldquo;{t.quote}&rdquo;
+                </p>
+                <div className="customer-status mt-6 border-t border-border pt-4">
+                  <h5 className="text-sm font-semibold">{t.name}</h5>
+                  <span className="mt-0.5 text-xs text-muted-foreground">
+                    {t.title}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Blog / News */}
+      <section
+        id="blog"
+        className="w-full float-left blog-con bg-muted/30 px-4 py-20 md:px-6 md:py-28"
+      >
+        <div className="mx-auto max-w-7xl">
+          <div className="generic-title mx-auto mb-14 max-w-2xl text-center">
+            <span className="mb-2 inline-block text-xs font-semibold uppercase tracking-widest text-sky-600 dark:text-sky-400">
+              News &amp; Articles
+            </span>
+            <h2 className="mb-0 text-3xl font-bold tracking-tight sm:text-4xl">
+              Our Latest Blog Posts
+            </h2>
+          </div>
+          <div className="blog-box grid gap-8 md:grid-cols-3">
+            {blogPosts.map((post) => (
+              <div
+                key={post.title}
+                className="blog-box-item overflow-hidden rounded-2xl border border-border bg-card transition-all hover:-translate-y-1 hover:shadow-lg"
+              >
+                <figure className="mb-0 overflow-hidden">
+                  <img
+                    src={post.image}
+                    alt={post.title}
+                    className="h-52 w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                  />
+                </figure>
+                <div className="blog-box-content p-6">
+                  <div className="blog-date text-xs text-muted-foreground">
+                    {post.date} &mdash; {post.comments} Comments
+                  </div>
+                  <h4 className="mt-3 text-base font-semibold leading-snug tracking-tight">
+                    <Link
+                      href="/blog"
+                      className="hover:text-sky-600 transition-colors dark:hover:text-sky-400"
+                    >
+                      {post.title}
+                    </Link>
+                  </h4>
+                  <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                    {post.excerpt}
+                  </p>
+                  <Link
+                    href="/blog"
+                    className="read-btn mt-4 inline-flex items-center gap-1.5 text-sm font-medium text-sky-600 transition-colors hover:text-sky-700 dark:text-sky-400 dark:hover:text-sky-300"
+                  >
+                    Read More
+                    <ChevronRight className="size-3.5" />
+                  </Link>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
 
       {/* Footer */}
-      <footer className="border-t border-border">
-        <div className="mx-auto flex w-full max-w-6xl flex-col items-center justify-between gap-4 px-4 py-8 text-sm text-muted-foreground md:flex-row md:px-6">
-          <div className="flex items-center gap-2 font-medium text-foreground">
-            <span className="flex size-6 items-center justify-center rounded-md bg-sky-500 text-white">
-              <Waves className="size-4" />
-            </span>
-            PoolChem
+      <footer className="w-full float-left footer-con bg-sky-900 px-4 pt-16 pb-8 text-white md:px-6">
+        <div className="mx-auto max-w-7xl">
+          <div className="footer-box grid gap-10 sm:grid-cols-2 lg:grid-cols-4">
+            {/* Footer Info */}
+            <div className="footer-item footer-info">
+              <div className="footer-logo flex items-center gap-2 font-semibold tracking-tight">
+                <span className="flex size-9 items-center justify-center rounded-lg bg-sky-500 text-white">
+                  <Waves className="size-5" />
+                </span>
+                <span className="text-lg">PoolChem</span>
+              </div>
+              <ul className="mt-6 space-y-3 text-sm text-sky-100/70">
+                <li className="flex items-center gap-3">
+                  <Phone className="size-4 shrink-0 text-sky-400" />
+                  <a href="tel:+15551234567" className="hover:text-white transition-colors">
+                    +1 (555) 123-4567
+                  </a>
+                </li>
+                <li className="flex items-center gap-3">
+                  <Mail className="size-4 shrink-0 text-sky-400" />
+                  <a
+                    href="mailto:hello@poolchem.app"
+                    className="hover:text-white transition-colors"
+                  >
+                    hello@poolchem.app
+                  </a>
+                </li>
+                <li className="flex items-start gap-3">
+                  <MapPin className="mt-0.5 size-4 shrink-0 text-sky-400" />
+                  <span>San Francisco, CA 94105</span>
+                </li>
+              </ul>
+            </div>
+
+            {/* Useful Links */}
+            <div className="footer-item site-map">
+              <h4 className="mb-4 text-sm font-semibold uppercase tracking-wider">
+                Useful Links
+              </h4>
+              <ul className="space-y-2.5 text-sm text-sky-100/70">
+                {["Home", "About us", "Services", "Blog", "Contact us"].map(
+                  (item) => (
+                    <li key={item}>
+                      <Link
+                        href={item === "Home" ? "/" : `/${item.toLowerCase().replace(/\s+/g, "-")}`}
+                        className="inline-flex items-center gap-2 hover:text-white transition-colors"
+                      >
+                        <ChevronRight className="size-3 text-sky-400" />
+                        {item}
+                      </Link>
+                    </li>
+                  ),
+                )}
+              </ul>
+            </div>
+
+            {/* Product */}
+            <div className="footer-item site-map">
+              <h4 className="mb-4 text-sm font-semibold uppercase tracking-wider">
+                Product
+              </h4>
+              <ul className="space-y-2.5 text-sm text-sky-100/70">
+                {["Features", "Pricing", "API", "Documentation"].map(
+                  (item) => (
+                    <li key={item}>
+                      <Link
+                        href={`/${item.toLowerCase()}`}
+                        className="inline-flex items-center gap-2 hover:text-white transition-colors"
+                      >
+                        <ChevronRight className="size-3 text-sky-400" />
+                        {item}
+                      </Link>
+                    </li>
+                  ),
+                )}
+              </ul>
+            </div>
+
+            {/* Newsletter */}
+            <div className="footer-item site-map">
+              <h4 className="mb-4 text-sm font-semibold uppercase tracking-wider">
+                Our Newsletter
+              </h4>
+              <div className="newsletter flex overflow-hidden rounded-xl border border-sky-700 bg-sky-800">
+                <input
+                  type="email"
+                  placeholder="Email Address"
+                  className="min-w-0 flex-1 bg-transparent px-4 py-2.5 text-sm text-white placeholder:text-sky-300 focus:outline-none"
+                />
+                <button
+                  type="submit"
+                  className="flex shrink-0 items-center justify-center bg-sky-600 px-4 text-white transition-colors hover:bg-sky-500"
+                >
+                  <Send className="size-4" />
+                </button>
+              </div>
+              <div className="team-social mt-6">
+                <ul className="flex gap-3">
+                  {[
+                    {
+                      href: "https://facebook.com",
+                      icon: (
+                        <svg className="size-4" fill="currentColor" viewBox="0 0 24 24">
+                          <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
+                        </svg>
+                      ),
+                    },
+                    {
+                      href: "https://x.com",
+                      icon: (
+                        <svg className="size-4" fill="currentColor" viewBox="0 0 24 24">
+                          <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+                        </svg>
+                      ),
+                    },
+                    {
+                      href: "https://instagram.com",
+                      icon: (
+                        <svg className="size-4" fill="currentColor" viewBox="0 0 24 24">
+                          <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z" />
+                        </svg>
+                      ),
+                    },
+                  ].map((social) => (
+                    <li key={social.href}>
+                      <a
+                        href={social.href}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex size-9 items-center justify-center rounded-full border border-sky-700 text-sky-300 transition-colors hover:border-sky-400 hover:text-white"
+                      >
+                        {social.icon}
+                      </a>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
           </div>
-          <div className="flex items-center gap-4">
-            <Link href="/privacy" className="hover:text-foreground transition-colors">
-              Privacy
-            </Link>
-            <Link href="/terms" className="hover:text-foreground transition-colors">
-              Terms
-            </Link>
-          </div>
-          <p>© 2026 PoolChem. Water chemistry, handled.</p>
         </div>
       </footer>
+
+      {/* Copyright */}
+      <div className="w-full float-left copyright border-t border-sky-800 bg-sky-950 px-4 py-5 text-center md:px-6">
+        <span className="text-sm text-sky-300/70">
+          &copy; 2026 PoolChem. Water chemistry, handled.
+        </span>
+      </div>
     </div>
   );
 }
