@@ -3,18 +3,9 @@ import { Waves } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { MobileMenu } from "@/components/navigation/mobile-nav"
-
-const DEFAULT_NAV_LINKS = [
-  { href: "/services", label: "Services" },
-  { href: "/features", label: "Features" },
-  { href: "/pricing", label: "Pricing" },
-  { href: "/blog", label: "Blog" },
-  { href: "/about-us", label: "About" },
-  { href: "/contact-us", label: "Contact" },
-]
+import { PublicNavLinks } from "./PublicNavLinks"
 
 export interface PublicHeaderProps {
-  navLinks?: Array<{ href: string; label: string }>
   showSignIn?: boolean
   showPhone?: boolean
   showMobileMenu?: boolean
@@ -24,7 +15,6 @@ export interface PublicHeaderProps {
 }
 
 export function PublicHeader({
-  navLinks = DEFAULT_NAV_LINKS,
   showSignIn = true,
   showPhone = false,
   showMobileMenu = true,
@@ -55,21 +45,11 @@ export function PublicHeader({
           <span className="text-lg">Poolbench</span>
         </Link>
 
-        {children ?? (
-          <>
-            <nav className="hidden items-center gap-6 text-sm font-medium text-muted-foreground md:flex">
-              {navLinks.map((link) => (
-                <Link
-                  key={link.href}
-                  href={link.href}
-                  className="hover:text-foreground transition-colors"
-                >
-                  {link.label}
-                </Link>
-              ))}
-            </nav>
+        <PublicNavLinks />
 
-            <div className="hidden items-center gap-3 md:flex">
+        <div className="hidden items-center gap-3 md:flex">
+          {children ?? (
+            <>
               {showPhone && (
                 <div className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground">
                   <a href="tel:+15551234567" className="hover:text-foreground transition-colors">
@@ -87,11 +67,11 @@ export function PublicHeader({
                   Request a Demo
                 </Link>
               </Button>
-            </div>
+            </>
+          )}
+        </div>
 
-            {showMobileMenu && <MobileMenu />}
-          </>
-        )}
+        {showMobileMenu && <MobileMenu />}
       </div>
     </header>
   )

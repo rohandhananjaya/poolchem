@@ -133,46 +133,17 @@ export default function Home() {
         wide
         className="static bg-white shadow-sm dark:bg-card"
       >
-        <ul className="hidden items-center gap-8 text-sm font-medium text-muted-foreground md:flex">
-          <li className="nav-item active">
-            <Link href="/" className="text-foreground hover:text-sky-600 transition-colors">
-              Home
-            </Link>
-          </li>
-          <li className="nav-item">
-            <Link href="#features" className="hover:text-sky-600 transition-colors">
-              Features
-            </Link>
-          </li>
-          <li className="nav-item">
-            <Link href="#about" className="hover:text-sky-600 transition-colors">
-              About
-            </Link>
-          </li>
-          <li className="nav-item">
-            <Link href="#blog" className="hover:text-sky-600 transition-colors">
-              Blog
-            </Link>
-          </li>
-          <li className="nav-item">
-            <Link href="#contact" className="hover:text-sky-600 transition-colors">
-              Contact
-            </Link>
-          </li>
-        </ul>
-        <div className="flex items-center gap-4">
-          <Button asChild size="lg" className="h-10 bg-sky-600 px-5 text-sm text-white hover:bg-sky-700">
-            <Link href="/signup">
-              Request a Demo
-              <ArrowRight className="ml-1 size-3.5" />
-            </Link>
-          </Button>
-          <div className="hidden items-center gap-1.5 text-sm font-medium text-muted-foreground md:flex">
-            <Phone className="size-3.5 text-sky-600" />
-            <a href="tel:+15551234567" className="hover:text-foreground transition-colors">
-              +1 (555) 123-4567
-            </a>
-          </div>
+        <Button asChild size="lg" className="h-10 bg-sky-600 px-5 text-sm text-white hover:bg-sky-700">
+          <Link href="/signup">
+            Request a Demo
+            <ArrowRight className="ml-1 size-3.5" />
+          </Link>
+        </Button>
+        <div className="hidden items-center gap-1.5 text-sm font-medium text-muted-foreground md:flex">
+          <Phone className="size-3.5 text-sky-600" />
+          <a href="tel:+15551234567" className="hover:text-foreground transition-colors">
+            +1 (555) 123-4567
+          </a>
         </div>
       </PublicHeader>
 

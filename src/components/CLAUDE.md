@@ -25,7 +25,7 @@ Feature components grouped by domain; shadcn/ui primitives in [ui/](ui/) (style 
 `share-button` (copies/shares the public pool link)
 
 ## layout/
-`PublicHeader` (shared public site header; accepts `children` for custom nav/actions slot) · `PublicFooter` (shared public site footer; `showSocial` toggles social icons)
+`PublicHeader` (shared public site header; accepts `children` for custom nav/actions slot; default nav is pathname-aware via `PublicNavLinks`) · `PublicNavLinks` (client component; reads `usePathname()` to serve page-specific nav links) · `PublicFooter` (shared public site footer; `showSocial` toggles social icons)
 
 ## navigation/
 `main-nav` (sidebar + mobile bottom-nav shell)
