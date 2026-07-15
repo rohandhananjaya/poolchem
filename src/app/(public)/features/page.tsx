@@ -27,8 +27,7 @@ const features = [
       "Historical score tracking to spot trends over time",
       "Colour-coded bands for at-a-glance status",
     ],
-    image:
-      "https://images.unsplash.com/photo-1575428652377-a2d80e2277fc?w=800&h=500&fit=crop",
+    image: "/images/feature-water-test.jpg",
     imageAlt: "Water test kit and pool water sample",
   },
   {
@@ -44,8 +43,7 @@ const features = [
       "Supports all major pool chemicals and adjustments",
       "Reduces chemical waste and overdosing incidents",
     ],
-    image:
-      "https://images.unsplash.com/photo-1582213782179-e0d53f98f2ca?w=800&h=500&fit=crop",
+    image: "/images/feature-chemicals.jpg",
     imageAlt: "Pool chemicals arranged on a table",
   },
   {
@@ -61,8 +59,7 @@ const features = [
       "Includes readings, doses, score, and tech notes",
       "Printable and mobile-friendly for homeowners",
     ],
-    image:
-      "https://images.unsplash.com/photo-1558618666-fcd25c85f82e?w=800&h=500&fit=crop",
+    image: "/images/feature-tablet-report.jpg",
     imageAlt: "Service report on a tablet by the pool",
   },
   {
@@ -78,8 +75,7 @@ const features = [
       "Auto-timestamped arrival logging for accurate records",
       "Weatherproof QR tags that mount to equipment pads",
     ],
-    image:
-      "https://images.unsplash.com/photo-1526304640581-d334cdbbf45e?w=800&h=500&fit=crop",
+    image: "/images/feature-qr-scan.jpg",
     imageAlt: "Smartphone scanning a QR code at a pool equipment pad",
   },
   {
@@ -95,8 +91,7 @@ const features = [
       "Water-health trend charts for early problem detection",
       "All data is backed up and searchable across every pool",
     ],
-    image:
-      "https://images.unsplash.com/photo-1506784365847-bbad939e9335?w=800&h=500&fit=crop",
+    image: "/images/feature-schedule.jpg",
     imageAlt: "Calendar and scheduling view on a tablet",
   },
   {
@@ -112,8 +107,7 @@ const features = [
       "Unlimited pool and team member capacity",
       "Scales from one truck to enterprise fleets",
     ],
-    image:
-      "https://images.unsplash.com/photo-1600880292203-757bb62b4baf?w=800&h=500&fit=crop",
+    image: "/images/feature-team-collab.jpg",
     imageAlt: "Pool service team collaborating on site",
   },
 ]

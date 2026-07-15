@@ -96,8 +96,7 @@ const testimonials = [
 
 const blogPosts = [
   {
-    image:
-      "https://images.unsplash.com/photo-1566847438217-76e6d1f5f6f0?w=600&h=400&fit=crop",
+    image: "/images/blog-lsi-chemistry.jpg",
     date: "June 15, 2026",
     comments: 0,
     title: "The Science Behind Langelier Saturation Index",
@@ -105,8 +104,7 @@ const blogPosts = [
       "Understanding LSI is key to balanced water. Here's how Poolbench calculates it automatically so you don't have to.",
   },
   {
-    image:
-      "https://images.unsplash.com/photo-1575428652377-a2d80e2277fc?w=600&h=400&fit=crop",
+    image: "/images/blog-digital-upgrade.jpg",
     date: "May 28, 2026",
     comments: 2,
     title: "5 Signs Your Pool Service Needs a Digital Upgrade",
@@ -114,8 +112,7 @@ const blogPosts = [
       "From lost paper reports to inconsistent dosing — if these sound familiar, it's time to digitize your workflow.",
   },
   {
-    image:
-      "https://images.unsplash.com/photo-1582213782179-e0d53f98f2ca?w=600&h=400&fit=crop",
+    image: "/images/blog-chemistry-equip.jpg",
     date: "April 10, 2026",
     comments: 1,
     title: "Why Water Chemistry Matters for Equipment Longevity",
@@ -331,13 +328,13 @@ export default function Home() {
       {/* About */}
       <section
         id="about"
-        className="w-full float-left about-con bg-muted/30 px-4 py-20 md:px-6 md:py-28"
+        className="w-full float-left about-con bg-muted/100 px-4 py-20 md:px-6 md:py-28"
       >
         <div className="mx-auto flex max-w-7xl flex-col items-center gap-12 lg:flex-row">
           <div className="about-img w-full max-w-lg lg:w-1/2">
             <div className="relative">
               <img
-                src="https://images.unsplash.com/photo-1576013551627-0cc20b1c5e7c?w=600&h=500&fit=crop"
+                src="/images/about-hero-service.jpg"
                 alt="Pool service"
                 className="about-small-img h-auto w-full rounded-2xl object-cover shadow-lg"
                 style={{ aspectRatio: "600/500" }}
@@ -492,7 +489,7 @@ export default function Home() {
       </section>
 
       {/* Video Section */}
-      <section className="w-full float-left vedio-con relative overflow-hidden bg-muted/30 px-4 py-20 md:px-6 md:py-28">
+      <section className="w-full float-left vedio-con relative overflow-hidden bg-muted/100 px-4 py-20 md:px-6 md:py-28">
         <div className="mx-auto max-w-4xl">
           <div className="vedio-content text-center">
             <a
@@ -557,7 +554,7 @@ export default function Home() {
       {/* Blog / News */}
       <section
         id="blog"
-        className="w-full float-left blog-con bg-muted/30 px-4 py-20 md:px-6 md:py-28"
+        className="w-full float-left blog-con bg-muted/100 px-4 py-20 md:px-6 md:py-28"
       >
         <div className="mx-auto max-w-7xl">
           <div className="generic-title mx-auto mb-14 max-w-2xl text-center">

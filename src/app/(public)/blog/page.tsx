@@ -3,48 +3,42 @@ import { ChevronRight } from "lucide-react";
 
 const blogPosts = [
   {
-    image:
-      "https://images.unsplash.com/photo-1566847438217-76e6d1f5f6f0?w=600&h=400&fit=crop",
+    image: "/images/blog-lsi-chemistry.jpg",
     date: "June 15, 2026",
     title: "The Science Behind Langelier Saturation Index",
     excerpt:
       "Understanding LSI is key to balanced water. Here's how Poolbench calculates it automatically so you don't have to.",
   },
   {
-    image:
-      "https://images.unsplash.com/photo-1575428652377-a2d80e2277fc?w=600&h=400&fit=crop",
+    image: "/images/blog-digital-upgrade.jpg",
     date: "May 28, 2026",
     title: "5 Signs Your Pool Service Needs a Digital Upgrade",
     excerpt:
       "From lost paper reports to inconsistent dosing — if these sound familiar, it's time to digitize your workflow.",
   },
   {
-    image:
-      "https://images.unsplash.com/photo-1582213782179-e0d53f98f2ca?w=600&h=400&fit=crop",
+    image: "/images/blog-chemistry-equip.jpg",
     date: "April 10, 2026",
     title: "Why Water Chemistry Matters for Equipment Longevity",
     excerpt:
       "Balanced water doesn't just look good — it protects your pumps, filters, and heaters from premature wear.",
   },
   {
-    image:
-      "https://images.unsplash.com/photo-1563911302283-d2bc129e7570?w=600&h=400&fit=crop",
+    image: "/images/blog-seasonal-maintenance.jpg",
     date: "March 22, 2026",
     title: "Seasonal Pool Maintenance: A Month-by-Month Guide",
     excerpt:
       "From spring opening to winter closing, here's the comprehensive maintenance calendar every pool service professional needs.",
   },
   {
-    image:
-      "https://images.unsplash.com/photo-1533834645782-0d2920b4aa3a?w=600&h=400&fit=crop",
+    image: "/images/blog-ph-alkalinity.jpg",
     date: "February 14, 2026",
     title: "Understanding pH, Alkalinity, and Calcium Hardness",
     excerpt:
       "The three pillars of water chemistry — get them right and your pools practically take care of themselves.",
   },
   {
-    image:
-      "https://images.unsplash.com/photo-1518655048521-f130df041f66?w=600&h=400&fit=crop",
+    image: "/images/blog-tech-training.jpg",
     date: "January 8, 2026",
     title: "How to Train New Pool Service Technicians Faster",
     excerpt:

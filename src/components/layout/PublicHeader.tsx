@@ -1,5 +1,5 @@
 import Link from "next/link"
-import { Waves } from "lucide-react"
+import Image from "next/image"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { MobileMenu } from "@/components/navigation/mobile-nav"
@@ -35,14 +35,15 @@ export function PublicHeader({
           wide ? "max-w-7xl" : "max-w-6xl",
         )}
       >
-        <Link
-          href="/"
-          className="flex items-center gap-2 font-semibold tracking-tight"
-        >
-          <span className="flex size-8 items-center justify-center rounded-lg bg-sky-500 text-white shadow-sm">
-            <Waves className="size-5" />
-          </span>
-          <span className="text-lg">Poolbench</span>
+        <Link href="/">
+          <Image
+            src="/images/POOLBENCH.png"
+            alt="Poolbench"
+            width={140}
+            height={36}
+            className="h-9 w-auto"
+            priority
+          />
         </Link>
 
         <PublicNavLinks />

@@ -37,37 +37,6 @@ const values = [
   },
 ]
 
-const team = [
-  {
-    name: "Marcus Velez",
-    role: "Co-Founder & CEO",
-    image:
-      "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=400&fit=crop&crop=face",
-    bio: "20-year pool-service veteran who built the first Poolbench prototype on a napkin between service calls.",
-  },
-  {
-    name: "Sofia Reyes",
-    role: "Co-Founder & CTO",
-    image:
-      "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=400&h=400&fit=crop&crop=face",
-    bio: "Former water-treatment engineer who brought the LSI algorithm and chemical-dosing engine to life.",
-  },
-  {
-    name: "David Chen",
-    role: "Head of Product",
-    image:
-      "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=400&h=400&fit=crop&crop=face",
-    bio: "Spent a decade building SaaS for trades. He ensures every feature saves a tech at least one tap.",
-  },
-  {
-    name: "Aisha Patel",
-    role: "Head of Customer Success",
-    image:
-      "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=400&h=400&fit=crop&crop=face",
-    bio: "Onboarded over 300 pool-service companies. She knows exactly where teams get stuck and makes sure they don't stay there.",
-  },
-]
-
 export default function AboutPage() {
   return (
     <div className="w-full float-left bg-background text-foreground">
@@ -96,7 +65,7 @@ export default function AboutPage() {
           <div className="w-full max-w-lg lg:w-1/2">
             <div className="relative">
               <img
-                src="https://images.unsplash.com/photo-1576013551627-0cc20b1c5e7c?w=600&h=500&fit=crop"
+                src="/images/about-hero-service.jpg"
                 alt="Pool service professional at work"
                 className="h-auto w-full rounded-2xl object-cover shadow-lg"
                 style={{ aspectRatio: "600/500" }}
@@ -210,45 +179,6 @@ export default function AboutPage() {
         </div>
       </section>
 
-      {/* Team */}
-      <section className="w-full float-left bg-muted/30 px-4 py-20 md:px-6 md:py-28">
-        <div className="mx-auto max-w-7xl">
-          <div className="mx-auto mb-14 max-w-2xl text-center">
-            <span className="mb-2 inline-block text-xs font-semibold uppercase tracking-widest text-sky-600 dark:text-sky-400">
-              Our Team
-            </span>
-            <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">
-              Meet the people behind Poolbench
-            </h2>
-            <p className="mt-4 text-lg text-muted-foreground text-pretty">
-              A small team with deep roots in pool service and water chemistry.
-            </p>
-          </div>
-          <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
-            {team.map((member) => (
-              <div
-                key={member.name}
-                className="flex flex-col items-center rounded-2xl border border-border bg-card p-8 text-center transition-all hover:-translate-y-1 hover:shadow-md"
-              >
-                <img
-                  src={member.image}
-                  alt={member.name}
-                  className="size-24 rounded-full object-cover shadow-sm"
-                />
-                <h3 className="mt-5 text-lg font-semibold tracking-tight">
-                  {member.name}
-                </h3>
-                <span className="mt-1 text-sm font-medium text-sky-600 dark:text-sky-400">
-                  {member.role}
-                </span>
-                <p className="mt-3 text-sm leading-6 text-muted-foreground">
-                  {member.bio}
-                </p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
 
       {/* CTA */}
       <section className="w-full float-left bg-gradient-to-br from-sky-600 to-sky-500 px-4 py-20 text-white md:px-6 md:py-28">
