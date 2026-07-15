@@ -687,7 +687,7 @@ export default function Home() {
                 Useful Links
               </h4>
               <ul className="space-y-2.5 text-sm text-sky-100/70">
-                {["Home", "About us", "Services", "Blog", "Contact us"].map(
+                {["Home", "About us", "Services", "Blog", "Contact us", "Privacy", "Terms"].map(
                   (item) => (
                     <li key={item}>
                       <Link
@@ -709,7 +709,7 @@ export default function Home() {
                 Product
               </h4>
               <ul className="space-y-2.5 text-sm text-sky-100/70">
-                {["Features", "Pricing", "API", "Documentation"].map(
+                {["Features", "Pricing", "Documentation"].map(
                   (item) => (
                     <li key={item}>
                       <Link

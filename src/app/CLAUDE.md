@@ -12,6 +12,16 @@ Next.js 16 App Router. Pattern: **Server Component page → `db/` helper → ren
 - `report/[reportToken]/page.tsx` — **public** shareable service report (no auth); reads via `getPublicReport`
 - `not-found.tsx`, `error.tsx`, `layout.tsx` (root)
 
+### (public)/ — shared-layout marketing pages
+- `(public)/layout.tsx` — shared header/footer shell
+- `(public)/blog/page.tsx` — blog listing
+- `(public)/about-us/page.tsx` — company about page
+- `(public)/services/page.tsx` — services overview
+- `(public)/contact-us/page.tsx` — contact + demo form
+- `(public)/features/page.tsx` — feature showcase
+- `(public)/pricing/page.tsx` — pricing tiers
+- `(public)/documentation/page.tsx` — API/docs landing
+
 ## (dashboard)/ — auth-required route group, shared `layout.tsx` (nav shell)
 - `dashboard/` — home; `getDashboardData(companyId)`
 - `scan/` — QR scan entry. `actions.ts`: `startVisitFromScan`
