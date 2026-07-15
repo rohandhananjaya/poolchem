@@ -187,6 +187,8 @@ export default function Home() {
       <section className="w-full float-left banner-con relative overflow-hidden bg-cover bg-top bg-no-repeat text-white"
         style={{ backgroundImage: "url(/images/pool-bg.jpg)" }}>
 
+        <div className="pointer-events-none absolute inset-0 bg-gradient-to-r from-sky-950/80 via-sky-800/40 to-transparent md:via-sky-800/20" />
+
         {/* Social sidebar */}
         <ul className="fixed left-6 top-1/2 z-10 hidden -translate-y-1/2 flex-col items-center gap-5 md:flex">
           <li>
@@ -206,7 +208,7 @@ export default function Home() {
           </li>
         </ul>
 
-        <div className="mx-auto w-full max-w-7xl px-4 py-24 md:px-6 md:py-32">
+        <div className="relative z-10 mx-auto w-full max-w-7xl px-4 py-24 md:px-6 md:py-32">
           <div className="banner-title flex max-w-3xl flex-col items-start text-left">
             <span className="inline-flex items-center gap-1.5 rounded-full border border-white/20 bg-white/10 px-4 py-1 text-xs font-medium text-white/90 backdrop-blur-sm">
               <Droplets className="size-3.5" />
