@@ -22,6 +22,7 @@ import {
 import { Button } from "@/components/ui/button"
 import { PublicHeader } from "@/components/layout/PublicHeader"
 import { PublicFooter } from "@/components/layout/PublicFooter"
+import { blogPosts } from "@/lib/blog"
 
 const features = [
   {
@@ -93,32 +94,7 @@ const testimonials = [
   },
 ];
 
-const blogPosts = [
-  {
-    image: "/images/blog-lsi-chemistry.jpg",
-    date: "June 15, 2026",
-    comments: 0,
-    title: "The Science Behind Langelier Saturation Index",
-    excerpt:
-      "Understanding LSI is key to balanced water. Here's how Poolbench calculates it automatically so you don't have to.",
-  },
-  {
-    image: "/images/blog-digital-upgrade.jpg",
-    date: "May 28, 2026",
-    comments: 2,
-    title: "5 Signs Your Pool Service Needs a Digital Upgrade",
-    excerpt:
-      "From lost paper reports to inconsistent dosing — if these sound familiar, it's time to digitize your workflow.",
-  },
-  {
-    image: "/images/blog-chemistry-equip.jpg",
-    date: "April 10, 2026",
-    comments: 1,
-    title: "Why Water Chemistry Matters for Equipment Longevity",
-    excerpt:
-      "Balanced water doesn't just look good — it protects your pumps, filters, and heaters from premature wear.",
-  },
-];
+const featuredPosts = blogPosts.slice(0, 3);
 
 export default function Home() {
   return (
@@ -554,7 +530,7 @@ export default function Home() {
             </h2>
           </div>
           <div className="blog-box grid gap-8 md:grid-cols-3">
-            {blogPosts.map((post) => (
+            {featuredPosts.map((post) => (
               <div
                 key={post.title}
                 className="blog-box-item overflow-hidden rounded-2xl border border-border bg-card transition-all hover:-translate-y-1 hover:shadow-lg"
@@ -570,9 +546,9 @@ export default function Home() {
                   <div className="blog-date text-xs text-muted-foreground">
                     {post.date} &mdash; {post.comments} Comments
                   </div>
-                  <h4 className="mt-3 text-base font-semibold leading-snug tracking-tight">
+                    <h4 className="mt-3 text-base font-semibold leading-snug tracking-tight">
                     <Link
-                      href="/blog"
+                      href={`/blog/${post.slug}`}
                       className="hover:text-sky-600 transition-colors dark:hover:text-sky-400"
                     >
                       {post.title}
@@ -582,7 +558,7 @@ export default function Home() {
                     {post.excerpt}
                   </p>
                   <Link
-                    href="/blog"
+                    href={`/blog/${post.slug}`}
                     className="read-btn mt-4 inline-flex items-center gap-1.5 text-sm font-medium text-sky-600 transition-colors hover:text-sky-700 dark:text-sky-400 dark:hover:text-sky-300"
                   >
                     Read More
