@@ -7,6 +7,6 @@ export default function robots(): MetadataRoute.Robots {
       allow: "/",
       disallow: ["/api/", "/auth/", "/pool/", "/report/"],
     },
-    sitemap: "https://poolbench.com/sitemap.xml",
+    sitemap: "https://app.poolbench.com/sitemap.xml",
   }
 }

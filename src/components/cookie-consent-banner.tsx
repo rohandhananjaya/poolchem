@@ -31,7 +31,7 @@ export function CookieConsentBanner() {
         <p className="text-sm text-muted-foreground">
           Poolbench uses essential cookies for authentication.{" "}
           <a
-            href="/privacy"
+            href="https://poolbench.com/privacy"
             className="underline underline-offset-2 hover:text-foreground transition-colors"
           >
             Learn more
