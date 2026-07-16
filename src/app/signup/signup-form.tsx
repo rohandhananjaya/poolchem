@@ -3,7 +3,7 @@
 import * as React from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
-import { Waves } from "lucide-react"
+import Image from "next/image"
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -26,11 +26,15 @@ export function SignupForm() {
     <div className="flex flex-1 items-center justify-center px-4 py-16">
       <div className="w-full max-w-sm rounded-xl border border-border bg-card p-6 md:p-8 shadow-sm">
         <div className="space-y-1.5 text-center">
-          <Link href="/" className="inline-flex items-center gap-2 font-semibold tracking-tight mb-4">
-            <span className="flex size-8 items-center justify-center rounded-lg bg-sky-500 text-white shadow-sm">
-              <Waves className="size-5" />
-            </span>
-            <span className="text-lg">Poolbench</span>
+          <Link href="/" className="inline-flex items-center justify-center mb-4">
+            <Image
+              src="/images/POOLBENCH.png"
+              alt="Poolbench"
+              width={140}
+              height={40}
+              className="h-auto w-auto"
+              priority
+            />
           </Link>
           <h1 className="text-2xl font-semibold tracking-tight text-foreground">
             Create your company
