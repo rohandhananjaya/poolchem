@@ -2,6 +2,8 @@
 
 import * as React from "react"
 import { useRouter } from "next/navigation"
+import Link from "next/link"
+import Image from "next/image"
 
 import { createClient } from "@/lib/supabase/client"
 import { Button } from "@/components/ui/button"
@@ -40,7 +42,17 @@ export function LoginForm({ showSuccess }: { showSuccess: boolean }) {
     <div className="flex flex-1 items-center justify-center px-4 py-16">
       <div className="w-full max-w-sm rounded-xl border border-border bg-card p-6 md:p-8 shadow-sm">
         <div className="space-y-1.5 text-center">
-          <h1 className="text-2xl font-semibold tracking-tight text-foreground">
+          <Link href="/" className="inline-flex items-center justify-center mb-4">
+            <Image
+              src="/images/POOLBENCH.png"
+              alt="Poolbench"
+              width={140}
+              height={40}
+              className="h-auto w-auto"
+              priority
+            />
+          </Link>
+          <h1 className="text-xl font-semibold tracking-tight text-foreground">
             Sign in
           </h1>
           <p className="text-sm text-muted-foreground">

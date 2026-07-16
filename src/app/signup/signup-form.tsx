@@ -36,7 +36,7 @@ export function SignupForm() {
               priority
             />
           </Link>
-          <h1 className="text-2xl font-semibold tracking-tight text-foreground">
+          <h1 className="text-xl font-semibold tracking-tight text-foreground">
             Create your company
           </h1>
           <p className="text-sm text-muted-foreground">
