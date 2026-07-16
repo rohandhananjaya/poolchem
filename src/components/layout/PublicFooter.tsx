@@ -1,6 +1,6 @@
 import Link from "next/link"
 import Image from "next/image"
-import { ChevronRight, Mail, MapPin, Phone, Send } from "lucide-react"
+import { ChevronRight, Mail, MapPin, Send } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 export interface PublicFooterProps {
@@ -52,12 +52,6 @@ export function PublicFooter({ showSocial = false, className }: PublicFooterProp
                 className="mb-4"
               />
               <ul className="space-y-3 text-sm text-sky-100/70">
-                <li className="flex items-center gap-3">
-                  <Phone className="size-4 shrink-0 text-sky-400" />
-                  <a href="tel:+15551234567" className="hover:text-white transition-colors">
-                    +1 (555) 123-4567
-                  </a>
-                </li>
                 <li className="flex items-center gap-3">
                   <Mail className="size-4 shrink-0 text-sky-400" />
                   <a href="mailto:hello@poolbench.app" className="hover:text-white transition-colors">

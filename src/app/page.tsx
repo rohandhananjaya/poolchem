@@ -11,7 +11,6 @@ import {
   Clock,
   Droplets,
   FileText,
-  Phone,
   Play,
   QrCode,
   ShieldCheck,
@@ -136,12 +135,6 @@ export default function Home() {
             <ArrowRight className="ml-1 size-3.5" />
           </Link>
         </Button>
-        <div className="hidden items-center gap-1.5 text-sm font-medium text-muted-foreground md:flex">
-          <Phone className="size-3.5 text-sky-600" />
-          <a href="tel:+15551234567" className="hover:text-foreground transition-colors">
-            +1 (555) 123-4567
-          </a>
-        </div>
       </PublicHeader>
 
       {/* Hero */}

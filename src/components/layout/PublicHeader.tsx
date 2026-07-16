@@ -7,7 +7,6 @@ import { PublicNavLinks } from "./PublicNavLinks"
 
 export interface PublicHeaderProps {
   showSignIn?: boolean
-  showPhone?: boolean
   showMobileMenu?: boolean
   wide?: boolean
   className?: string
@@ -16,7 +15,6 @@ export interface PublicHeaderProps {
 
 export function PublicHeader({
   showSignIn = true,
-  showPhone = false,
   showMobileMenu = true,
   wide = false,
   className,
@@ -51,13 +49,6 @@ export function PublicHeader({
         <div className="hidden items-center gap-3 md:flex">
           {children ?? (
             <>
-              {showPhone && (
-                <div className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground">
-                  <a href="tel:+15551234567" className="hover:text-foreground transition-colors">
-                    +1 (555) 123-4567
-                  </a>
-                </div>
-              )}
               {showSignIn && (
                 <Button asChild variant="ghost" size="lg">
                   <Link href="/login">Sign in</Link>
