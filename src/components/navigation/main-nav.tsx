@@ -3,6 +3,7 @@
 import * as React from "react"
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
+import Image from "next/image"
 import {
   Activity,
   Building2,
@@ -95,19 +96,16 @@ export function MainNav({ user, company }: MainNavProps) {
     <>
       {/* Desktop: left sidebar */}
       <aside className="fixed inset-y-0 left-0 z-30 hidden w-64 flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground md:flex print:hidden">
-        <div className="flex h-16 items-center gap-3 border-b border-sidebar-border px-4" suppressHydrationWarning>
-          <Avatar className="size-9 rounded-lg">
-            {company.logo ? (
-              <AvatarImage src={company.logo} alt={company.name} />
-            ) : null}
-            <AvatarFallback className="rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
-              {initials(company.name)}
-            </AvatarFallback>
-          </Avatar>
-          <span className="truncate text-sm font-semibold" title={company.name}>
-            {company.name}
-          </span>
-        </div>
+        <Link href="/dashboard" className="flex h-14 items-center justify-center border-b border-sidebar-border" suppressHydrationWarning>
+          <Image
+            src="/images/POOLBENCH.png"
+            alt="Poolbench"
+            width={100}
+            height={28}
+            className="h-auto w-auto"
+            priority
+          />
+        </Link>
 
         <nav className="flex flex-1 flex-col gap-1 overflow-y-auto p-3">
           {visibleItems.map((item) => {
