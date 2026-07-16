@@ -424,11 +424,6 @@ export default function Home() {
                   placeholder="Company"
                   className="w-full rounded-xl border border-white/20 bg-white/10 px-4 py-3 text-sm text-white placeholder:text-white/50 backdrop-blur-sm focus:border-white/40 focus:outline-none focus:ring-2 focus:ring-white/20"
                 />
-                <input
-                  type="tel"
-                  placeholder="Phone"
-                  className="w-full rounded-xl border border-white/20 bg-white/10 px-4 py-3 text-sm text-white placeholder:text-white/50 backdrop-blur-sm focus:border-white/40 focus:outline-none focus:ring-2 focus:ring-white/20"
-                />
                 <textarea
                   placeholder="Message"
                   rows={4}

@@ -1,4 +1,4 @@
-import { Mail, MapPin, Phone, Clock, ArrowRight, Waves } from "lucide-react"
+import { Mail, MapPin, Clock, ArrowRight, Waves } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
@@ -9,12 +9,6 @@ const contactMethods = [
     title: "Email",
     value: "hello@poolbench.app",
     href: "mailto:hello@poolbench.app",
-  },
-  {
-    icon: Phone,
-    title: "Phone",
-    value: "+1 (555) 123-4567",
-    href: "tel:+15551234567",
   },
   {
     icon: MapPin,
@@ -119,11 +113,6 @@ export default function ContactUsPage() {
                   <input
                     type="text"
                     placeholder="Company"
-                    className="w-full rounded-xl border border-border bg-background px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground/50 focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-500/20"
-                  />
-                  <input
-                    type="tel"
-                    placeholder="Phone"
                     className="w-full rounded-xl border border-border bg-background px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground/50 focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-500/20"
                   />
                   <textarea

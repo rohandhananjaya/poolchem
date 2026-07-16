@@ -1,5 +1,6 @@
 import Link from "next/link"
-import { ChevronRight, Mail, MapPin, Phone, Waves, Send } from "lucide-react"
+import Image from "next/image"
+import { ChevronRight, Mail, MapPin, Phone, Send } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 export interface PublicFooterProps {
@@ -44,13 +45,13 @@ export function PublicFooter({ showSocial = false, className }: PublicFooterProp
         <div className="mx-auto max-w-7xl">
           <div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-4">
             <div>
-              <div className="flex items-center gap-2 font-semibold tracking-tight">
-                <span className="flex size-9 items-center justify-center rounded-lg bg-sky-500 text-white">
-                  <Waves className="size-5" />
-                </span>
-                <span className="text-lg">Poolbench</span>
-              </div>
-              <ul className="mt-6 space-y-3 text-sm text-sky-100/70">
+              <img
+                src="/images/POOLBENCH_WHITE.png"
+                alt="Poolbench"
+                width={160}
+                className="mb-4"
+              />
+              <ul className="space-y-3 text-sm text-sky-100/70">
                 <li className="flex items-center gap-3">
                   <Phone className="size-4 shrink-0 text-sky-400" />
                   <a href="tel:+15551234567" className="hover:text-white transition-colors">
