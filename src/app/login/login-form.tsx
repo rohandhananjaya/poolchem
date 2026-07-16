@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation"
 import Link from "next/link"
 import Image from "next/image"
 
-import { createClient } from "@/lib/supabase/client"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -17,26 +16,13 @@ const INITIAL_STATE: LoginFormState = { ok: false }
 export function LoginForm({ showSuccess }: { showSuccess: boolean }) {
   const router = useRouter()
   const [state, action, pending] = React.useActionState(loginAction, INITIAL_STATE)
-  const [oauthError, setOauthError] = React.useState<string | null>(null)
 
   React.useEffect(() => {
     if (!state.ok) return
     router.replace("/dashboard")
   }, [state.ok, router])
 
-  const error = state.error ?? oauthError
-
-  async function handleGoogleSignIn() {
-    setOauthError(null)
-    const supabase = createClient()
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: "google",
-      options: { redirectTo: `${window.location.origin}/auth/callback` },
-    })
-    if (error) {
-      setOauthError(error.message)
-    }
-  }
+  const error = state.error
 
   return (
     <div className="flex flex-1 items-center justify-center px-4 py-16">
@@ -115,34 +101,6 @@ export function LoginForm({ showSuccess }: { showSuccess: boolean }) {
           </p>
         </form>
 
-        <div className="mt-6 flex items-center gap-3">
-          <span className="h-px flex-1 bg-border" />
-          <span className="text-xs text-muted-foreground">or</span>
-          <span className="h-px flex-1 bg-border" />
-        </div>
-
-        <Button
-          type="button"
-          variant="outline"
-          size="lg"
-          className="mt-6 w-full"
-          disabled={pending}
-          onClick={handleGoogleSignIn}
-        >
-          Continue with Google
-        </Button>
-
-        <p className="mt-6 text-xs text-muted-foreground text-center">
-          By signing in with Google, you share your email address and basic
-          profile info with Poolbench.{" "}
-          <a
-            href="/privacy"
-            className="underline underline-offset-2 hover:text-foreground transition-colors"
-          >
-            Privacy notice
-          </a>
-          .
-        </p>
       </div>
     </div>
   )
