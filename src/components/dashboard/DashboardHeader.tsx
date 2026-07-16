@@ -39,7 +39,7 @@ export function DashboardHeader({ greeting, name, date }: DashboardHeaderProps) 
           }
           onClick={markAllRead}
           className={cn(
-            "relative inline-flex size-9 items-center justify-center rounded-lg border border-border bg-background text-foreground transition-colors hover:bg-muted focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none",
+            "relative inline-flex size-9 cursor-pointer items-center justify-center rounded-lg border border-border bg-background text-foreground transition-colors hover:bg-muted focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none",
             unreadCount > 0 && "animate-bell-ring",
           )}
         >
