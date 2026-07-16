@@ -10,6 +10,7 @@ import {
   Quote,
 } from "lucide-react"
 
+import { generateQRDataUrl } from "@/lib/reports/qr"
 import { getPublicReport } from "@/lib/reports/public-report"
 import type {
   ParameterStatus,
@@ -110,6 +111,7 @@ export default async function PublicReportPage({
 
   const visitDate = new Date(report.visit.date)
   const nextServiceDate = report.nextServiceDate ? new Date(report.nextServiceDate) : null
+  const qrSrc = await generateQRDataUrl(report.homeownerUrl)
 
   return (
     <div className="mx-auto w-full max-w-3xl px-4 py-6 md:px-6 md:py-8 print:max-w-none print:px-0 print:py-0">
@@ -293,8 +295,8 @@ export default async function PublicReportPage({
         </section>
 
         {/* Footer */}
-        {nextServiceDate && (
-          <footer className="mt-8 flex flex-col items-start justify-between gap-4 border-t border-border pt-5 sm:flex-row sm:items-center">
+        <footer className="mt-8 flex flex-col items-start justify-between gap-4 border-t border-border pt-5 sm:flex-row sm:items-center">
+          {nextServiceDate && (
             <div className="flex items-center gap-2 text-sm">
               <CalendarClock className="size-4 text-teal-600" />
               <span className="text-muted-foreground">Next service:</span>
@@ -302,8 +304,26 @@ export default async function PublicReportPage({
                 {format(nextServiceDate, "EEEE, MMMM d, yyyy")}
               </span>
             </div>
-          </footer>
-        )}
+          )}
+          <div className="flex items-center gap-3">
+            <div className="text-right">
+              <p className="text-xs font-medium text-foreground">
+                View your pool anytime
+              </p>
+              <p className="text-xs text-muted-foreground">
+                Scan for your homeowner dashboard
+              </p>
+            </div>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={qrSrc}
+              alt="QR code to your homeowner dashboard"
+              width={72}
+              height={72}
+              className="size-[72px] rounded-lg border border-border bg-white p-1"
+            />
+          </div>
+        </footer>
       </article>
 
       {/* Footer branding */}

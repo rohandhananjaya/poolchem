@@ -28,4 +28,8 @@ This version has breaking changes — APIs, conventions, and file structure may 
 - `src/components/CLAUDE.md` — component inventory
 - `CLAUDE.md` (root) — overview + commands
 
+## Commands (slash commands available in opencode)
+
+- **`/implement <key>`** — fetches a Jira issue (e.g., `KAN-123`) or board (`KAN`) and implements the described feature. Defined in `.opencode/commands/implement.md`.
+
 Keep in sync when adding/removing exports, routes, or components.

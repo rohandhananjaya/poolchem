@@ -13,6 +13,7 @@ import {
 } from "lucide-react"
 
 import { requireTech } from "@/lib/auth"
+import { generateQRDataUrl } from "@/lib/reports/qr"
 import {
   generateServiceReport,
   type ParameterStatus,
@@ -112,11 +113,10 @@ export default async function ReportPage({
 
   const visitDate = new Date(report.visit.date)
   const nextServiceDate = report.nextServiceDate ? new Date(report.nextServiceDate) : null
-  const qrSrc = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&margin=0&data=${encodeURIComponent(
-    report.homeownerUrl,
-  )}`
-
-  const { from } = await searchParams
+  const [qrSrc, { from }] = await Promise.all([
+    generateQRDataUrl(report.homeownerUrl),
+    searchParams,
+  ])
 
   return (
     <div className="mx-auto w-full max-w-3xl px-4 py-6 md:px-6 md:py-8 print:max-w-none print:px-0 print:py-0">
@@ -337,7 +337,6 @@ export default async function ReportPage({
                 Scan for your homeowner dashboard
               </p>
             </div>
-            {/* External QR service — MVP placeholder for the homeowner dashboard link. */}
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={qrSrc}
