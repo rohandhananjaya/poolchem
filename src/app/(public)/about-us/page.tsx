@@ -1,7 +1,21 @@
+import type { Metadata } from "next"
 import { Award, Check, Droplets, FileText, HeartHandshake, Lightbulb, Target, Users, Waves } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
+
+export const metadata: Metadata = {
+  title: "About Us | Poolbench",
+  description:
+    "Learn about Poolbench — the pool-service software that helps over 500 companies streamline water testing, chemical dosing, and service reports.",
+  openGraph: {
+    title: "About Us | Poolbench",
+    description:
+      "Learn about Poolbench — the pool-service software that helps over 500 companies streamline water testing, chemical dosing, and service reports.",
+    url: "/about-us",
+  },
+  alternates: { canonical: "/about-us" },
+}
 
 const stats = [
   { icon: Waves, value: "10K+", label: "Pools Tracked" },
@@ -40,6 +54,20 @@ const values = [
 export default function AboutPage() {
   return (
     <div className="w-full float-left bg-background text-foreground">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "Organization",
+            name: "Poolbench",
+            url: "https://poolbench.com",
+            description:
+              "Poolbench helps over 500 pool-service companies streamline water testing, chemical dosing, and service reports.",
+            logo: "https://poolbench.com/images/logo.png",
+          }),
+        }}
+      />
       {/* Page Hero Banner */}
       <section className="w-full float-left relative overflow-hidden bg-gradient-to-br from-sky-600 to-sky-500 px-4 py-24 text-white md:px-6 md:py-32">
         <div className="mx-auto max-w-7xl">

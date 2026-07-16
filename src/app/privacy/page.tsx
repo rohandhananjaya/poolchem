@@ -1,6 +1,20 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { Waves } from "lucide-react";
 import { Button } from "@/components/ui/button";
+
+export const metadata: Metadata = {
+  title: "Privacy Policy | Poolbench",
+  description:
+    "Poolbench Privacy Policy — how we collect, use, and protect your personal data when you use our pool-service software platform.",
+  openGraph: {
+    title: "Privacy Policy | Poolbench",
+    description:
+      "Poolbench Privacy Policy — how we collect, use, and protect your personal data when you use our pool-service software platform.",
+    url: "/privacy",
+  },
+  alternates: { canonical: "/privacy" },
+};
 
 const sections = [
   {

@@ -1,9 +1,31 @@
+import type { Metadata } from "next"
 import Link from "next/link"
 import { notFound } from "next/navigation"
 import { ChevronLeft } from "lucide-react"
 
 import { blogPosts, getBlogPost } from "@/lib/blog"
 import { Button } from "@/components/ui/button"
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ slug: string }>
+}): Promise<Metadata> {
+  const { slug } = await params
+  const post = getBlogPost(slug)
+  if (!post) return { title: "Post Not Found | Poolbench" }
+  return {
+    title: `${post.title} | Poolbench Blog`,
+    description: post.excerpt,
+    openGraph: {
+      title: `${post.title} | Poolbench Blog`,
+      description: post.excerpt,
+      url: `/blog/${slug}`,
+      images: post.image ? [{ url: post.image }] : undefined,
+    },
+    alternates: { canonical: `/blog/${slug}` },
+  }
+}
 
 export function generateStaticParams() {
   return blogPosts.map((post) => ({ slug: post.slug }))
@@ -20,6 +42,24 @@ export default async function BlogPostPage({
 
   return (
     <div className="w-full">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "Article",
+            headline: post.title,
+            description: post.excerpt,
+            image: post.image,
+            datePublished: post.date,
+            author: {
+              "@type": "Organization",
+              name: "Poolbench",
+              url: "https://poolbench.com",
+            },
+          }),
+        }}
+      />
       <section className="border-b border-border/60 bg-muted/30 px-4 py-16 md:px-6 md:py-20">
         <div className="mx-auto max-w-3xl">
           <Button variant="ghost" size="sm" asChild className="mb-6 -ml-2">

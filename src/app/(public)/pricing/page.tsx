@@ -1,7 +1,21 @@
+import type { Metadata } from "next"
 import Link from "next/link"
 import { Check, HelpCircle } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
+
+export const metadata: Metadata = {
+  title: "Pricing | Poolbench",
+  description:
+    "Start free with Poolbench's Starter plan. Upgrade to Pro or Enterprise for unlimited techs, advanced reporting, and priority support.",
+  openGraph: {
+    title: "Pricing | Poolbench",
+    description:
+      "Start free with Poolbench's Starter plan. Upgrade to Pro or Enterprise for unlimited techs, advanced reporting, and priority support.",
+    url: "/pricing",
+  },
+  alternates: { canonical: "/pricing" },
+}
 
 const tiers = [
   {
@@ -82,6 +96,29 @@ const faqs = [
 export default function PricingPage() {
   return (
     <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "ItemList",
+            itemListElement: tiers.map((tier, i) => ({
+              "@type": "ListItem",
+              position: i + 1,
+              item: {
+                "@type": "Product",
+                name: `${tier.name} Plan`,
+                description: tier.description,
+                offers: {
+                  "@type": "Offer",
+                  price: tier.price.replace("$", ""),
+                  priceCurrency: "USD",
+                },
+              },
+            })),
+          }),
+        }}
+      />
       {/* Hero + Pricing Cards */}
       <section className="w-full bg-white px-4 py-20 dark:bg-background md:px-6 md:py-28">
         <div className="mx-auto max-w-7xl">

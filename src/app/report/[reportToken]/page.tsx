@@ -28,10 +28,16 @@ export async function generateMetadata({
 }) {
   const { reportToken } = await params
   const report = await getPublicReport(reportToken)
-  if (!report) return { title: "Service Report" }
+  if (!report) return { title: "Service Report | Poolbench" }
   return {
-    title: `Service Report — ${report.pool.name} — ${format(new Date(report.visit.date), "MMM d, yyyy")}`,
+    title: `Service Report — ${report.pool.name} — ${format(new Date(report.visit.date), "MMM d, yyyy")} | Poolbench`,
     description: `Pool service report for ${report.pool.name}, serviced by ${report.company.name}.`,
+    openGraph: {
+      title: `Service Report — ${report.pool.name} — ${format(new Date(report.visit.date), "MMM d, yyyy")} | Poolbench`,
+      description: `Pool service report for ${report.pool.name}, serviced by ${report.company.name}.`,
+      url: `/report/${reportToken}`,
+    },
+    alternates: { canonical: `/report/${reportToken}` },
     robots: { index: false, follow: false },
   }
 }

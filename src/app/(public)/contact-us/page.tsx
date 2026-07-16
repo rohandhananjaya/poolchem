@@ -1,6 +1,20 @@
+import type { Metadata } from "next"
 import { Clock, ArrowRight, Waves } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
+
+export const metadata: Metadata = {
+  title: "Contact Us | Poolbench",
+  description:
+    "Get in touch with the Poolbench team. Request a demo, ask questions, or reach our support team during business hours.",
+  openGraph: {
+    title: "Contact Us | Poolbench",
+    description:
+      "Get in touch with the Poolbench team. Request a demo, ask questions, or reach our support team during business hours.",
+    url: "/contact-us",
+  },
+  alternates: { canonical: "/contact-us" },
+}
 
 const officeHours = [
   { day: "Monday – Friday", hours: "9:00 AM – 6:00 PM PST" },

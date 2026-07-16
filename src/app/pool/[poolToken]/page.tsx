@@ -29,10 +29,16 @@ export async function generateMetadata({
 }) {
   const { poolToken } = await params
   const dashboard = await getHomeownerDashboard(poolToken)
-  if (!dashboard) return { title: "Pool Dashboard" }
+  if (!dashboard) return { title: "Pool Dashboard | Poolbench" }
   return {
-    title: `${dashboard.pool.name} — Pool Dashboard`,
+    title: `${dashboard.pool.name} — Pool Dashboard | Poolbench`,
     description: `Water health and service history for ${dashboard.pool.name}, managed by ${dashboard.company.name}.`,
+    openGraph: {
+      title: `${dashboard.pool.name} — Pool Dashboard | Poolbench`,
+      description: `Water health and service history for ${dashboard.pool.name}, managed by ${dashboard.company.name}.`,
+      url: `/pool/${poolToken}`,
+    },
+    alternates: { canonical: `/pool/${poolToken}` },
     robots: { index: false, follow: false },
   }
 }

@@ -1,0 +1,30 @@
+"use server"
+
+import { createClient } from "@/lib/supabase/server"
+import { formText } from "@/lib/utils"
+
+export interface LoginFormState {
+  ok: boolean
+  error?: string
+}
+
+export async function loginAction(
+  _prev: LoginFormState,
+  formData: FormData,
+): Promise<LoginFormState> {
+  const email = formText(formData, "email")
+  const password = formText(formData, "password")
+
+  if (!email || !password) {
+    return { ok: false, error: "Email and password are required." }
+  }
+
+  const supabase = await createClient()
+  const { error } = await supabase.auth.signInWithPassword({ email, password })
+
+  if (error) {
+    return { ok: false, error: error.message }
+  }
+
+  return { ok: true }
+}

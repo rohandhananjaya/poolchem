@@ -1,3 +1,4 @@
+import type { Metadata } from "next"
 import Link from "next/link"
 import {
   BookOpen,
@@ -9,6 +10,19 @@ import {
   Search,
   ChevronRight,
 } from "lucide-react"
+
+export const metadata: Metadata = {
+  title: "Documentation | Poolbench",
+  description:
+    "Learn how to use Poolbench with our comprehensive documentation. Get started with water testing, scheduling, reports, and the API.",
+  openGraph: {
+    title: "Documentation | Poolbench",
+    description:
+      "Learn how to use Poolbench with our comprehensive documentation. Get started with water testing, scheduling, reports, and the API.",
+    url: "/documentation",
+  },
+  alternates: { canonical: "/documentation" },
+}
 
 const docSections = [
   {

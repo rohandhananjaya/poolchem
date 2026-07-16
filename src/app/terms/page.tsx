@@ -1,6 +1,20 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { Waves } from "lucide-react";
 import { Button } from "@/components/ui/button";
+
+export const metadata: Metadata = {
+  title: "Terms of Service | Poolbench",
+  description:
+    "Poolbench Terms of Service — the terms governing your use of the Poolbench pool-service software platform.",
+  openGraph: {
+    title: "Terms of Service | Poolbench",
+    description:
+      "Poolbench Terms of Service — the terms governing your use of the Poolbench pool-service software platform.",
+    url: "/terms",
+  },
+  alternates: { canonical: "/terms" },
+};
 
 const sections = [
   {

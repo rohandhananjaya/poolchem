@@ -22,7 +22,21 @@ import {
 import { Button } from "@/components/ui/button"
 import { PublicHeader } from "@/components/layout/PublicHeader"
 import { PublicFooter } from "@/components/layout/PublicFooter"
+import type { Metadata } from "next"
 import { blogPosts } from "@/lib/blog"
+
+export const metadata: Metadata = {
+  title: "Poolbench — Water chemistry software for pool-service companies",
+  description:
+    "Poolbench turns a quick water test into a health score, the exact chemical doses to fix it, and a shareable report. Built for pool-service companies.",
+  openGraph: {
+    title: "Poolbench — Water chemistry software for pool-service companies",
+    description:
+      "Poolbench turns a quick water test into a health score, the exact chemical doses to fix it, and a shareable report. Built for pool-service companies.",
+    url: "/",
+  },
+  alternates: { canonical: "/" },
+}
 
 const features = [
   {
@@ -99,6 +113,42 @@ const featuredPosts = blogPosts.slice(0, 3);
 export default function Home() {
   return (
     <div className="w-full float-left bg-background text-foreground">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "SoftwareApplication",
+            name: "Poolbench",
+            applicationCategory: "BusinessApplication",
+            operatingSystem: "Web",
+            description:
+              "Poolbench turns a quick water test into a health score, the exact chemical doses to fix it, and a shareable report. Built for pool-service companies.",
+            offers: {
+              "@type": "Offer",
+              price: "0",
+              priceCurrency: "USD",
+              description: "Starts free with paid plans from $29/month",
+            },
+          }),
+        }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "Organization",
+            name: "Poolbench",
+            url: "https://poolbench.com",
+            logo: "https://poolbench.com/images/logo.png",
+            sameAs: [
+              "https://facebook.com/poolbench",
+              "https://x.com/poolbench",
+            ],
+          }),
+        }}
+      />
       <PublicHeader
         showSignIn={false}
         showMobileMenu={false}

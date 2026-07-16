@@ -1,5 +1,19 @@
+import type { Metadata } from "next"
 import { blogPosts } from "@/lib/blog"
 import { BlogCard } from "@/components/blog/BlogCard"
+
+export const metadata: Metadata = {
+  title: "Blog | Poolbench",
+  description:
+    "Expert advice on water chemistry, pool maintenance, and running a smarter pool-service business — straight from the Poolbench team.",
+  openGraph: {
+    title: "Blog | Poolbench",
+    description:
+      "Expert advice on water chemistry, pool maintenance, and running a smarter pool-service business — straight from the Poolbench team.",
+    url: "/blog",
+  },
+  alternates: { canonical: "/blog" },
+}
 
 export default function BlogPage() {
   return (

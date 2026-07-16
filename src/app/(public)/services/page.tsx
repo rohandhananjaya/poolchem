@@ -1,3 +1,4 @@
+import type { Metadata } from "next"
 import Link from "next/link"
 import {
   Activity,
@@ -10,6 +11,19 @@ import {
   ShieldCheck,
   Waves,
 } from "lucide-react"
+
+export const metadata: Metadata = {
+  title: "Pool Service Software Features | Poolbench",
+  description:
+    "Discover how Poolbench helps pool-service companies streamline water testing, chemical dosing, visit scheduling, and report generation.",
+  openGraph: {
+    title: "Pool Service Software Features | Poolbench",
+    description:
+      "Discover how Poolbench helps pool-service companies streamline water testing, chemical dosing, visit scheduling, and report generation.",
+    url: "/services",
+  },
+  alternates: { canonical: "/services" },
+}
 
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"

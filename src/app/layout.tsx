@@ -22,6 +22,7 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://poolbench.com"),
   title: "Poolbench — Water chemistry, handled",
   description:
     "Poolbench turns a quick water test into a health score, the exact chemical doses to fix it, and a shareable report. Built for pool-service companies.",
