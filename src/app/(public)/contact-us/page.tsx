@@ -1,22 +1,6 @@
-import { Mail, MapPin, Clock, ArrowRight, Waves } from "lucide-react"
+import { Clock, ArrowRight, Waves } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
-import Link from "next/link"
-
-const contactMethods = [
-  {
-    icon: Mail,
-    title: "Email",
-    value: "hello@poolbench.app",
-    href: "mailto:hello@poolbench.app",
-  },
-  {
-    icon: MapPin,
-    title: "Office",
-    value: "San Francisco, CA 94105",
-    href: null,
-  },
-]
 
 const officeHours = [
   { day: "Monday – Friday", hours: "9:00 AM – 6:00 PM PST" },
@@ -45,42 +29,7 @@ export default function ContactUsPage() {
         </div>
       </section>
 
-      {/* Contact Information Cards */}
-      <section className="px-4 py-16 md:px-6 md:py-24">
-        <div className="mx-auto max-w-5xl">
-          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            {contactMethods.map((method) => {
-              const Icon = method.icon
-              const card = (
-                <div className="rounded-xl border border-border bg-card p-6 text-center transition-all hover:-translate-y-1 hover:shadow-md">
-                  <span className="mx-auto flex size-12 items-center justify-center rounded-xl bg-sky-50 text-sky-600 dark:bg-sky-950/60 dark:text-sky-400">
-                    <Icon className="size-6" />
-                  </span>
-                  <h3 className="mt-4 text-base font-semibold text-foreground">
-                    {method.title}
-                  </h3>
-                  {method.href ? (
-                    <a
-                      href={method.href}
-                      className="mt-2 block text-sm text-muted-foreground transition-colors hover:text-foreground"
-                    >
-                      {method.value}
-                    </a>
-                  ) : (
-                    <p className="mt-2 text-sm text-muted-foreground">
-                      {method.value}
-                    </p>
-                  )}
-                </div>
-              )
-              if (method.href) {
-                return <a key={method.title} href={method.href} className="block">{card}</a>
-              }
-              return <div key={method.title}>{card}</div>
-            })}
-          </div>
-        </div>
-      </section>
+
 
       {/* Demo Request Form + Office Hours */}
       <section className="bg-muted/30 px-4 py-16 md:px-6 md:py-24">
@@ -176,21 +125,7 @@ export default function ContactUsPage() {
                 </p>
               </div>
 
-              <div className="mt-6 rounded-xl border border-border bg-card p-6">
-                <h3 className="text-base font-semibold text-foreground">
-                  Prefer Email?
-                </h3>
-                <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                  Send us a message directly at{" "}
-                  <a
-                    href="mailto:hello@poolbench.app"
-                    className="font-medium text-sky-600 transition-colors hover:text-sky-700 dark:text-sky-400 dark:hover:text-sky-300"
-                  >
-                    hello@poolbench.app
-                  </a>{" "}
-                  and we&apos;ll get back to you promptly.
-                </p>
-              </div>
+
             </div>
           </div>
         </div>

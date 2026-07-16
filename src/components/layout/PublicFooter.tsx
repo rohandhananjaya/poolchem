@@ -1,6 +1,6 @@
 import Link from "next/link"
 import Image from "next/image"
-import { ChevronRight, Mail, MapPin, Send } from "lucide-react"
+import { ChevronRight, Send } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 export interface PublicFooterProps {
@@ -51,18 +51,10 @@ export function PublicFooter({ showSocial = false, className }: PublicFooterProp
                 width={160}
                 className="mb-4"
               />
-              <ul className="space-y-3 text-sm text-sky-100/70">
-                <li className="flex items-center gap-3">
-                  <Mail className="size-4 shrink-0 text-sky-400" />
-                  <a href="mailto:hello@poolbench.app" className="hover:text-white transition-colors">
-                    hello@poolbench.app
-                  </a>
-                </li>
-                <li className="flex items-start gap-3">
-                  <MapPin className="mt-0.5 size-4 shrink-0 text-sky-400" />
-                  <span>San Francisco, CA 94105</span>
-                </li>
-              </ul>
+              <p className="text-sm leading-relaxed text-sky-100/70">
+                Streamline your pool-service operation with Poolbench. Manage
+                visits, track water health, and keep your clients informed.
+              </p>
             </div>
 
             <div>
