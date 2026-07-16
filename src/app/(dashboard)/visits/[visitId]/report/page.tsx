@@ -130,9 +130,10 @@ export default async function ReportPage({
           <ArrowLeft className="size-4" />
         </Link>
         <ReportActions
-          homeownerEmail={report.company.email}
+          homeownerEmail={report.pool.homeownerEmail}
           poolName={report.pool.name}
           reportUrl={report.reportUrl}
+          visitId={visitId}
         />
       </div>
 

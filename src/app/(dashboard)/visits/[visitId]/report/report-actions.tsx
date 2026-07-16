@@ -1,28 +1,41 @@
 "use client"
 
 import { useCallback, useState } from "react"
-import { Check, Copy, Mail, Printer } from "lucide-react"
+import { Check, Copy, Mail, Printer, X, Loader2 } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog"
+import { sendReportEmailAction } from "./actions"
 
 export interface ReportActionsProps {
-  /** Homeowner-facing address, used to pre-fill the (placeholder) email. */
-  homeownerEmail: string
-  /** Pool name, used in the email subject. */
+  homeownerEmail: string | null
   poolName: string
-  /** Absolute URL for the public, no-login shareable report link. */
   reportUrl: string
+  visitId: string
 }
 
-/**
- * Client-side actions for the service report: copy a shareable link, open a
- * pre-filled email (placeholder for the future auto-send integration), and
- * print / save-as-PDF via the browser.
- *
- * Hidden when printing (`print:hidden`) so it never appears on paper.
- */
-export function ReportActions({ homeownerEmail, poolName, reportUrl }: ReportActionsProps) {
+export function ReportActions({
+  homeownerEmail,
+  poolName,
+  reportUrl,
+  visitId,
+}: ReportActionsProps) {
   const [copied, setCopied] = useState(false)
+  const [emailOpen, setEmailOpen] = useState(false)
+  const [recipient, setRecipient] = useState(homeownerEmail ?? "")
+  const [sending, setSending] = useState(false)
+  const [sent, setSent] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   const handleCopyLink = useCallback(async () => {
     try {
@@ -30,20 +43,28 @@ export function ReportActions({ homeownerEmail, poolName, reportUrl }: ReportAct
       setCopied(true)
       window.setTimeout(() => setCopied(false), 2000)
     } catch {
-      // Clipboard can be unavailable (insecure context / denied permission).
       window.prompt("Copy this report link:", reportUrl)
     }
   }, [reportUrl])
 
-  // Placeholder for the auto-send email integration: opens the user's mail
-  // client with a draft. Swap for a server-side transactional send later.
-  const handleEmail = useCallback(() => {
-    const subject = encodeURIComponent(`Service report — ${poolName}`)
-    const body = encodeURIComponent(
-      `Hi,\n\nHere is your latest pool service report:\n${reportUrl}\n`,
-    )
-    window.location.href = `mailto:${homeownerEmail}?subject=${subject}&body=${body}`
-  }, [homeownerEmail, poolName, reportUrl])
+  const handleSendEmail = useCallback(async () => {
+    if (!recipient.trim()) return
+    setSending(true)
+    setError(null)
+    const result = await sendReportEmailAction(visitId, recipient.trim())
+    if (result.ok) {
+      setSent(true)
+      setSending(false)
+      window.setTimeout(() => {
+        setEmailOpen(false)
+        setSent(false)
+        setRecipient(homeownerEmail ?? "")
+      }, 2000)
+    } else {
+      setError(result.error ?? "Failed to send email.")
+      setSending(false)
+    }
+  }, [recipient, visitId, homeownerEmail])
 
   return (
     <div className="flex flex-wrap items-center gap-2 print:hidden">
@@ -56,10 +77,69 @@ export function ReportActions({ homeownerEmail, poolName, reportUrl }: ReportAct
         {copied ? "Link copied" : "Share Report"}
       </Button>
 
-      <Button type="button" variant="outline" size="lg" onClick={handleEmail}>
-        <Mail />
-        Email
-      </Button>
+      <Dialog open={emailOpen} onOpenChange={setEmailOpen}>
+        <DialogTrigger asChild>
+          <Button type="button" variant="outline" size="lg">
+            <Mail />
+            Email
+          </Button>
+        </DialogTrigger>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Email Service Report</DialogTitle>
+            <DialogDescription>
+              Send the report for {poolName} to a homeowner or stakeholder.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-1.5">
+              <Label htmlFor="recipient">Recipient email</Label>
+              <Input
+                id="recipient"
+                type="email"
+                placeholder="homeowner@example.com"
+                value={recipient}
+                onChange={(e) => setRecipient(e.target.value)}
+                required
+              />
+            </div>
+            {sent && (
+              <p className="text-sm text-emerald-600">Email sent successfully!</p>
+            )}
+            {error && (
+              <p className="text-sm text-destructive">{error}</p>
+            )}
+          </div>
+
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setEmailOpen(false)}
+              disabled={sending}
+            >
+              <X />
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              onClick={handleSendEmail}
+              disabled={sending || !recipient.trim()}
+            >
+              {sending ? (
+                <>
+                  <Loader2 className="animate-spin" />
+                  Sending…
+                </>
+              ) : (
+                <Mail />
+              )}
+              {sending ? "Sending…" : "Send"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Button
         type="button"

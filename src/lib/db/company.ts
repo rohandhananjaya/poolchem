@@ -20,6 +20,7 @@ export interface UpdateCompanyData {
   stripeCustomerId?: string | null;
   stripeSubscriptionId?: string | null;
   subscriptionStatus?: string | null;
+  fromEmail?: string | null;
 }
 
 /** Fields required to create a new company. */
@@ -28,6 +29,7 @@ export interface CreateCompanyData {
   email: string;
   phone?: string | null;
   address?: string | null;
+  fromEmail?: string | null;
 }
 
 /** Headline metrics for a company dashboard. */
@@ -151,4 +153,16 @@ export async function getCompanyStats(
         );
 
   return { totalPools, visitsThisMonth, averageWaterHealth };
+}
+
+/**
+ * Returns the effective "from" email address for a company's transactional
+ * emails. Prefers the company-level `fromEmail` when set; falls back to the
+ * app-level `EMAIL_FROM` env var; finally returns a sensible default.
+ */
+export function getCompanyFromEmail(company: {
+  fromEmail: string | null;
+}): string {
+  if (company.fromEmail) return company.fromEmail;
+  return process.env.EMAIL_FROM ?? "noreply@poolbench.app";
 }

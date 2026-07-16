@@ -79,6 +79,7 @@ export interface ServiceReport {
     address: string | null;
     /** Capacity in US gallons. */
     volume: number;
+    homeownerEmail: string | null;
   };
   tech: { name: string };
   /** Overall water-health assessment, or `null` when the visit has no reading. */
@@ -248,6 +249,7 @@ export async function generateServiceReport(
       name: visit.pool.name,
       address: visit.pool.address,
       volume: visit.pool.volume,
+      homeownerEmail: visit.pool.homeownerEmail,
     },
     tech: { name: visit.tech?.name ?? "Unassigned" },
     waterHealth,

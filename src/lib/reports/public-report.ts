@@ -135,6 +135,7 @@ export async function getPublicReport(
       name: visit.pool.name,
       address: visit.pool.address,
       volume: visit.pool.volume,
+      homeownerEmail: visit.pool.homeownerEmail,
     },
     tech: { name: visit.tech?.name ?? "Unassigned" },
     waterHealth,
