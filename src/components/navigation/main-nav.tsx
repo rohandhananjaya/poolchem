@@ -95,7 +95,7 @@ export function MainNav({ user, company }: MainNavProps) {
     <>
       {/* Desktop: left sidebar */}
       <aside className="fixed inset-y-0 left-0 z-30 hidden w-64 flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground md:flex print:hidden">
-        <div className="flex h-16 items-center gap-3 border-b border-sidebar-border px-4">
+        <div className="flex h-16 items-center gap-3 border-b border-sidebar-border px-4" suppressHydrationWarning>
           <Avatar className="size-9 rounded-lg">
             {company.logo ? (
               <AvatarImage src={company.logo} alt={company.name} />
@@ -132,7 +132,7 @@ export function MainNav({ user, company }: MainNavProps) {
           })}
         </nav>
 
-        <div className="border-t border-sidebar-border p-3">
+        <div className="border-t border-sidebar-border p-3" suppressHydrationWarning>
           <UserMenu
             user={user}
             signingOut={signingOut}
@@ -140,8 +140,8 @@ export function MainNav({ user, company }: MainNavProps) {
           />
         </div>
 
-        <div className="border-t border-sidebar-border px-3 py-2">
-          <div className="flex items-center justify-center gap-3 text-xs text-sidebar-foreground/50">
+        <div className="border-t border-sidebar-border px-3 py-2" suppressHydrationWarning>
+          <div className="flex items-center justify-center gap-3 text-xs text-sidebar-foreground/50" suppressHydrationWarning>
             <Link href="/privacy" className="hover:text-sidebar-foreground/90 transition-colors">
               Privacy
             </Link>

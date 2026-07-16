@@ -27,7 +27,7 @@ export default async function DashboardLayout({
     : null
 
   return (
-    <div className="flex min-h-svh flex-col">
+    <div className="flex min-h-svh flex-col" suppressHydrationWarning>
       <MainNav
         user={{ name: user.name, email: user.email, role: user.role as UserRole, image: avatarUrl }}
         company={{ name: company?.name ?? "Poolbench", logo: company?.logo ?? null }}
