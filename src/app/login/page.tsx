@@ -1,5 +1,7 @@
 import type { Metadata } from "next"
+import { redirect } from "next/navigation"
 
+import { hasSuperAdmin } from "@/lib/db/users"
 import { LoginForm } from "./login-form"
 
 export const metadata: Metadata = {
@@ -18,16 +20,28 @@ export const metadata: Metadata = {
 export default async function LoginPage({
   searchParams,
 }: {
-  searchParams: Promise<{ signup?: string }>
+  searchParams: Promise<{ signup?: string; setup?: string }>
 }) {
-  const { signup } = await searchParams
+  const { signup, setup } = await searchParams
+
+  if (!(await hasSuperAdmin())) {
+    redirect("/setup")
+  }
+
+  const successMessage =
+    setup === "success"
+      ? "Admin account created! Sign in with your credentials to finish setup."
+      : signup === "success"
+        ? "Account created successfully! Sign in with your credentials."
+        : undefined
+
   return (
     <div className="relative flex min-h-dvh flex-col items-center justify-center overflow-hidden bg-gradient-to-br from-blue-200 via-sky-100 to-blue-300">
       <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden">
         <div className="absolute -top-40 -right-40 size-[30rem] rounded-full bg-blue-300/60 blur-3xl" />
         <div className="absolute -bottom-40 -left-40 size-[30rem] rounded-full bg-cyan-300/60 blur-3xl" />
       </div>
-      <LoginForm showSuccess={signup === "success"} />
+      <LoginForm successMessage={successMessage} />
     </div>
   )
 }

@@ -2,25 +2,31 @@
 
 import { prisma } from "@/lib/prisma"
 import { createAdminClient } from "@/lib/supabase/admin"
-import { createCompany } from "@/lib/db/company"
-import { createUser } from "@/lib/db/users"
+import { createUser, hasSuperAdmin } from "@/lib/db/users"
 import { formText } from "@/lib/utils"
 
-export interface SignupFormState {
+export interface SetupFormState {
   ok: boolean
   error?: string
 }
 
-export async function signupAction(
-  _prev: SignupFormState,
+/**
+ * Creates the platform's first SUPER_ADMIN. Only runs while none exists —
+ * re-checked here so the wizard can't be replayed to mint extra admins after
+ * setup has already completed.
+ */
+export async function setupAction(
+  _prev: SetupFormState,
   formData: FormData,
-): Promise<SignupFormState> {
-  const companyName = formText(formData, "companyName")
+): Promise<SetupFormState> {
+  if (await hasSuperAdmin()) {
+    return { ok: false, error: "Setup has already been completed. Please sign in instead." }
+  }
+
   const name = formText(formData, "name")
   const email = formText(formData, "email")
   const password = formText(formData, "password")
 
-  if (companyName === "") return { ok: false, error: "Company name is required." }
   if (name === "") return { ok: false, error: "Your name is required." }
   if (email === "") return { ok: false, error: "Email is required." }
   if (password.length < 6) {
@@ -51,18 +57,16 @@ export async function signupAction(
       supabaseId = authData.user.id
     }
 
-    const company = await createCompany({ name: companyName, email })
-
     await createUser({
       name,
       email,
-      role: "OWNER",
-      companyId: company.id,
+      role: "SUPER_ADMIN",
+      companyId: null,
       supabaseId,
     })
 
     return { ok: true }
   } catch {
-    return { ok: false, error: "Could not create your account. Please try again." }
+    return { ok: false, error: "Could not create the admin account. Please try again." }
   }
 }

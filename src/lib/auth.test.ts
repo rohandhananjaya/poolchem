@@ -10,7 +10,10 @@ vi.mock("@/lib/supabase/server", () => ({
   createClient: vi.fn(),
 }));
 vi.mock("@/lib/prisma", () => ({
-  prisma: { user: { findUnique: vi.fn() }, pool: { findUnique: vi.fn() } },
+  prisma: {
+    user: { findUnique: vi.fn(), update: vi.fn() },
+    pool: { findUnique: vi.fn() },
+  },
 }));
 
 const { createClient } = await import("@/lib/supabase/server");
@@ -40,19 +43,79 @@ beforeEach(() => {
 });
 
 describe("getCurrentUser", () => {
-  it("returns user when session email matches a DB row", async () => {
+  it("returns the user directly when supabaseId matches", async () => {
     vi.mocked(createClient).mockResolvedValue({
       auth: {
         getUser: vi.fn().mockResolvedValue({
-          data: { user: { email: "user@test.com" } },
+          data: { user: { id: "sb-1", email: "user@test.com" } },
         }),
       },
     } as never);
-    vi.mocked(prisma.user.findUnique).mockResolvedValue(mockUser as never);
+    vi.mocked(prisma.user.findUnique).mockResolvedValueOnce({
+      ...mockUser,
+      supabaseId: "sb-1",
+    } as never);
 
     const result = await getCurrentUser();
 
-    expect(result).toEqual(mockUser);
+    expect(prisma.user.findUnique).toHaveBeenCalledWith({
+      where: { supabaseId: "sb-1" },
+    });
+    expect(prisma.user.update).not.toHaveBeenCalled();
+    expect(result).toEqual({ ...mockUser, supabaseId: "sb-1" });
+  });
+
+  it("falls back to email and backfills a missing supabaseId", async () => {
+    vi.mocked(createClient).mockResolvedValue({
+      auth: {
+        getUser: vi.fn().mockResolvedValue({
+          data: { user: { id: "sb-2", email: "user@test.com" } },
+        }),
+      },
+    } as never);
+    vi.mocked(prisma.user.findUnique)
+      .mockResolvedValueOnce(null) // no row by supabaseId
+      .mockResolvedValueOnce({ ...mockUser, supabaseId: null } as never); // legacy row by email
+    vi.mocked(prisma.user.update).mockResolvedValue({
+      ...mockUser,
+      supabaseId: "sb-2",
+    } as never);
+
+    const result = await getCurrentUser();
+
+    expect(prisma.user.findUnique).toHaveBeenNthCalledWith(2, {
+      where: { email: "user@test.com" },
+    });
+    expect(prisma.user.update).toHaveBeenCalledWith({
+      where: { id: mockUser.id },
+      data: { supabaseId: "sb-2" },
+    });
+    expect(result).toEqual({ ...mockUser, supabaseId: "sb-2" });
+  });
+
+  it("re-backfills when the stored supabaseId is stale", async () => {
+    vi.mocked(createClient).mockResolvedValue({
+      auth: {
+        getUser: vi.fn().mockResolvedValue({
+          data: { user: { id: "sb-new", email: "user@test.com" } },
+        }),
+      },
+    } as never);
+    vi.mocked(prisma.user.findUnique)
+      .mockResolvedValueOnce(null) // no row by the new supabaseId
+      .mockResolvedValueOnce({ ...mockUser, supabaseId: "sb-old" } as never);
+    vi.mocked(prisma.user.update).mockResolvedValue({
+      ...mockUser,
+      supabaseId: "sb-new",
+    } as never);
+
+    const result = await getCurrentUser();
+
+    expect(prisma.user.update).toHaveBeenCalledWith({
+      where: { id: mockUser.id },
+      data: { supabaseId: "sb-new" },
+    });
+    expect(result).toEqual({ ...mockUser, supabaseId: "sb-new" });
   });
 
   it("returns null when there's no session", async () => {
@@ -67,27 +130,30 @@ describe("getCurrentUser", () => {
     const result = await getCurrentUser();
 
     expect(result).toBeNull();
+    expect(prisma.user.findUnique).not.toHaveBeenCalled();
   });
 
-  it("returns null when email is missing from session", async () => {
+  it("returns null when there's no supabaseId match and no email to fall back on", async () => {
     vi.mocked(createClient).mockResolvedValue({
       auth: {
         getUser: vi.fn().mockResolvedValue({
-          data: { user: { email: null } },
+          data: { user: { id: "sb-3", email: null } },
         }),
       },
     } as never);
+    vi.mocked(prisma.user.findUnique).mockResolvedValueOnce(null);
 
     const result = await getCurrentUser();
 
     expect(result).toBeNull();
+    expect(prisma.user.findUnique).toHaveBeenCalledTimes(1);
   });
 
-  it("returns null when no DB row for the email", async () => {
+  it("returns null when no DB row matches by supabaseId or email", async () => {
     vi.mocked(createClient).mockResolvedValue({
       auth: {
         getUser: vi.fn().mockResolvedValue({
-          data: { user: { email: "unknown@test.com" } },
+          data: { user: { id: "sb-4", email: "unknown@test.com" } },
         }),
       },
     } as never);

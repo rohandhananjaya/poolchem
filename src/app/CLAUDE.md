@@ -7,7 +7,9 @@ Next.js 16 App Router. Pattern: **Server Component page → `db/` helper → ren
 
 ## Public routes
 - `page.tsx` — marketing/landing
-- `login/page.tsx` — password + Google OAuth
+- `setup/page.tsx` — one-time platform-admin bootstrap wizard; redirects to `/login` once a SUPER_ADMIN exists. `actions.ts`: `setupAction`
+- `login/page.tsx` — password + Google OAuth; redirects to `/setup` while no SUPER_ADMIN exists
+- `signup/page.tsx` — creates a Company + OWNER user; redirects to `/setup` while no SUPER_ADMIN exists
 - `pool/[poolToken]/page.tsx` — **public** homeowner dashboard (no auth); reads via `getPoolByPublicToken` / `getHomeownerDashboard`
 - `report/[reportToken]/page.tsx` — **public** shareable service report (no auth); reads via `getPublicReport`
 - `not-found.tsx`, `error.tsx`, `layout.tsx` (root)

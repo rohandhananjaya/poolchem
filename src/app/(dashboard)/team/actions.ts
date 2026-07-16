@@ -51,9 +51,10 @@ export async function createTeamUserAction(
 
   try {
     const admin = createAdminClient();
+    let supabaseId: string | null = null;
 
     if (admin) {
-      const { error: authError } = await admin.auth.admin.createUser({
+      const { data: authData, error: authError } = await admin.auth.admin.createUser({
         email,
         password,
         email_confirm: true,
@@ -65,9 +66,10 @@ export async function createTeamUserAction(
         }
         return { ok: false, error: `Failed to create auth user: ${authError.message}` };
       }
+      supabaseId = authData.user.id;
     }
 
-    await createUser({ name, email, role, companyId: currentUser.companyId, phone });
+    await createUser({ name, email, role, companyId: currentUser.companyId, phone, supabaseId });
     revalidatePath("/team");
     return { ok: true };
   } catch {

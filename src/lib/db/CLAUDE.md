@@ -14,6 +14,7 @@ Get the tenant with `getCompanyId()` / `requireAuth()` from [../auth.ts](../auth
 **users.ts**
 - `updateUser(userId, companyId, data: UpdateUserData)`
 - `getCompanyTechs(companyId) → Pick<User, id\|name\|email>[]` — TECH-role users for a company
+- `hasSuperAdmin() → boolean` — whether a SUPER_ADMIN exists yet; gates the `/setup` bootstrap wizard
 
 **pools.ts**
 - `getPoolsByCompany(companyId) → PoolWithLastVisit[]`

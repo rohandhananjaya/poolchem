@@ -150,9 +150,10 @@ export async function createUserAction(
 
   try {
     const admin = createAdminClient();
+    let supabaseId: string | null = null;
 
     if (admin) {
-      const { error: authError } = await admin.auth.admin.createUser({
+      const { data: authData, error: authError } = await admin.auth.admin.createUser({
         email,
         password,
         email_confirm: true,
@@ -164,9 +165,10 @@ export async function createUserAction(
         }
         return { ok: false, error: `Failed to create auth user: ${authError.message}` };
       }
+      supabaseId = authData.user.id;
     }
 
-    const createdUser = await createUser({ name, email, role, companyId });
+    const createdUser = await createUser({ name, email, role, companyId, supabaseId });
     await audit.user(currentUser.id, createdUser.id, companyId, "created", { name, email, role });
     logger.info("User created", { context: "admin.companies.createUserAction", companyId, userId: currentUser.id, metadata: { targetUserId: createdUser.id, name, email, role } });
     revalidatePath("/admin/companies");

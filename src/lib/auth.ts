@@ -12,8 +12,11 @@ import { AuthError, UnauthorizedError } from "@/lib/errors";
  * Returns the currently signed-in user from **our** `User` table (which carries
  * `companyId` and app-specific fields), not just the Supabase auth record.
  *
- * The link between Supabase auth and our table is the email address (unique on
- * `User`). Returns `null` if there's no session or no matching User row.
+ * Primary link is `supabaseId` (the Supabase auth user id), which survives an
+ * email change. Rows created before that column existed have no `supabaseId`
+ * yet, so we fall back to matching by email and backfill `supabaseId` on the
+ * row once found — self-healing legacy rows on their next sign-in. Returns
+ * `null` if there's no session or no matching User row.
  *
  * Wrapped in React `cache` so multiple calls within a single request/render
  * only hit Supabase + the DB once.
@@ -24,11 +27,36 @@ export const getCurrentUser = cache(async (): Promise<User | null> => {
     data: { user },
   } = await supabase.auth.getUser();
 
-  if (!user?.email) {
+  if (!user) {
     return null;
   }
 
-  return prisma.user.findUnique({ where: { email: user.email } });
+  const bySupabaseId = await prisma.user.findUnique({
+    where: { supabaseId: user.id },
+  });
+  if (bySupabaseId) {
+    return bySupabaseId;
+  }
+
+  if (!user.email) {
+    return null;
+  }
+
+  const byEmail = await prisma.user.findUnique({
+    where: { email: user.email },
+  });
+  if (!byEmail) {
+    return null;
+  }
+
+  if (byEmail.supabaseId !== user.id) {
+    return prisma.user.update({
+      where: { id: byEmail.id },
+      data: { supabaseId: user.id },
+    });
+  }
+
+  return byEmail;
 });
 
 /**

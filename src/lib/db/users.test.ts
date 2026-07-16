@@ -13,6 +13,7 @@ const {
   updateUserAdmin,
   createUser,
   deleteUser,
+  hasSuperAdmin,
 } = await import("@/lib/db/users");
 
 const companyId = "company-1";
@@ -143,6 +144,49 @@ describe("createUser", () => {
       data: { name: "Test User", email: "test@user.com", role: "TECH", companyId },
     });
     expect(result).toEqual(mockUser);
+  });
+
+  it("passes through supabaseId when provided", async () => {
+    prismaMock.user.create.mockResolvedValue({ ...mockUser, supabaseId: "sb-1" });
+
+    await createUser({
+      name: "Test User",
+      email: "test@user.com",
+      role: "TECH" as never,
+      companyId,
+      supabaseId: "sb-1",
+    });
+
+    expect(prismaMock.user.create).toHaveBeenCalledWith({
+      data: {
+        name: "Test User",
+        email: "test@user.com",
+        role: "TECH",
+        companyId,
+        supabaseId: "sb-1",
+      },
+    });
+  });
+});
+
+describe("hasSuperAdmin", () => {
+  it("returns false when no SUPER_ADMIN exists", async () => {
+    prismaMock.user.count.mockResolvedValue(0);
+
+    const result = await hasSuperAdmin();
+
+    expect(prismaMock.user.count).toHaveBeenCalledWith({
+      where: { role: "SUPER_ADMIN" },
+    });
+    expect(result).toBe(false);
+  });
+
+  it("returns true when a SUPER_ADMIN exists", async () => {
+    prismaMock.user.count.mockResolvedValue(1);
+
+    const result = await hasSuperAdmin();
+
+    expect(result).toBe(true);
   });
 });
 

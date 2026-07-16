@@ -37,8 +37,9 @@ export async function acceptInvitationAction(
 
   try {
     const admin = createAdminClient()
+    let supabaseId: string | null = null
     if (admin) {
-      const { error: authError } = await admin.auth.admin.createUser({
+      const { data: authData, error: authError } = await admin.auth.admin.createUser({
         email: invitation.email,
         password,
         email_confirm: true,
@@ -50,6 +51,7 @@ export async function acceptInvitationAction(
         }
         return { ok: false, error: `Failed to create account: ${authError.message}` }
       }
+      supabaseId = authData.user.id
     }
 
     await createUser({
@@ -57,6 +59,7 @@ export async function acceptInvitationAction(
       email: invitation.email,
       role: invitation.role,
       companyId: invitation.companyId,
+      supabaseId,
     })
 
     await acceptInvitation(token)

@@ -2,24 +2,16 @@ import type { Metadata } from "next"
 import { redirect } from "next/navigation"
 
 import { hasSuperAdmin } from "@/lib/db/users"
-import { SignupForm } from "./signup-form"
+import { SetupForm } from "./setup-form"
 
 export const metadata: Metadata = {
-  title: "Create Account | Poolbench",
-  description:
-    "Create your Poolbench account and set up your pool-service company in minutes. Start tracking visits, water tests, and reports.",
-  openGraph: {
-    title: "Create Account | Poolbench",
-    description:
-      "Create your Poolbench account and set up your pool-service company in minutes. Start tracking visits, water tests, and reports.",
-    url: "/signup",
-  },
-  alternates: { canonical: "/signup" },
+  title: "Platform Setup | Poolbench",
+  robots: { index: false, follow: false },
 }
 
-export default async function SignupPage() {
-  if (!(await hasSuperAdmin())) {
-    redirect("/setup")
+export default async function SetupPage() {
+  if (await hasSuperAdmin()) {
+    redirect("/login")
   }
 
   return (
@@ -28,7 +20,7 @@ export default async function SignupPage() {
         <div className="absolute -top-40 -right-40 size-[30rem] rounded-full bg-blue-300/60 blur-3xl" />
         <div className="absolute -bottom-40 -left-40 size-[30rem] rounded-full bg-cyan-300/60 blur-3xl" />
       </div>
-      <SignupForm />
+      <SetupForm />
     </div>
   )
 }

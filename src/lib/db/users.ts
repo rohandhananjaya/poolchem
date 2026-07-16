@@ -23,13 +23,15 @@ export interface UpdateUserAdminData {
   phone?: string | null;
 }
 
-/** Fields required to create a new user. */
+/** Fields required to create a new user. `companyId` is `null` for a SUPER_ADMIN, who has no tenant. */
 export interface CreateUserData {
   name: string;
   email: string;
   role: UserRole;
-  companyId: string;
+  companyId: string | null;
   phone?: string | null;
+  /** The Supabase Auth user id, when a Supabase account was created for this user. */
+  supabaseId?: string | null;
 }
 
 /**
@@ -295,6 +297,15 @@ export async function createUser(
   data: CreateUserData,
 ): Promise<User> {
   return prisma.user.create({ data });
+}
+
+/**
+ * Whether a SUPER_ADMIN exists yet — the platform-owner setup wizard uses this
+ * to decide whether it still needs to run.
+ */
+export async function hasSuperAdmin(): Promise<boolean> {
+  const count = await prisma.user.count({ where: { role: "SUPER_ADMIN" } });
+  return count > 0;
 }
 
 /**

@@ -1,5 +1,8 @@
 "use server"
 
+import { redirect } from "next/navigation"
+import { revalidatePath } from "next/cache"
+
 import { createClient } from "@/lib/supabase/server"
 import { formText } from "@/lib/utils"
 
@@ -26,5 +29,6 @@ export async function loginAction(
     return { ok: false, error: error.message }
   }
 
-  return { ok: true }
+  revalidatePath("/", "layout")
+  redirect("/dashboard")
 }

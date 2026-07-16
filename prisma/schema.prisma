@@ -57,14 +57,18 @@ model Company {
 }
 
 model User {
-  id        String    @id @default(cuid())
-  email     String    @unique
-  name      String
-  phone     String?
-  role      UserRole  @default(TECH)
-  companyId String?
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
+  id         String    @id @default(cuid())
+  email      String    @unique
+  // Supabase Auth user id — the primary bridge to the Supabase session.
+  // Nullable/unique so legacy rows (created before this column existed) can
+  // still be matched by email and backfilled on next sign-in.
+  supabaseId String?   @unique
+  name       String
+  phone      String?
+  role       UserRole  @default(TECH)
+  companyId  String?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
 
   company Company? @relation(fields: [companyId], references: [id], onDelete: Cascade)
 
