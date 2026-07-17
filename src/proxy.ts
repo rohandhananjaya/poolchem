@@ -53,8 +53,8 @@ export async function proxy(request: NextRequest) {
     return copyCookies(response, NextResponse.redirect(url));
   }
 
-  // Keep authenticated users away from /login.
-  if (user && pathname === "/login") {
+  // Keep authenticated users away from /login and /signup.
+  if (user && (pathname === "/login" || pathname === "/signup")) {
     const url = request.nextUrl.clone();
     url.pathname = "/dashboard";
     return copyCookies(response, NextResponse.redirect(url));
