@@ -5,6 +5,7 @@ import { createAdminClient } from "@/lib/supabase/admin"
 import { createCompany } from "@/lib/db/company"
 import { createUser } from "@/lib/db/users"
 import { formText } from "@/lib/utils"
+import { startTrial } from "@/lib/db/packages"
 
 export interface SignupFormState {
   ok: boolean
@@ -19,6 +20,7 @@ export async function signupAction(
   const name = formText(formData, "name")
   const email = formText(formData, "email")
   const password = formText(formData, "password")
+  const packageSlug = formText(formData, "package") || "starter"
 
   if (companyName === "") return { ok: false, error: "Company name is required." }
   if (name === "") return { ok: false, error: "Your name is required." }
@@ -60,6 +62,8 @@ export async function signupAction(
       companyId: company.id,
       supabaseId,
     })
+
+    await startTrial(company.id, packageSlug)
 
     return { ok: true }
   } catch {

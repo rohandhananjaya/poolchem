@@ -75,6 +75,79 @@ async function main() {
   console.log("\n• Provisioning Supabase auth login…");
   const authStatus = await provisionAuthUser(ADMIN_EMAIL, ADMIN_PASSWORD);
 
+  // ---- Packages ------------------------------------------------------------
+  const packages = [
+    {
+      slug: "starter",
+      name: "Starter",
+      price: 0,
+      features: JSON.stringify({
+        max_pools: 5,
+        health_scoring: "basic",
+        chemical_recs: true,
+        service_reports: false,
+        qr_code: false,
+        scheduling: false,
+        multi_tech: false,
+        priority_support: false,
+        custom_branding: false,
+        api_access: false,
+        csv_import: false,
+      }),
+      trialDays: 14,
+      sortOrder: 0,
+    },
+    {
+      slug: "basic",
+      name: "Basic",
+      price: 1900,
+      features: JSON.stringify({
+        max_pools: 25,
+        health_scoring: "advanced+lsi",
+        chemical_recs: true,
+        service_reports: true,
+        qr_code: true,
+        scheduling: true,
+        multi_tech: false,
+        priority_support: false,
+        custom_branding: false,
+        api_access: false,
+        csv_import: false,
+      }),
+      trialDays: 14,
+      sortOrder: 1,
+    },
+    {
+      slug: "pro",
+      name: "Pro",
+      price: 3900,
+      features: JSON.stringify({
+        max_pools: -1, // unlimited
+        health_scoring: "advanced+lsi",
+        chemical_recs: true,
+        service_reports: true,
+        qr_code: true,
+        scheduling: true,
+        multi_tech: true,
+        priority_support: true,
+        custom_branding: true,
+        api_access: true,
+        csv_import: true,
+      }),
+      trialDays: 14,
+      sortOrder: 2,
+    },
+  ];
+
+  for (const pkg of packages) {
+    await prisma.package.upsert({
+      where: { slug: pkg.slug },
+      update: pkg,
+      create: pkg,
+    });
+    console.log(`• Package: ${pkg.name} ($${(pkg.price / 100).toFixed(2)})`);
+  }
+
   // ---- Summary -------------------------------------------------------------
   console.log("\n✅ Seed complete.\n");
   console.log("   Login");

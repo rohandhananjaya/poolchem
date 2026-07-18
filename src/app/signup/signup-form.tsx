@@ -10,12 +10,15 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { PasswordInput } from "@/components/ui/password-input"
 import { signupAction, type SignupFormState } from "./actions"
+import type { PackageInfo } from "@/lib/package-features"
+import { formatPrice } from "@/lib/package-features"
 
 const INITIAL_STATE: SignupFormState = { ok: false }
 
-export function SignupForm() {
+export function SignupForm({ packages }: { packages: PackageInfo[] }) {
   const router = useRouter()
   const [state, action, pending] = React.useActionState(signupAction, INITIAL_STATE)
+  const [selected, setSelected] = React.useState("starter")
 
   React.useEffect(() => {
     if (!state.ok) return
@@ -98,6 +101,39 @@ export function SignupForm() {
             <p className="text-xs text-muted-foreground">
               At least 6 characters.
             </p>
+          </div>
+
+          <div className="space-y-2">
+            <Label>Choose your plan</Label>
+            <div className="space-y-2">
+              {packages.map((pkg) => (
+                <label
+                  key={pkg.slug}
+                  className={`flex cursor-pointer items-center gap-3 rounded-lg border p-3 transition-colors ${
+                    selected === pkg.slug
+                      ? "border-teal-500 bg-teal-50 dark:bg-teal-950/20"
+                      : "border-border hover:bg-muted"
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    name="package"
+                    value={pkg.slug}
+                    checked={selected === pkg.slug}
+                    onChange={() => setSelected(pkg.slug)}
+                    className="size-4 accent-teal-600"
+                  />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-foreground">
+                      {pkg.name}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {pkg.price === 0 ? "Free" : formatPrice(pkg.price) + "/mo"}
+                    </p>
+                  </div>
+                </label>
+              ))}
+            </div>
           </div>
 
           <Button

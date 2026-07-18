@@ -52,6 +52,8 @@ model Company {
   pools Pool[]
   invitations Invitation[]
   auditLogs AuditLog[]
+  companyPackage CompanyPackage?
+  invoices Invoice[]
 
   @@map("companies")
 }
@@ -205,6 +207,79 @@ model Invitation {
   @@index([token])
   @@index([companyId])
   @@map("invitations")
+}
+
+// ── Package / subscription system ─────────────────────────────────
+
+enum CompanyPackageStatus {
+  TRIAL
+  ACTIVE
+  EXPIRED
+  CANCELLED
+}
+
+enum InvoiceStatus {
+  PENDING
+  PAID
+  REFUNDED
+}
+
+/// A predefined plan/package that companies can subscribe to.
+model Package {
+  id        String   @id @default(cuid())
+  slug      String   @unique
+  name      String
+  price     Int      // cents (e.g., 1900 = $19.00)
+  features  String   // JSON string — parsed at runtime
+  trialDays Int      @default(14)
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  companyPackages CompanyPackage[]
+  invoices        Invoice[]
+
+  @@map("packages")
+}
+
+/// Tracks which package a company is on and its subscription status.
+model CompanyPackage {
+  id        String               @id @default(cuid())
+  companyId String               @unique
+  packageId String
+  status    CompanyPackageStatus @default(TRIAL)
+  trialStart DateTime?
+  trialEnd   DateTime?
+  paidAt     DateTime?
+  createdAt  DateTime             @default(now())
+  updatedAt  DateTime             @updatedAt
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  package Package @relation(fields: [packageId], references: [id])
+
+  @@index([companyId])
+  @@index([packageId])
+  @@map("company_packages")
+}
+
+/// Simulated billing records — created when a company "pays".
+model Invoice {
+  id          String        @id @default(cuid())
+  companyId   String
+  packageId   String
+  amount      Int           // cents
+  status      InvoiceStatus @default(PAID)
+  paidAt      DateTime      @default(now())
+  periodStart DateTime?
+  periodEnd   DateTime?
+  createdAt   DateTime      @default(now())
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  package Package @relation(fields: [packageId], references: [id])
+
+  @@index([companyId])
+  @@index([packageId])
+  @@map("invoices")
 }
 
 /// Tenant-scoped audit trail for user actions (who did what, when).

@@ -6,6 +6,8 @@ import { Shell } from "@/components/ui/shell"
 import { CompanyEditForm } from "./company-edit-form"
 import { getCompanyAuditLogs } from "@/lib/db/admin-audit"
 import { TenantLogViewer } from "@/components/admin/TenantLogViewer"
+import { toCompanyPackageInfo } from "@/lib/db/packages"
+import { PackageBadge } from "@/components/package/package-badge"
 
 export const dynamic = "force-dynamic"
 
@@ -23,6 +25,7 @@ export default async function AdminCompanyEditPage({
     include: {
       _count: { select: { users: true, pools: true } },
       users: { orderBy: { createdAt: "asc" } },
+      companyPackage: { include: { package: true } },
     },
   })
 
@@ -30,9 +33,32 @@ export default async function AdminCompanyEditPage({
 
   const auditLogs = await getCompanyAuditLogs(companyId)
 
+  const companyPackageInfo = company.companyPackage
+    ? toCompanyPackageInfo(company.companyPackage)
+    : null
+
   return (
     <Shell title={company.name} backHref="/admin/companies">
       <CompanyEditForm company={company} />
+
+      {companyPackageInfo ? (
+        <div className="mt-6 rounded-xl border border-border bg-card p-4">
+          <h2 className="text-sm font-semibold text-foreground mb-3">Subscription</h2>
+          <div className="flex items-center gap-3">
+            <PackageBadge companyPackage={companyPackageInfo} />
+            {companyPackageInfo.trialEnd && (
+              <span className="text-xs text-muted-foreground">
+                Trial ends {companyPackageInfo.trialEnd.toLocaleDateString()}
+              </span>
+            )}
+            {companyPackageInfo.paidAt && (
+              <span className="text-xs text-muted-foreground">
+                Paid {companyPackageInfo.paidAt.toLocaleDateString()}
+              </span>
+            )}
+          </div>
+        </div>
+      ) : null}
 
       <div className="mt-8 space-y-4">
         <h2 className="text-lg font-semibold tracking-tight text-foreground">

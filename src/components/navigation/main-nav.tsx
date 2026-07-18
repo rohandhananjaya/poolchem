@@ -45,6 +45,7 @@ const NAV_ITEMS: NavItem[] = [
   { href: "/reports", label: "Reports", icon: FileText, roles: ["OWNER", "TECH"] },
   { href: "/pools", label: "Pools", icon: Waves, roles: ["OWNER", "TECH"] },
   { href: "/team", label: "Team", icon: Users, roles: ["OWNER"] },
+  { href: "/admin/packages", label: "Packages", icon: Shield, roles: ["SUPER_ADMIN"] },
   { href: "/admin/companies", label: "Companies", icon: Building2, roles: ["SUPER_ADMIN"] },
   { href: "/admin/users", label: "Users", icon: Users, roles: ["SUPER_ADMIN"] },
   { href: "/admin/diagnostics", label: "Diagnostics", icon: Activity, roles: ["SUPER_ADMIN"] },
@@ -60,6 +61,7 @@ const ROLE_LABELS: Record<UserRole, string> = {
 export interface MainNavProps {
   user: { name: string; email: string; role: UserRole; image?: string | null }
   company: { name: string; logo: string | null }
+  companyPackage?: { package: { name: string }; status: string; trialEnd: Date | null; paidAt: Date | null }
 }
 
 /** Returns the first character(s) usable as an avatar/logo fallback. */
@@ -75,7 +77,7 @@ function isActive(pathname: string, href: string): boolean {
   return pathname === href || pathname.startsWith(href + "/")
 }
 
-export function MainNav({ user, company }: MainNavProps) {
+export function MainNav({ user, company: _company, companyPackage }: MainNavProps) {
   const pathname = usePathname()
   const router = useRouter()
   const [signingOut, setSigningOut] = React.useState(false)
@@ -96,16 +98,21 @@ export function MainNav({ user, company }: MainNavProps) {
     <>
       {/* Desktop: left sidebar */}
       <aside className="fixed inset-y-0 left-0 z-30 hidden w-64 flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground md:flex print:hidden">
-        <Link href="/dashboard" className="flex h-14 items-center justify-center border-b border-sidebar-border" suppressHydrationWarning>
-          <Image
-            src="/images/POOLBENCH.png"
-            alt="Poolbench"
-            width={100}
-            height={28}
-            className="h-auto w-auto"
-            priority
-          />
-        </Link>
+        <div className="flex flex-col items-center border-b border-sidebar-border px-3 py-3" suppressHydrationWarning>
+          <div className="w-fit">
+            <Link href="/dashboard" className="flex items-center justify-center">
+              <Image
+                src="/images/POOLBENCH.png"
+                alt="Poolbench"
+                width={100}
+                height={28}
+                className="h-auto w-auto"
+                priority
+              />
+            </Link>
+            {companyPackage ? <PackageSidebarBadge companyPackage={companyPackage} /> : null}
+          </div>
+        </div>
 
         <nav className="flex flex-1 flex-col gap-1 overflow-y-auto p-3">
           {visibleItems.map((item) => {
@@ -232,5 +239,34 @@ function UserMenu({
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
+  )
+}
+
+function PackageSidebarBadge({
+  companyPackage,
+}: {
+  companyPackage: { package: { name: string }; status: string; trialEnd: Date | null; paidAt: Date | null }
+}) {
+  const isTrial = companyPackage.status === "TRIAL"
+  const isExpired = companyPackage.status === "EXPIRED"
+  const isActive = companyPackage.status === "ACTIVE"
+  const colorClass = isActive
+    ? "text-emerald-600 dark:text-emerald-400"
+    : isTrial
+      ? "text-amber-600 dark:text-amber-400"
+      : isExpired
+        ? "text-red-600 dark:text-red-400"
+        : "text-muted-foreground"
+
+  const statusLabel = isTrial ? "Trial" : isActive ? "Active" : isExpired ? "Expired" : "Cancelled"
+
+  return (
+    <Link
+      href="/account/package"
+      className={`flex w-full items-center justify-end gap-1 text-[8px] font-medium uppercase tracking-wide transition-colors hover:opacity-80 ${colorClass}`}
+    >
+      {companyPackage.package.name}
+      <span>({statusLabel})</span>
+    </Link>
   )
 }
