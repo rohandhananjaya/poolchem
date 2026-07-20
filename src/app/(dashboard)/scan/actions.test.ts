@@ -1,7 +1,7 @@
 import { describe, expect, it, beforeEach, vi } from "vitest";
 
 vi.mock("@/lib/auth", () => ({
-  requireTech: vi.fn(),
+  requireActivePackage: vi.fn(),
 }));
 vi.mock("@/lib/db/pools", () => ({
   getPoolById: vi.fn(),
@@ -11,7 +11,7 @@ vi.mock("@/lib/db/visits", () => ({
   createVisit: vi.fn(),
 }));
 
-const { requireTech } = await import("@/lib/auth");
+const { requireActivePackage } = await import("@/lib/auth");
 const { getPoolById, getPoolByQR } = await import("@/lib/db/pools");
 const { createVisit } = await import("@/lib/db/visits");
 const { startVisitFromScan } = await import("./actions");
@@ -30,7 +30,7 @@ beforeEach(() => {
 
 describe("startVisitFromScan", () => {
   it("resolves by QR code when pool belongs to the user's company", async () => {
-    vi.mocked(requireTech).mockResolvedValue(mockUser as never);
+    vi.mocked(requireActivePackage).mockResolvedValue(mockUser as never);
     vi.mocked(getPoolByQR).mockResolvedValue(mockPool as never);
     vi.mocked(createVisit).mockResolvedValue(mockVisit as never);
 
@@ -46,7 +46,7 @@ describe("startVisitFromScan", () => {
   });
 
   it("falls back to pool id when QR code belongs to another company", async () => {
-    vi.mocked(requireTech).mockResolvedValue(mockUser as never);
+    vi.mocked(requireActivePackage).mockResolvedValue(mockUser as never);
     vi.mocked(getPoolByQR).mockResolvedValue({
       ...mockPool,
       companyId: "other-company",
@@ -61,7 +61,7 @@ describe("startVisitFromScan", () => {
   });
 
   it("returns not-found when no pool matches", async () => {
-    vi.mocked(requireTech).mockResolvedValue(mockUser as never);
+    vi.mocked(requireActivePackage).mockResolvedValue(mockUser as never);
     vi.mocked(getPoolByQR).mockResolvedValue(null);
     vi.mocked(getPoolById).mockResolvedValue(null);
 
@@ -71,7 +71,7 @@ describe("startVisitFromScan", () => {
   });
 
   it("returns not-found when the code is empty", async () => {
-    vi.mocked(requireTech).mockResolvedValue(mockUser as never);
+    vi.mocked(requireActivePackage).mockResolvedValue(mockUser as never);
 
     const result = await startVisitFromScan("  ");
 
@@ -79,7 +79,7 @@ describe("startVisitFromScan", () => {
   });
 
   it("returns not-found when user has no company", async () => {
-    vi.mocked(requireTech).mockResolvedValue({
+    vi.mocked(requireActivePackage).mockResolvedValue({
       ...mockUser,
       companyId: null,
     } as never);

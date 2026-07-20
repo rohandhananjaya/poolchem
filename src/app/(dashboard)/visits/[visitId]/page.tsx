@@ -3,7 +3,7 @@ import Image from "next/image"
 import Link from "next/link"
 import { ArrowLeft, FileText, FlaskConical } from "lucide-react"
 
-import { requireTech } from "@/lib/auth"
+import { requireActivePackage } from "@/lib/auth"
 import { getVisitById, getLastVisitReadings } from "@/lib/db/visits"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -18,7 +18,7 @@ export default async function VisitPage({
   searchParams: Promise<{ from?: string }>
 }) {
   const { visitId } = await params
-  const user = await requireTech()
+  const user = await requireActivePackage()
   if (!user.companyId) return null
 
   const visit = await getVisitById(visitId, user.companyId)

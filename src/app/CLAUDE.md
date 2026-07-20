@@ -14,15 +14,8 @@ Next.js 16 App Router. Pattern: **Server Component page → `db/` helper → ren
 - `report/[reportToken]/page.tsx` — **public** shareable service report (no auth); reads via `getPublicReport`
 - `not-found.tsx`, `error.tsx`, `layout.tsx` (root)
 
-### (public)/ — shared-layout marketing pages
-- `(public)/layout.tsx` — shared header/footer shell
-- `(public)/blog/page.tsx` — blog listing
-- `(public)/about-us/page.tsx` — company about page
-- `(public)/services/page.tsx` — services overview
-- `(public)/contact-us/page.tsx` — contact + demo form
-- `(public)/features/page.tsx` — feature showcase
-- `(public)/pricing/page.tsx` — pricing tiers
-- `(public)/documentation/page.tsx` — API/docs landing
+### (public)/ — **stale**: these routes don't exist yet
+This section previously listed a `(public)/` route group (blog, about-us, services, contact-us, features, pricing, documentation) — none of it exists in the repo (confirmed via glob). Don't assume any of these pages are there; build them if/when actually needed.
 
 ## (dashboard)/ — auth-required route group, shared `layout.tsx` (nav shell)
 - `dashboard/` — home; `getDashboardData(companyId)`
@@ -33,6 +26,13 @@ Next.js 16 App Router. Pattern: **Server Component page → `db/` helper → ren
 - `schedule/` — upcoming visits; `getScheduleData`. `actions.ts`: `scheduleVisitAction`
 - `reports/` — water-health report history; `getCompanyReportData`
 - `profile/` — account + company settings. `actions.ts`: `updateAccountAction`, `updateCompanyAction`
+- `account/package/` — tenant's own plan page (trial status, feature checklist, compare/pay plans). `actions.ts`: `payNowAction`, `startTrialAction`, `getCurrentPackageAction`
+
+### admin/ — SUPER_ADMIN-only (each page calls `requireSuperAdmin()` itself; no shared `admin/layout.tsx` gate)
+- `admin/companies/`, `admin/companies/[companyId]/` — company list + detail/edit
+- `admin/users/` — cross-tenant user management
+- `admin/diagnostics/` — server health / system log viewer
+- `admin/packages/` — plan catalog CRUD (pricing/features/sort order) + platform trial-length setting + per-company plan/status override. `actions.ts`: `createPackageAction`, `updatePackageAction`, `deletePackageAction`, `adminSetCompanyPackageAction`, `updateTrialDaysAction`
 
 ## Conventions
 - Server Actions live beside the page in `actions.ts` / `*-actions.tsx`; always re-auth inside the action (don't trust the client).

@@ -23,7 +23,12 @@ export default async function AccountPackagePage() {
   if (!companyPackage) redirect("/dashboard")
 
   const expired = isTrialExpired(companyPackage)
-  const featureMatrix = getPlanFeatureMatrix()
+  const featureMatrix = getPlanFeatureMatrix(allPackages)
+  // Full feature access during an active trial is independent of whether a
+  // plan happens to be attached to the row (see checkFeatureAccess) — the
+  // card should never show a specific plan's limited feature set while
+  // trialing, even if an admin override left a packageId set.
+  const onTrial = companyPackage.status === "TRIAL" && !expired
 
   return (
     <Shell title="Your Plan">
@@ -34,14 +39,16 @@ export default async function AccountPackagePage() {
             <div>
               <div className="flex items-center gap-3">
                 <h2 className="text-xl font-semibold text-foreground">
-                  {companyPackage.package.name}
+                  {onTrial ? "Free Trial" : (companyPackage.package?.name ?? "Free Trial")}
                 </h2>
                 <PackageBadge companyPackage={companyPackage} />
               </div>
               <p className="mt-1 text-sm text-muted-foreground">
-                {companyPackage.package.price === 0
-                  ? "Free"
-                  : formatPrice(companyPackage.package.price) + "/mo"}
+                {onTrial
+                  ? "Full access, no plan chosen yet"
+                  : companyPackage.package
+                    ? formatPrice(companyPackage.package.price) + "/mo"
+                    : "Full access, no plan chosen yet"}
               </p>
             </div>
           </div>
@@ -62,20 +69,29 @@ export default async function AccountPackagePage() {
             </div>
           )}
 
-          <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2">
-            {Object.entries(companyPackage.package.features).map(([key, value]) => (
-              <div key={key} className="flex items-center gap-2 text-sm">
-                {value !== false && value !== 0 ? (
-                  <Check className="size-4 shrink-0 text-emerald-500" />
-                ) : (
-                  <X className="size-4 shrink-0 text-muted-foreground" />
-                )}
-                <span className="text-foreground">
-                  {key.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())}
-                </span>
+          {onTrial ? (
+            <p className="mt-6 text-sm text-muted-foreground">
+              All features are unlocked during your trial. Choose a plan below for
+              when your trial ends.
+            </p>
+          ) : (
+            companyPackage.package && (
+              <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                {Object.entries(companyPackage.package.features).map(([key, value]) => (
+                  <div key={key} className="flex items-center gap-2 text-sm">
+                    {value !== false && value !== 0 ? (
+                      <Check className="size-4 shrink-0 text-emerald-500" />
+                    ) : (
+                      <X className="size-4 shrink-0 text-muted-foreground" />
+                    )}
+                    <span className="text-foreground">
+                      {key.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())}
+                    </span>
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
+            )
+          )}
         </div>
 
         {/* All plans comparison */}
@@ -85,7 +101,11 @@ export default async function AccountPackagePage() {
           </h2>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
             {allPackages.map((pkg) => {
-              const isCurrent = pkg.id === companyPackage.package.id
+              // Only an ACTIVE subscription on this plan counts as "current" —
+              // an EXPIRED/CANCELLED company must still be able to re-pay for
+              // the same plan it was previously on, not just switch away from it.
+              const isCurrent =
+                companyPackage.status === "ACTIVE" && companyPackage.package?.id === pkg.id
               return (
                 <div
                   key={pkg.id}
@@ -97,13 +117,13 @@ export default async function AccountPackagePage() {
                 >
                   <h3 className="text-base font-semibold text-foreground">{pkg.name}</h3>
                   <p className="mt-1 text-2xl font-bold text-foreground">
-                    {pkg.price === 0 ? "Free" : formatPrice(pkg.price)}
-                    {pkg.price > 0 && <span className="text-sm font-normal text-muted-foreground">/mo</span>}
+                    {formatPrice(pkg.price)}
+                    <span className="text-sm font-normal text-muted-foreground">/mo</span>
                   </p>
 
                   <ul className="mt-4 space-y-2">
                     {featureMatrix.map((row) => {
-                      const val = pkg.slug === "starter" ? row.starter : pkg.slug === "basic" ? row.basic : row.pro
+                      const val = row.values[pkg.slug]
                       return (
                         <li key={row.feature} className="flex items-center gap-2 text-sm">
                           {val ? (
@@ -124,19 +144,21 @@ export default async function AccountPackagePage() {
                       </p>
                     ) : (
                       <div className="space-y-2">
-                        {companyPackage.status === "ACTIVE" && pkg.price > companyPackage.package.price && (
-                          <PayNowDialog
-                            pkg={pkg}
-                            trigger={
-                              <button
-                                type="button"
-                                className="w-full rounded-lg bg-teal-600 px-3 py-2 text-sm font-medium text-white hover:bg-teal-700 transition-colors"
-                              >
-                                Upgrade to {pkg.name}
-                              </button>
-                            }
-                          />
-                        )}
+                        {companyPackage.status === "ACTIVE" &&
+                          companyPackage.package &&
+                          pkg.price > companyPackage.package.price && (
+                            <PayNowDialog
+                              pkg={pkg}
+                              trigger={
+                                <button
+                                  type="button"
+                                  className="w-full rounded-lg bg-teal-600 px-3 py-2 text-sm font-medium text-white hover:bg-teal-700 transition-colors"
+                                >
+                                  Upgrade to {pkg.name}
+                                </button>
+                              }
+                            />
+                          )}
                         {companyPackage.status === "EXPIRED" && (
                           <PayNowDialog
                             pkg={pkg}

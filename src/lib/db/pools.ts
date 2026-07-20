@@ -31,6 +31,11 @@ export interface PoolsFilters {
 /** How many pools to show per page. */
 export const POOLS_PAGE_SIZE = PAGE_SIZE;
 
+/** Total number of pools for a company, regardless of active/inactive status. */
+export async function getPoolCount(companyId: string): Promise<number> {
+  return prisma.pool.count({ where: { companyId } });
+}
+
 /**
  * Returns a paginated, filterable list of pools for `companyId`, each annotated
  * with the date of its most recent service visit.

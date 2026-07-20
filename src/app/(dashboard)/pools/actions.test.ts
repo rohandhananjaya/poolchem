@@ -8,14 +8,19 @@ vi.mock("@/lib/db/pools", () => ({
   updatePool: vi.fn(),
   deletePool: vi.fn(),
   getPoolById: vi.fn(),
+  getPoolCount: vi.fn(),
+}));
+vi.mock("@/lib/db/packages", () => ({
+  getCompanyPackage: vi.fn(),
 }));
 vi.mock("next/cache", () => ({
   revalidatePath: vi.fn(),
 }));
 
 const { requireOwner } = await import("@/lib/auth");
-const { createPool, updatePool, deletePool, getPoolById } =
+const { createPool, updatePool, deletePool, getPoolById, getPoolCount } =
   await import("@/lib/db/pools");
+const { getCompanyPackage } = await import("@/lib/db/packages");
 const { revalidatePath } = await import("next/cache");
 const {
   createPoolAction,
@@ -24,6 +29,13 @@ const {
 } = await import("./actions");
 
 const mockUser = { id: "user-1", companyId: "company-1", role: "TECH" };
+const mockCompanyPackage = {
+  package: null,
+  status: "TRIAL",
+  trialStart: null,
+  trialEnd: null,
+  paidAt: null,
+};
 
 function formData(entries: Record<string, string>): FormData {
   const fd = new FormData();
@@ -40,6 +52,8 @@ beforeEach(() => {
 describe("createPoolAction", () => {
   it("creates a pool and returns ok", async () => {
     vi.mocked(requireOwner).mockResolvedValue(mockUser as never);
+    vi.mocked(getCompanyPackage).mockResolvedValue(mockCompanyPackage as never);
+    vi.mocked(getPoolCount).mockResolvedValue(0);
 
     const result = await createPoolAction(
       { ok: false },

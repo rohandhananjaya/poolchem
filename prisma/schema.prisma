@@ -231,7 +231,6 @@ model Package {
   name      String
   price     Int      // cents (e.g., 1900 = $19.00)
   features  String   // JSON string — parsed at runtime
-  trialDays Int      @default(14)
   sortOrder Int      @default(0)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -243,10 +242,11 @@ model Package {
 }
 
 /// Tracks which package a company is on and its subscription status.
+/// `packageId` is null while a company is on trial and hasn't chosen a plan yet.
 model CompanyPackage {
   id        String               @id @default(cuid())
   companyId String               @unique
-  packageId String
+  packageId String?
   status    CompanyPackageStatus @default(TRIAL)
   trialStart DateTime?
   trialEnd   DateTime?
@@ -254,12 +254,21 @@ model CompanyPackage {
   createdAt  DateTime             @default(now())
   updatedAt  DateTime             @updatedAt
 
-  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  package Package @relation(fields: [packageId], references: [id])
+  company Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  package Package? @relation(fields: [packageId], references: [id], onDelete: Restrict)
 
   @@index([companyId])
   @@index([packageId])
   @@map("company_packages")
+}
+
+/// Single-row table for platform-wide, super-admin-editable settings.
+model PlatformSettings {
+  id        String   @id @default("singleton")
+  trialDays Int      @default(30)
+  updatedAt DateTime @updatedAt
+
+  @@map("platform_settings")
 }
 
 /// Simulated billing records — created when a company "pays".

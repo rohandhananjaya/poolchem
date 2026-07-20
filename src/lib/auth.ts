@@ -7,6 +7,7 @@ import type { User, UserRole } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
 import { createClient } from "@/lib/supabase/server";
 import { AuthError, UnauthorizedError } from "@/lib/errors";
+import { getCompanyPackage } from "@/lib/db/packages";
 
 /**
  * Returns the currently signed-in user from **our** `User` table (which carries
@@ -148,6 +149,31 @@ export async function requireCompanyAccess(
 export async function getCompanyId(): Promise<string | null> {
   const user = await requireAuth();
   return user.companyId;
+}
+
+/**
+ * Requires the current user's company to have an active trial or paid plan.
+ * SUPER_ADMIN (no company) always passes. Redirects to `/account/package`
+ * so an expired/cancelled company can choose a plan — this is the paywall
+ * gate called from pages that require real app usage, not from
+ * `/account/package`, `/profile`, or any `/admin/*` page.
+ */
+export async function requireActivePackage(): Promise<User> {
+  const user = await requireAuth();
+  if (user.role === "SUPER_ADMIN" || !user.companyId) {
+    return user;
+  }
+
+  const companyPackage = await getCompanyPackage(user.companyId);
+  if (
+    !companyPackage ||
+    companyPackage.status === "EXPIRED" ||
+    companyPackage.status === "CANCELLED"
+  ) {
+    redirect("/account/package");
+  }
+
+  return user;
 }
 
 /**

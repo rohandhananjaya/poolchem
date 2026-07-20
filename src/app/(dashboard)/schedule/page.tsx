@@ -2,7 +2,7 @@ import { redirect } from "next/navigation"
 import { CalendarClock } from "lucide-react"
 import { format, isPast, isThisWeek, isToday, isTomorrow } from "date-fns"
 
-import { requireTech } from "@/lib/auth"
+import { requireActivePackage } from "@/lib/auth"
 import {
   getScheduleData,
   SCHEDULE_PAGE_SIZE,
@@ -109,7 +109,7 @@ export default async function SchedulePage({
 }: {
   searchParams: Promise<{ tab?: string; poolId?: string; fromDate?: string; toDate?: string; page?: string }>
 }) {
-  const user = await requireTech()
+  const user = await requireActivePackage()
   if (!user.companyId) {
     redirect("/admin")
   }

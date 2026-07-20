@@ -11,6 +11,8 @@ export function PackageBadge({
 }) {
   const expired = isTrialExpired(companyPackage)
   const displayStatus = expired ? "EXPIRED" : companyPackage.status
+  const onTrial = companyPackage.status === "TRIAL" && !expired
+  const planName = onTrial ? "Free Trial" : (companyPackage.package?.name ?? "Free Trial")
 
   const colorMap: Record<string, string> = {
     TRIAL: "bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300",
@@ -34,7 +36,7 @@ export function PackageBadge({
         className,
       )}
     >
-      {companyPackage.package.name} ({labelMap[displayStatus] ?? displayStatus})
+      {planName} ({labelMap[displayStatus] ?? displayStatus})
     </span>
   )
 }

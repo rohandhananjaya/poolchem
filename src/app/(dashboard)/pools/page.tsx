@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation"
 import { Waves } from "lucide-react"
 
-import { requireTech } from "@/lib/auth"
+import { requireActivePackage } from "@/lib/auth"
 import { getPoolsPaginated, POOLS_PAGE_SIZE } from "@/lib/db/pools"
 import type { PoolsFilters as PoolsFilterParams } from "@/lib/db/pools"
 import { Shell } from "@/components/ui/shell"
@@ -17,7 +17,7 @@ export default async function PoolsPage({
 }: {
   searchParams: Promise<{ page?: string; search?: string; status?: string }>
 }) {
-  const user = await requireTech()
+  const user = await requireActivePackage()
   if (!user.companyId) {
     redirect("/admin")
   }

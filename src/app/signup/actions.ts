@@ -20,7 +20,6 @@ export async function signupAction(
   const name = formText(formData, "name")
   const email = formText(formData, "email")
   const password = formText(formData, "password")
-  const packageSlug = formText(formData, "package") || "starter"
 
   if (companyName === "") return { ok: false, error: "Company name is required." }
   if (name === "") return { ok: false, error: "Your name is required." }
@@ -63,7 +62,7 @@ export async function signupAction(
       supabaseId,
     })
 
-    await startTrial(company.id, packageSlug)
+    await startTrial(company.id)
 
     return { ok: true }
   } catch {

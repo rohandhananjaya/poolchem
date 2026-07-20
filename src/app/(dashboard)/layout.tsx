@@ -6,6 +6,7 @@ import { getOrCreateCompanyPackage } from "@/lib/db/packages"
 import { createClient } from "@/lib/supabase/server"
 import { MainNav } from "@/components/navigation/main-nav"
 import { NotificationProvider } from "@/components/notifications/NotificationProvider"
+import { TrialBanner } from "@/components/package/trial-banner"
 import type { UserRole } from "@/generated/prisma/client"
 import type { CompanyPackageInfo } from "@/lib/package-features"
 
@@ -42,6 +43,7 @@ export default async function DashboardLayout({
       />
       {/* Offset for the fixed desktop sidebar and the fixed mobile bottom bar. */}
       <main className="flex flex-1 flex-col pb-20 md:pb-0 md:pl-64 print:pb-0 print:pl-0">
+        {companyPackage && <TrialBanner companyPackage={companyPackage} />}
         <NotificationProvider userId={user.id}>
           {children}
         </NotificationProvider>

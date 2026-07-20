@@ -2,6 +2,7 @@ import "server-only"
 
 import type { Package, CompanyPackage, Invoice } from "@/generated/prisma/client"
 import { prisma } from "@/lib/prisma"
+import { getPlatformSettings } from "@/lib/db/platform-settings"
 import {
   parseFeatures,
   type PackageInfo,
@@ -17,16 +18,15 @@ function toPackageInfo(pkg: Package): PackageInfo {
     name: pkg.name,
     price: pkg.price,
     features: parseFeatures(pkg.features),
-    trialDays: pkg.trialDays,
     sortOrder: pkg.sortOrder,
   }
 }
 
 export function toCompanyPackageInfo(
-  cp: CompanyPackage & { package: Package },
+  cp: CompanyPackage & { package: Package | null },
 ): CompanyPackageInfo {
   return {
-    package: toPackageInfo(cp.package),
+    package: cp.package ? toPackageInfo(cp.package) : null,
     status: cp.status,
     trialStart: cp.trialStart,
     trialEnd: cp.trialEnd,
@@ -79,43 +79,27 @@ export async function getCompanyPackage(
 
 export async function getOrCreateCompanyPackage(
   companyId: string,
-  packageSlug = "starter",
 ): Promise<CompanyPackageInfo> {
   const existing = await getCompanyPackage(companyId)
   if (existing) return existing
 
-  const pkg = await prisma.package.findUnique({ where: { slug: packageSlug } })
-  if (!pkg) {
-    const fallback = await prisma.package.findFirst({ orderBy: { sortOrder: "asc" } })
-    if (!fallback) throw new Error("No packages exist in the database.")
-    const cp = await prisma.companyPackage.create({
-      data: { companyId, packageId: fallback.id },
-      include: { package: true },
-    })
-    return toCompanyPackageInfo(cp)
-  }
-
-  const cp = await prisma.companyPackage.create({
-    data: { companyId, packageId: pkg.id },
-    include: { package: true },
-  })
-  return toCompanyPackageInfo(cp)
+  return startTrial(companyId)
 }
 
-export async function startTrial(
-  companyId: string,
-  packageSlug: string,
-): Promise<CompanyPackageInfo> {
-  const pkg = await prisma.package.findUnique({ where: { slug: packageSlug } })
-  if (!pkg) throw new Error(`Package "${packageSlug}" not found.`)
+/**
+ * Starts (or restarts) a company's trial: full feature access, no plan chosen
+ * yet, for `PlatformSettings.trialDays` days.
+ */
+export async function startTrial(companyId: string): Promise<CompanyPackageInfo> {
+  const { trialDays } = await getPlatformSettings()
 
   const now = new Date()
-  const trialEnd = new Date(now.getTime() + pkg.trialDays * 86400000)
+  const trialEnd = new Date(now.getTime() + trialDays * 86400000)
 
   const cp = await prisma.companyPackage.upsert({
     where: { companyId },
     update: {
-      packageId: pkg.id,
+      packageId: null,
       status: "TRIAL",
       trialStart: now,
       trialEnd,
@@ -123,7 +107,6 @@ export async function startTrial(
     },
     create: {
       companyId,
-      packageId: pkg.id,
       status: "TRIAL",
       trialStart: now,
       trialEnd,
@@ -202,21 +185,26 @@ export async function adminSetPackage(
   companyId: string,
   packageId: string,
   status: "TRIAL" | "ACTIVE" | "EXPIRED" | "CANCELLED",
-  trialDays?: number,
 ): Promise<CompanyPackageInfo> {
-  const pkg = await prisma.package.findUnique({ where: { id: packageId } })
-  if (!pkg) throw new Error(`Package "${packageId}" not found.`)
+  const isTrial = status === "TRIAL"
+
+  // A trialing company never has a chosen plan — matches `startTrial()`, and
+  // keeps the UI (which shows "Free Trial" instead of a plan name/features
+  // purely off `status`) from ever contradicting the actual stored package.
+  if (!isTrial) {
+    const pkg = await prisma.package.findUnique({ where: { id: packageId } })
+    if (!pkg) throw new Error(`Package "${packageId}" not found.`)
+  }
 
   const now = new Date()
-  const isTrial = status === "TRIAL"
-  const trialEnd = isTrial && trialDays
-    ? new Date(now.getTime() + trialDays * 86400000)
+  const trialEnd = isTrial
+    ? new Date(now.getTime() + (await getPlatformSettings()).trialDays * 86400000)
     : null
 
   const cp = await prisma.companyPackage.upsert({
     where: { companyId },
     update: {
-      packageId,
+      packageId: isTrial ? null : packageId,
       status,
       trialStart: isTrial ? now : null,
       trialEnd,
@@ -224,7 +212,7 @@ export async function adminSetPackage(
     },
     create: {
       companyId,
-      packageId,
+      packageId: isTrial ? null : packageId,
       status,
       trialStart: isTrial ? now : null,
       trialEnd,
@@ -258,7 +246,6 @@ export async function createPackage(data: {
   name: string
   price: number
   features: string
-  trialDays: number
   sortOrder: number
 }): Promise<Package> {
   return prisma.package.create({ data })
@@ -270,11 +257,14 @@ export async function updatePackage(
     name: string
     price: number
     features: string
-    trialDays: number
     sortOrder: number
   }>,
 ): Promise<Package> {
   return prisma.package.update({ where: { id }, data })
+}
+
+export async function countCompaniesOnPackage(packageId: string): Promise<number> {
+  return prisma.companyPackage.count({ where: { packageId } })
 }
 
 export async function deletePackage(id: string): Promise<void> {

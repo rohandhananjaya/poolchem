@@ -61,7 +61,7 @@ const ROLE_LABELS: Record<UserRole, string> = {
 export interface MainNavProps {
   user: { name: string; email: string; role: UserRole; image?: string | null }
   company: { name: string; logo: string | null }
-  companyPackage?: { package: { name: string }; status: string; trialEnd: Date | null; paidAt: Date | null }
+  companyPackage?: { package: { name: string } | null; status: string; trialEnd: Date | null; paidAt: Date | null }
 }
 
 /** Returns the first character(s) usable as an avatar/logo fallback. */
@@ -245,7 +245,7 @@ function UserMenu({
 function PackageSidebarBadge({
   companyPackage,
 }: {
-  companyPackage: { package: { name: string }; status: string; trialEnd: Date | null; paidAt: Date | null }
+  companyPackage: { package: { name: string } | null; status: string; trialEnd: Date | null; paidAt: Date | null }
 }) {
   const isTrial = companyPackage.status === "TRIAL"
   const isExpired = companyPackage.status === "EXPIRED"
@@ -259,13 +259,14 @@ function PackageSidebarBadge({
         : "text-muted-foreground"
 
   const statusLabel = isTrial ? "Trial" : isActive ? "Active" : isExpired ? "Expired" : "Cancelled"
+  const planName = isTrial ? "Free Trial" : (companyPackage.package?.name ?? "Free Trial")
 
   return (
     <Link
       href="/account/package"
       className={`flex w-full items-center justify-end gap-1 text-[8px] font-medium uppercase tracking-wide transition-colors hover:opacity-80 ${colorClass}`}
     >
-      {companyPackage.package.name}
+      {planName}
       <span>({statusLabel})</span>
     </Link>
   )

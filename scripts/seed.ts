@@ -80,7 +80,7 @@ async function main() {
     {
       slug: "starter",
       name: "Starter",
-      price: 0,
+      price: 1900,
       features: JSON.stringify({
         max_pools: 5,
         health_scoring: "basic",
@@ -94,13 +94,12 @@ async function main() {
         api_access: false,
         csv_import: false,
       }),
-      trialDays: 14,
       sortOrder: 0,
     },
     {
       slug: "basic",
       name: "Basic",
-      price: 1900,
+      price: 2900,
       features: JSON.stringify({
         max_pools: 25,
         health_scoring: "advanced+lsi",
@@ -114,7 +113,6 @@ async function main() {
         api_access: false,
         csv_import: false,
       }),
-      trialDays: 14,
       sortOrder: 1,
     },
     {
@@ -134,7 +132,6 @@ async function main() {
         api_access: true,
         csv_import: true,
       }),
-      trialDays: 14,
       sortOrder: 2,
     },
   ];
@@ -147,6 +144,14 @@ async function main() {
     });
     console.log(`• Package: ${pkg.name} ($${(pkg.price / 100).toFixed(2)})`);
   }
+
+  // ---- Platform settings ----------------------------------------------------
+  await prisma.platformSettings.upsert({
+    where: { id: "singleton" },
+    update: { trialDays: 30 },
+    create: { id: "singleton", trialDays: 30 },
+  });
+  console.log("• Platform trial length: 30 days");
 
   // ---- Summary -------------------------------------------------------------
   console.log("\n✅ Seed complete.\n");

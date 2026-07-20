@@ -3,7 +3,7 @@ import Link from "next/link"
 import { format } from "date-fns"
 import { Bell, Building2, LayoutDashboard } from "lucide-react"
 
-import { requireTech } from "@/lib/auth"
+import { requireActivePackage } from "@/lib/auth"
 import { getCompanyById } from "@/lib/db/company"
 import { getDashboardData } from "@/lib/db/dashboard"
 import { getAdminDashboardData } from "@/lib/db/admin-dashboard"
@@ -34,7 +34,7 @@ function firstName(name: string): string {
 }
 
 export default async function DashboardPage() {
-  const user = await requireTech()
+  const user = await requireActivePackage()
 
   // SUPER_ADMIN has no company — show a platform overview instead.
   if (user.role === "SUPER_ADMIN" as UserRole) {

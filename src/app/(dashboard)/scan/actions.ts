@@ -1,6 +1,6 @@
 "use server";
 
-import { requireTech } from "@/lib/auth";
+import { requireActivePackage } from "@/lib/auth";
 import { getPoolById, getPoolByQR } from "@/lib/db/pools";
 import { createVisit } from "@/lib/db/visits";
 
@@ -21,7 +21,7 @@ export type StartVisitResult =
 export async function startVisitFromScan(
   code: string,
 ): Promise<StartVisitResult> {
-  const user = await requireTech();
+  const user = await requireActivePackage();
   if (!user.companyId) {
     return { ok: false, reason: "not-found" };
   }

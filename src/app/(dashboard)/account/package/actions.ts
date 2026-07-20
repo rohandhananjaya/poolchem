@@ -33,16 +33,13 @@ export async function payNowAction(
 
 export async function startTrialAction(
   _prev: PaymentActionState,
-  formData: FormData,
+  _formData: FormData,
 ): Promise<PaymentActionState> {
   try {
     const companyId = await getCompanyId()
     if (!companyId) return { ok: false, error: "No company found." }
 
-    const packageSlug = formData.get("package") as string
-    if (!packageSlug) return { ok: false, error: "No package selected." }
-
-    const result = await startTrial(companyId, packageSlug)
+    const result = await startTrial(companyId)
     revalidatePath("/account/package")
     return { ok: true, companyPackage: result }
   } catch (error) {

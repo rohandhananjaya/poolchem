@@ -2,7 +2,7 @@ import { redirect } from "next/navigation"
 import { format } from "date-fns"
 import { FileText } from "lucide-react"
 
-import { requireTech } from "@/lib/auth"
+import { requireActivePackage } from "@/lib/auth"
 import {
   getCompanyReportData,
   REPORTS_PAGE_SIZE,
@@ -21,7 +21,7 @@ export default async function ReportsPage({
 }: {
   searchParams: Promise<{ page?: string; poolId?: string; fromDate?: string; toDate?: string }>
 }) {
-  const user = await requireTech()
+  const user = await requireActivePackage()
   if (!user.companyId) {
     redirect("/admin")
   }

@@ -46,6 +46,20 @@ Get the tenant with `getCompanyId()` / `requireAuth()` from [../auth.ts](../auth
 **schedule.ts**
 - `getScheduleData(companyId) → ScheduledVisit[]`
 
+**packages.ts** — subscription/trial system. `Package` (plan definitions, platform-wide, not tenant-scoped) vs `CompanyPackage` (one per company; `packageId` is `null` while on trial with no plan chosen yet).
+- `getAllPackages() → PackageInfo[]` · `getPackageBySlug(slug)` · `getPackageById(id)`
+- `getCompanyPackage(companyId) → CompanyPackageInfo | null` — lazily flips an overdue `TRIAL` to `EXPIRED` on read
+- `getOrCreateCompanyPackage(companyId) → CompanyPackageInfo` — starts a trial if the company has no row yet
+- `startTrial(companyId)` — full feature access, no plan chosen, for `PlatformSettings.trialDays`
+- `simulatePayment(companyId, packageSlug)` — sets `ACTIVE` + records an `Invoice` (simulated, no real billing)
+- `expireTrial(companyId)` / `checkAndExpireTrials()` — manual/batch expiry (not wired to a cron; expiry normally happens lazily via `getCompanyPackage`)
+- `adminSetPackage(companyId, packageId, status)` — super-admin override
+- `getCompanyInvoices(companyId)` · `getAllCompaniesWithPackages()`
+- `createPackage(data)` · `updatePackage(id, data)` · `deletePackage(id)` · `countCompaniesOnPackage(packageId)` — plan-catalog CRUD for `/admin/packages`
+
+**platform-settings.ts** — single-row platform config.
+- `getPlatformSettings() → { trialDays }` · `updateTrialDays(days) → { trialDays }`
+
 ## Tests (60 tests across 7 files)
 
 All DB tests mock `@/lib/prisma` and require `server-only` to be stubbed (handled by the Vitest config alias). Tests are in the same directory with `.test.ts` suffix:

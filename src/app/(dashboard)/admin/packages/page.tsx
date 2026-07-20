@@ -1,11 +1,18 @@
 import Link from "next/link"
-import { Package as PackageIcon, Plus, Pencil, Trash2 } from "lucide-react"
+import { Package as PackageIcon, Plus, Pencil, Trash2, Clock } from "lucide-react"
 
 import { requireSuperAdmin } from "@/lib/auth"
 import { getAllPackages, getAllCompaniesWithPackages } from "@/lib/db/packages"
+import { getPlatformSettings } from "@/lib/db/platform-settings"
 import { Shell } from "@/components/ui/shell"
 import { Button } from "@/components/ui/button"
-import { deletePackageAction, createPackageAction, updatePackageAction, adminSetCompanyPackageAction } from "./actions"
+import {
+  deletePackageAction,
+  createPackageAction,
+  updatePackageAction,
+  adminSetCompanyPackageAction,
+  updateTrialDaysAction,
+} from "./actions"
 import { formatPrice } from "@/lib/package-features"
 
 export const dynamic = "force-dynamic"
@@ -13,14 +20,41 @@ export const dynamic = "force-dynamic"
 export default async function AdminPackagesPage() {
   await requireSuperAdmin()
 
-  const [packages, companies] = await Promise.all([
+  const [packages, companies, platformSettings] = await Promise.all([
     getAllPackages(),
     getAllCompaniesWithPackages(),
+    getPlatformSettings(),
   ])
 
   return (
     <Shell title="Packages">
       <div className="space-y-8">
+        {/* Platform Settings */}
+        <section>
+          <h2 className="text-lg font-semibold text-foreground mb-4">Platform Settings</h2>
+          <div className="rounded-xl border border-border bg-card p-4">
+            <form action={updateTrialDaysAction} className="flex items-end gap-3">
+              <div>
+                <label className="flex items-center gap-1.5 text-xs font-medium text-foreground mb-1">
+                  <Clock className="size-3.5" />
+                  Trial length (days)
+                </label>
+                <input
+                  name="trialDays"
+                  type="number"
+                  min="1"
+                  defaultValue={platformSettings.trialDays}
+                  className="w-32 rounded-lg border border-border bg-background px-2 py-1.5 text-sm"
+                />
+              </div>
+              <Button type="submit" size="sm">Save</Button>
+              <p className="text-xs text-muted-foreground">
+                Every new company gets full feature access for this many days before choosing a plan.
+              </p>
+            </form>
+          </div>
+        </section>
+
         {/* Package Definitions */}
         <section>
           <div className="flex items-center justify-between gap-4 mb-4">
@@ -48,13 +82,9 @@ export default async function AdminPackagesPage() {
                       <input name="price" type="number" min="0" step="0.01" defaultValue="0" className="w-full rounded-lg border border-border bg-background px-2 py-1.5 text-sm" />
                     </div>
                     <div>
-                      <label className="block text-xs font-medium text-foreground mb-1">Trial Days</label>
-                      <input name="trialDays" type="number" min="0" defaultValue="14" className="w-full rounded-lg border border-border bg-background px-2 py-1.5 text-sm" />
+                      <label className="block text-xs font-medium text-foreground mb-1">Sort Order</label>
+                      <input name="sortOrder" type="number" defaultValue="0" className="w-full rounded-lg border border-border bg-background px-2 py-1.5 text-sm" />
                     </div>
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-foreground mb-1">Sort Order</label>
-                    <input name="sortOrder" type="number" defaultValue="0" className="w-full rounded-lg border border-border bg-background px-2 py-1.5 text-sm" />
                   </div>
                   <details className="text-xs">
                     <summary className="cursor-pointer font-medium text-muted-foreground hover:text-foreground">Features</summary>
@@ -98,7 +128,7 @@ export default async function AdminPackagesPage() {
                       <span className="text-xs text-muted-foreground">({pkg.slug})</span>
                     </div>
                     <p className="mt-1 text-xs text-muted-foreground">
-                      {pkg.price === 0 ? "Free" : formatPrice(pkg.price) + "/mo"} · {pkg.trialDays}-day trial · Sort: {pkg.sortOrder}
+                      {formatPrice(pkg.price)}/mo · Sort: {pkg.sortOrder}
                     </p>
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
@@ -113,15 +143,9 @@ export default async function AdminPackagesPage() {
                             <label className="block text-xs font-medium text-foreground mb-1">Name</label>
                             <input name="name" defaultValue={pkg.name} className="w-full rounded-lg border border-border bg-background px-2 py-1.5 text-xs" />
                           </div>
-                          <div className="grid grid-cols-2 gap-2">
-                            <div>
-                              <label className="block text-xs font-medium text-foreground mb-1">Price ($)</label>
-                              <input name="price" type="number" min="0" step="0.01" defaultValue={(pkg.price / 100).toFixed(2)} className="w-full rounded-lg border border-border bg-background px-2 py-1.5 text-xs" />
-                            </div>
-                            <div>
-                              <label className="block text-xs font-medium text-foreground mb-1">Trial Days</label>
-                              <input name="trialDays" type="number" min="0" defaultValue={pkg.trialDays} className="w-full rounded-lg border border-border bg-background px-2 py-1.5 text-xs" />
-                            </div>
+                          <div>
+                            <label className="block text-xs font-medium text-foreground mb-1">Price ($)</label>
+                            <input name="price" type="number" min="0" step="0.01" defaultValue={(pkg.price / 100).toFixed(2)} className="w-full rounded-lg border border-border bg-background px-2 py-1.5 text-xs" />
                           </div>
                           <Button type="submit" size="xs" className="w-full">Save</Button>
                         </form>
@@ -161,7 +185,7 @@ export default async function AdminPackagesPage() {
                     <div className="flex items-center gap-3 shrink-0">
                       {cp ? (
                         <span className={`text-xs font-medium ${statusColor}`}>
-                          {cp.package.name} ({cp.status.toLowerCase()})
+                          {cp.package?.name ?? "Trial — no plan chosen"} ({cp.status.toLowerCase()})
                         </span>
                       ) : (
                         <span className="text-xs text-muted-foreground">No package</span>
@@ -189,10 +213,6 @@ export default async function AdminPackagesPage() {
                                 <option value="EXPIRED">Expired</option>
                                 <option value="CANCELLED">Cancelled</option>
                               </select>
-                            </div>
-                            <div>
-                              <label className="block text-xs font-medium text-foreground mb-1">Trial Days (if Trial)</label>
-                              <input name="trialDays" type="number" min="0" defaultValue="14" className="w-full rounded-lg border border-border bg-background px-2 py-1.5 text-xs" />
                             </div>
                             <Button type="submit" size="xs" className="w-full">Update</Button>
                           </form>

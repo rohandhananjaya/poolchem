@@ -2,7 +2,9 @@
 
 import { revalidatePath } from "next/cache";
 import { requireOwner } from "@/lib/auth";
-import { createPool, updatePool, deletePool, getPoolById } from "@/lib/db/pools";
+import { createPool, updatePool, deletePool, getPoolById, getPoolCount } from "@/lib/db/pools";
+import { getCompanyPackage } from "@/lib/db/packages";
+import { hasPoolCapacity } from "@/lib/package-features";
 import { formText, formOptionalText } from "@/lib/utils";
 
 const text = formText;
@@ -30,6 +32,21 @@ export async function createPoolAction(
     typeof volumeRaw === "string" ? Number.parseInt(volumeRaw, 10) : NaN;
   if (Number.isNaN(volume) || volume < 1) {
     return { ok: false, error: "Volume must be a positive number." };
+  }
+
+  const [companyPackage, poolCount] = await Promise.all([
+    getCompanyPackage(user.companyId),
+    getPoolCount(user.companyId),
+  ]);
+  if (!companyPackage || !hasPoolCapacity(companyPackage, poolCount)) {
+    const max = companyPackage?.package?.features.max_pools;
+    return {
+      ok: false,
+      error:
+        typeof max === "number"
+          ? `Your plan allows up to ${max} pools — upgrade to add more.`
+          : "Choose a plan to add pools.",
+    };
   }
 
   try {
