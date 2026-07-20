@@ -91,7 +91,7 @@ export function formatPrice(cents: number): string {
   return `$${(cents / 100).toFixed(2)}`
 }
 
-const FEATURE_LABELS: { key: keyof PackageFeatures; label: string }[] = [
+export const FEATURE_LABELS: { key: keyof PackageFeatures; label: string }[] = [
   { key: "max_pools", label: "Max pools" },
   { key: "health_scoring", label: "Water health scoring" },
   { key: "chemical_recs", label: "Chemical dose recommendations" },
@@ -105,7 +105,7 @@ const FEATURE_LABELS: { key: keyof PackageFeatures; label: string }[] = [
   { key: "csv_import", label: "CSV import" },
 ]
 
-function formatFeatureValue(value: PackageFeatures[keyof PackageFeatures]): string | boolean {
+export function formatFeatureValue(value: PackageFeatures[keyof PackageFeatures]): string | boolean {
   if (typeof value === "boolean") return value
   if (typeof value === "number") return value === -1 ? "Unlimited" : String(value)
   if (value === "advanced+lsi") return "Advanced + LSI"

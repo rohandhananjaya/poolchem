@@ -13,6 +13,7 @@ import {
   adminSetCompanyPackageAction,
   updateTrialDaysAction,
 } from "./actions"
+import { PackageFeatureFields } from "@/components/package/package-feature-fields"
 import { formatPrice } from "@/lib/package-features"
 
 export const dynamic = "force-dynamic"
@@ -76,41 +77,11 @@ export default async function AdminPackagesPage() {
                       <input name="name" required className="w-full rounded-lg border border-border bg-background px-2 py-1.5 text-sm" />
                     </div>
                   </div>
-                  <div className="grid grid-cols-2 gap-2">
-                    <div>
-                      <label className="block text-xs font-medium text-foreground mb-1">Price ($)</label>
-                      <input name="price" type="number" min="0" step="0.01" defaultValue="0" className="w-full rounded-lg border border-border bg-background px-2 py-1.5 text-sm" />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-medium text-foreground mb-1">Sort Order</label>
-                      <input name="sortOrder" type="number" defaultValue="0" className="w-full rounded-lg border border-border bg-background px-2 py-1.5 text-sm" />
-                    </div>
+                  <div>
+                    <label className="block text-xs font-medium text-foreground mb-1">Price ($)</label>
+                    <input name="price" type="number" min="0" step="0.01" defaultValue="0" className="w-full rounded-lg border border-border bg-background px-2 py-1.5 text-sm" />
                   </div>
-                  <details className="text-xs">
-                    <summary className="cursor-pointer font-medium text-muted-foreground hover:text-foreground">Features</summary>
-                    <div className="mt-2 space-y-1.5">
-                      <FeatureCheckbox name="features.chemical_recs" label="Chemical Recs" />
-                      <FeatureCheckbox name="features.service_reports" label="Service Reports" />
-                      <FeatureCheckbox name="features.qr_code" label="QR Code" />
-                      <FeatureCheckbox name="features.scheduling" label="Scheduling" />
-                      <FeatureCheckbox name="features.multi_tech" label="Multi Tech" />
-                      <FeatureCheckbox name="features.priority_support" label="Priority Support" />
-                      <FeatureCheckbox name="features.custom_branding" label="Custom Branding" />
-                      <FeatureCheckbox name="features.api_access" label="API Access" />
-                      <FeatureCheckbox name="features.csv_import" label="CSV Import" />
-                      <div>
-                        <label className="block text-xs font-medium text-foreground mb-1">Max Pools</label>
-                        <input name="features.max_pools" type="number" defaultValue="5" className="w-full rounded-lg border border-border bg-background px-2 py-1 text-xs" />
-                      </div>
-                      <div>
-                        <label className="block text-xs font-medium text-foreground mb-1">Health Scoring</label>
-                        <select name="features.health_scoring" defaultValue="basic" className="w-full rounded-lg border border-border bg-background px-2 py-1 text-xs">
-                          <option value="basic">Basic</option>
-                          <option value="advanced+lsi">Advanced + LSI</option>
-                        </select>
-                      </div>
-                    </div>
-                  </details>
+                  <PackageFeatureFields />
                   <Button type="submit" size="sm" className="w-full">Create</Button>
                 </form>
               </div>
@@ -128,7 +99,7 @@ export default async function AdminPackagesPage() {
                       <span className="text-xs text-muted-foreground">({pkg.slug})</span>
                     </div>
                     <p className="mt-1 text-xs text-muted-foreground">
-                      {formatPrice(pkg.price)}/mo · Sort: {pkg.sortOrder}
+                      {formatPrice(pkg.price)}/mo · max {pkg.features.max_pools || 0} pools
                     </p>
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
@@ -136,7 +107,7 @@ export default async function AdminPackagesPage() {
                       <summary className="inline-flex cursor-pointer items-center justify-center size-7 rounded-lg border border-border bg-background text-muted-foreground hover:bg-muted">
                         <Pencil className="size-3.5" />
                       </summary>
-                      <div className="absolute right-0 top-full z-50 mt-2 w-72 rounded-xl border border-border bg-card p-4 shadow-lg">
+                      <div className="absolute right-0 top-full z-50 mt-2 w-80 rounded-xl border border-border bg-card p-4 shadow-lg">
                         <form action={updatePackageAction} className="space-y-2 text-sm">
                           <input type="hidden" name="id" value={pkg.id} />
                           <div>
@@ -147,6 +118,7 @@ export default async function AdminPackagesPage() {
                             <label className="block text-xs font-medium text-foreground mb-1">Price ($)</label>
                             <input name="price" type="number" min="0" step="0.01" defaultValue={(pkg.price / 100).toFixed(2)} className="w-full rounded-lg border border-border bg-background px-2 py-1.5 text-xs" />
                           </div>
+                          <PackageFeatureFields features={pkg.features} />
                           <Button type="submit" size="xs" className="w-full">Save</Button>
                         </form>
                       </div>
@@ -230,11 +202,3 @@ export default async function AdminPackagesPage() {
   )
 }
 
-function FeatureCheckbox({ name, label }: { name: string; label: string }) {
-  return (
-    <label className="flex items-center gap-2 text-xs text-foreground cursor-pointer">
-      <input type="checkbox" name={name} className="size-3.5 accent-teal-600" />
-      {label}
-    </label>
-  )
-}

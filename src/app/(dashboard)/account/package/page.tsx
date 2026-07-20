@@ -6,7 +6,13 @@ import { getAllPackages, getCompanyPackage } from "@/lib/db/packages"
 import { Shell } from "@/components/ui/shell"
 import { PackageBadge } from "@/components/package/package-badge"
 import { PayNowDialog } from "@/components/package/pay-now-dialog"
-import { isTrialExpired, formatPrice, getPlanFeatureMatrix } from "@/lib/package-features"
+import {
+  isTrialExpired,
+  formatPrice,
+  getPlanFeatureMatrix,
+  FEATURE_LABELS,
+  formatFeatureValue,
+} from "@/lib/package-features"
 
 export const dynamic = "force-dynamic"
 
@@ -24,6 +30,7 @@ export default async function AccountPackagePage() {
 
   const expired = isTrialExpired(companyPackage)
   const featureMatrix = getPlanFeatureMatrix(allPackages)
+  const sortedPackages = [...allPackages].sort((a, b) => a.price - b.price)
   // Full feature access during an active trial is independent of whether a
   // plan happens to be attached to the row (see checkFeatureAccess) — the
   // card should never show a specific plan's limited feature set while
@@ -77,18 +84,25 @@ export default async function AccountPackagePage() {
           ) : (
             companyPackage.package && (
               <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2">
-                {Object.entries(companyPackage.package.features).map(([key, value]) => (
-                  <div key={key} className="flex items-center gap-2 text-sm">
-                    {value !== false && value !== 0 ? (
-                      <Check className="size-4 shrink-0 text-emerald-500" />
-                    ) : (
-                      <X className="size-4 shrink-0 text-muted-foreground" />
-                    )}
-                    <span className="text-foreground">
-                      {key.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())}
-                    </span>
-                  </div>
-                ))}
+                {FEATURE_LABELS.map(({ key, label }) => {
+                  const rawValue = companyPackage.package!.features[key]
+                  const displayValue = formatFeatureValue(rawValue)
+                  return (
+                    <div key={key} className="flex items-center gap-2 text-sm">
+                      {rawValue !== false && rawValue !== 0 ? (
+                        <Check className="size-4 shrink-0 text-emerald-500" />
+                      ) : (
+                        <X className="size-4 shrink-0 text-muted-foreground" />
+                      )}
+                      <span className="text-foreground">
+                        {label}
+                        {typeof displayValue === "string" && (
+                          <span className="ml-1 text-muted-foreground">{displayValue}</span>
+                        )}
+                      </span>
+                    </div>
+                  )
+                })}
               </div>
             )
           )}
@@ -100,7 +114,7 @@ export default async function AccountPackagePage() {
             Compare plans
           </h2>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-            {allPackages.map((pkg) => {
+            {sortedPackages.map((pkg) => {
               // Only an ACTIVE subscription on this plan counts as "current" —
               // an EXPIRED/CANCELLED company must still be able to re-pay for
               // the same plan it was previously on, not just switch away from it.
@@ -131,7 +145,12 @@ export default async function AccountPackagePage() {
                           ) : (
                             <X className="size-3.5 shrink-0 text-muted-foreground" />
                           )}
-                          <span className="text-muted-foreground">{row.feature}</span>
+                          <span className="text-muted-foreground">
+                            {row.feature}
+                            {typeof val === "string" && (
+                              <span className="ml-1 font-medium text-foreground">{val}</span>
+                            )}
+                          </span>
                         </li>
                       )
                     })}

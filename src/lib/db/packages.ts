@@ -246,9 +246,9 @@ export async function createPackage(data: {
   name: string
   price: number
   features: string
-  sortOrder: number
+  sortOrder?: number
 }): Promise<Package> {
-  return prisma.package.create({ data })
+  return prisma.package.create({ data: { sortOrder: 0, ...data } })
 }
 
 export async function updatePackage(
