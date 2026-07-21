@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import { toast } from "sonner"
-import { Copy, Mail, Plus } from "lucide-react"
+import { Copy, Mail } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -22,17 +22,20 @@ const INITIAL_STATE: FormState = { ok: false }
 
 export function InviteUserDialog() {
   const [open, setOpen] = React.useState(false)
-  const [state, action, pending] = React.useActionState(inviteTeamUserAction, INITIAL_STATE)
+  const [pending, startTransition] = React.useTransition()
   const [inviteUrl, setInviteUrl] = React.useState<string | null>(null)
 
-  React.useEffect(() => {
-    if (state.ok && state.inviteUrl) {
-      setInviteUrl(state.inviteUrl)
-      toast.success("Invitation created!")
-    } else if (state.error) {
-      toast.error(state.error)
-    }
-  }, [state])
+  function action(formData: FormData) {
+    startTransition(async () => {
+      const state = await inviteTeamUserAction(INITIAL_STATE, formData)
+      if (state.ok && state.inviteUrl) {
+        setInviteUrl(state.inviteUrl)
+        toast.success("Invitation created!")
+      } else if (state.error) {
+        toast.error(state.error)
+      }
+    })
+  }
 
   function handleCopy() {
     if (inviteUrl) {

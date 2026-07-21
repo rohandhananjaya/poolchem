@@ -22,21 +22,20 @@ export function AcceptInviteForm({
   email: string
 }) {
   const router = useRouter()
-  const [state, action, pending] = React.useActionState(acceptInvitationAction, INITIAL_STATE)
+  const [pending, startTransition] = React.useTransition()
+  const [state, setState] = React.useState(INITIAL_STATE)
   const [signingIn, setSigningIn] = React.useState(false)
 
-  React.useEffect(() => {
-    if (!state.ok) return
+  function action(formData: FormData) {
+    startTransition(async () => {
+      const result = await acceptInvitationAction(INITIAL_STATE, formData)
+      setState(result)
+      if (!result.ok) return
 
-    setSigningIn(true)
-
-    const form = document.querySelector<HTMLFormElement>("form")
-    if (!form) return
-    const formData = new FormData(form)
-    const password = formData.get("password") as string
-
-    const supabase = createClient()
-    supabase.auth.signInWithPassword({ email, password }).then(({ error }) => {
+      setSigningIn(true)
+      const password = formData.get("password") as string
+      const supabase = createClient()
+      const { error } = await supabase.auth.signInWithPassword({ email, password })
       if (error) {
         setSigningIn(false)
         return
@@ -44,7 +43,7 @@ export function AcceptInviteForm({
       router.push("/dashboard")
       router.refresh()
     })
-  }, [state.ok, email, router])
+  }
 
   return (
     <form action={action} className="space-y-4">

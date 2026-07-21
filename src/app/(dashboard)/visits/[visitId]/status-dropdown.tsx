@@ -45,15 +45,15 @@ export function StatusDropdown({
   techId,
 }: StatusDropdownProps) {
   const router = useRouter()
+  const [pending, startTransition] = React.useTransition()
+  const [cancelDialogOpen, setCancelDialogOpen] = React.useState(false)
+  const [cancelReason, setCancelReason] = React.useState("")
+  const [isCustom, setIsCustom] = React.useState(false)
 
   // Only the assigned tech may change the status of an IN_PROGRESS visit.
   const isOthersVisit =
     currentStatus === "IN_PROGRESS" && !!techId && techId !== currentUserId
   if (isOthersVisit) return null
-  const [pending, startTransition] = React.useTransition()
-  const [cancelDialogOpen, setCancelDialogOpen] = React.useState(false)
-  const [cancelReason, setCancelReason] = React.useState("")
-  const [isCustom, setIsCustom] = React.useState(false)
 
   function handleChange(status: "DRAFT" | "IN_PROGRESS") {
     if (status === currentStatus) return

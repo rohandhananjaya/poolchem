@@ -5,22 +5,35 @@ import * as React from "react"
 import { Button } from "@/components/ui/button"
 
 const STORAGE_KEY = "poolbench-cookie-consent"
+const CONSENT_CHANGE_EVENT = "poolbench-cookie-consent-change"
 
 function getConsent(): boolean {
-  if (typeof window === "undefined") return true
   return localStorage.getItem(STORAGE_KEY) === "accepted"
 }
 
-export function CookieConsentBanner() {
-  const [visible, setVisible] = React.useState(false)
+function subscribe(callback: () => void) {
+  window.addEventListener(CONSENT_CHANGE_EVENT, callback)
+  return () => window.removeEventListener(CONSENT_CHANGE_EVENT, callback)
+}
 
-  React.useEffect(() => {
-    setVisible(!getConsent())
-  }, [])
+// Hidden on the server and on the client's first paint (no localStorage
+// access yet) so hydration always matches; useSyncExternalStore re-reads
+// the real value right after mount without a setState-in-effect render.
+function getServerSnapshot() {
+  return true
+}
+
+export function CookieConsentBanner() {
+  const accepted = React.useSyncExternalStore(
+    subscribe,
+    getConsent,
+    getServerSnapshot,
+  )
+  const visible = !accepted
 
   function accept() {
     localStorage.setItem(STORAGE_KEY, "accepted")
-    setVisible(false)
+    window.dispatchEvent(new Event(CONSENT_CHANGE_EVENT))
   }
 
   if (!visible) return null

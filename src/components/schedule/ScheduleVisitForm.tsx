@@ -45,22 +45,20 @@ export function ScheduleVisitForm({ pools, techs, userRole }: ScheduleVisitFormP
   const [techSearch, setTechSearch] = React.useState("")
   const techInputRef = React.useRef<HTMLInputElement>(null)
 
-  const [state, action, pending] = React.useActionState(
-    scheduleVisitAction,
-    INITIAL_STATE,
-  )
+  const [pending, startTransition] = React.useTransition()
 
-  React.useEffect(() => {
-    if (state.ok) {
-      toast.success("Visit scheduled.")
-      reset()
-      setOpen(false)
-    } else if (state.error) {
-      toast.error(state.error)
-    }
-    // Only react to actual submissions, not the initial state
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [state.ok, state.error])
+  function action(formData: FormData) {
+    startTransition(async () => {
+      const state = await scheduleVisitAction(INITIAL_STATE, formData)
+      if (state.ok) {
+        toast.success("Visit scheduled.")
+        reset()
+        setOpen(false)
+      } else if (state.error) {
+        toast.error(state.error)
+      }
+    })
+  }
 
   const filteredTechs = React.useMemo(
     () =>

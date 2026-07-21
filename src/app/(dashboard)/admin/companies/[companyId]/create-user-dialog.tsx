@@ -24,19 +24,19 @@ const INITIAL_STATE: FormState = { ok: false }
 
 export function CreateUserDialog({ companyId }: { companyId: string }) {
   const [open, setOpen] = React.useState(false)
-  const [state, action, pending] = React.useActionState(
-    createUserAction,
-    INITIAL_STATE,
-  )
+  const [pending, startTransition] = React.useTransition()
 
-  React.useEffect(() => {
-    if (state.ok) {
-      toast.success("User created.")
-      setOpen(false)
-    } else if (state.error) {
-      toast.error(state.error)
-    }
-  }, [state])
+  function action(formData: FormData) {
+    startTransition(async () => {
+      const state = await createUserAction(INITIAL_STATE, formData)
+      if (state.ok) {
+        toast.success("User created.")
+        setOpen(false)
+      } else if (state.error) {
+        toast.error(state.error)
+      }
+    })
+  }
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
