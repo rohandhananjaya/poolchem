@@ -1,6 +1,6 @@
 import { fileURLToPath } from "node:url";
 
-import { defineConfig } from "vitest/config";
+import { configDefaults, defineConfig } from "vitest/config";
 
 // Mirror the tsconfig `@/*` -> `src/*` path alias so tests can import modules
 // the same way application code does.
@@ -16,6 +16,10 @@ export default defineConfig({
   test: {
     environment: "happy-dom",
     setupFiles: ["./src/test/setup.ts"],
+    // e2e/**/*.spec.ts are Playwright specs (run via `npx playwright test`,
+    // not vitest) — without this, vitest tries to collect them too and
+    // fails since they call Playwright's own test()/test.describe().
+    exclude: [...configDefaults.exclude, "e2e/**"],
     coverage: {
       provider: "v8",
       include: ["src/**/*.ts", "src/**/*.tsx"],

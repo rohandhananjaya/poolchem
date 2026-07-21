@@ -132,6 +132,8 @@ All three were confirmed working correctly by inspecting their screenshots (the 
 
 ---
 
-## Aside: `npm test` was already broken before this work (pre-existing, unrelated)
+## ✅ Fixed: `npm test` was already broken before this work (pre-existing, unrelated)
 
-While verifying the two fixes above, `npm test` (vitest) failed on 1-2 "test files" — turns out `vitest.config.ts` has no exclude for `e2e/**`, so vitest tries to collect and run Playwright spec files (`e2e/smoke-test.spec.ts`, and now also `e2e/trial-feature-check.spec.ts`) using Playwright's own `test()`/`test.describe()` API, which vitest doesn't understand. Confirmed this predates any change here: `smoke-test.spec.ts` alone (with none of this session's files present) already fails the same way on `master`. The 294 real unit tests all pass either way. Not fixed here since it's outside this session's scope — flagging it since it'll keep tripping up `npm test` until `vitest.config.ts` gets an `exclude: ["e2e/**"]` (or equivalent).
+While verifying the two fixes above, `npm test` (vitest) failed on 1-2 "test files" — turns out `vitest.config.ts` had no exclude for `e2e/**`, so vitest tried to collect and run Playwright spec files (`e2e/smoke-test.spec.ts`, and now also `e2e/trial-feature-check.spec.ts`) using Playwright's own `test()`/`test.describe()` API, which vitest doesn't understand. Confirmed this predated any change here: `smoke-test.spec.ts` alone (with none of this session's files present) already failed the same way on `master`.
+
+**Fixed** — `vitest.config.ts` now sets `test.exclude: [...configDefaults.exclude, "e2e/**"]`. `npm test` runs clean: 25 test files, 294 tests, all passing.
