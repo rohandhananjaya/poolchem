@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
-import { Html5Qrcode } from "html5-qrcode";
+import { Html5Qrcode, Html5QrcodeScannerState } from "html5-qrcode";
 import { AlertTriangle, Loader2, ScanLine, X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -89,11 +89,17 @@ export default function ScanPage() {
 
     return () => {
       cancelled = true;
-      // stop() rejects if the camera never started; swallow either way.
-      scanner
-        .stop()
-        .catch(() => {})
-        .finally(() => scanner.clear());
+      // stop() throws *synchronously* (not just a rejected promise) when the
+      // camera hasn't finished starting yet — e.g. an unmount that races
+      // Html5Qrcode.start()'s init. Check state first, and keep the
+      // try/catch as a backstop so that race can never crash the page.
+      try {
+        if (scanner.getState() !== Html5QrcodeScannerState.NOT_STARTED) {
+          scanner.stop().catch(() => {}).finally(() => scanner.clear());
+        } else {
+          scanner.clear();
+        }
+      } catch {}
       scannerRef.current = null;
     };
     // `session` drives an explicit restart; cameraActive gates on/off.

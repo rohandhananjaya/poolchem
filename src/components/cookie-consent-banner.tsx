@@ -26,22 +26,29 @@ export function CookieConsentBanner() {
   if (!visible) return null
 
   return (
-    <div className="fixed inset-x-0 bottom-0 z-50 border-t border-border bg-card p-4 print:hidden">
-      <div className="mx-auto flex max-w-5xl flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <p className="text-sm text-muted-foreground">
-          Poolbench uses essential cookies for authentication.{" "}
-          <a
-            href="https://poolbench.com/privacy"
-            className="underline underline-offset-2 hover:text-foreground transition-colors"
-          >
-            Learn more
-          </a>
-          .
-        </p>
-        <Button onClick={accept} size="sm">
-          Got it
-        </Button>
+    <>
+      {/* Reserves scroll room so the fixed banner below never overlaps the
+          last real content on a page (e.g. the visit form's Complete
+          button) — heights approximate the banner's own responsive layout,
+          which stacks text+button vertically below `sm` and inline above it. */}
+      <div aria-hidden className="h-28 sm:h-14 print:hidden" />
+      <div className="fixed inset-x-0 bottom-0 z-50 border-t border-border bg-card p-4 print:hidden">
+        <div className="mx-auto flex max-w-5xl flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-sm text-muted-foreground">
+            Poolbench uses essential cookies for authentication.{" "}
+            <a
+              href="https://poolbench.com/privacy"
+              className="underline underline-offset-2 hover:text-foreground transition-colors"
+            >
+              Learn more
+            </a>
+            .
+          </p>
+          <Button onClick={accept} size="sm">
+            Got it
+          </Button>
+        </div>
       </div>
-    </div>
+    </>
   )
 }
