@@ -42,6 +42,10 @@ Bearer-token auth (`Authorization: Bearer <key>`), NOT Supabase cookies — see 
 - `schedule/route.ts`
 - `stats/live/route.ts` — pre-existing, unauthenticated server-stats endpoint (unrelated to API keys)
 
+## src/app/api/public/ — public, unauthenticated, read-only endpoints for external sites
+No Bearer token, no CORS headers — meant to be called server-to-server (e.g. a Next.js `rewrites()` proxy on another site), not directly from a browser.
+- `packages/route.ts` — `GET` → `{ packages: PackageInfo[] }` via `getAllPackages()`; backs the website's live pricing table
+
 ## Conventions
 - Server Actions live beside the page in `actions.ts` / `*-actions.tsx`; always re-auth inside the action (don't trust the client).
 - Data helpers are in [../lib/db/](../lib/db/); aggregation/report building in [../lib/reports/](../lib/reports/).

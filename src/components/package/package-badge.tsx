@@ -36,7 +36,8 @@ export function PackageBadge({
         className,
       )}
     >
-      {planName} ({labelMap[displayStatus] ?? displayStatus})
+      {planName}
+      {displayStatus !== "ACTIVE" && ` (${labelMap[displayStatus] ?? displayStatus})`}
     </span>
   )
 }

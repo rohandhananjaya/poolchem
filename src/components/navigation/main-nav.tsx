@@ -267,7 +267,7 @@ function PackageSidebarBadge({
       className={`flex w-full items-center justify-end gap-1 text-[8px] font-medium uppercase tracking-wide transition-colors hover:opacity-80 ${colorClass}`}
     >
       {planName}
-      <span>({statusLabel})</span>
+      {!isActive && <span>({statusLabel})</span>}
     </Link>
   )
 }
