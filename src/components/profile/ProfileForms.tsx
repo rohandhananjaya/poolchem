@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import { useRouter } from "next/navigation"
-import { Download, LogOut, Trash2 } from "lucide-react"
+import { Download, Lock, LogOut, Trash2 } from "lucide-react"
 import { toast } from "sonner"
 
 import { createClient } from "@/lib/supabase/client"
@@ -79,15 +79,19 @@ export interface ProfileFormsProps {
     email: string
     phone: string | null
     address: string | null
+    logo: string | null
   } | null
   /** Whether the signed-in user may edit company details. */
   canEditCompany: boolean
+  /** Whether the company's plan includes the custom_branding feature. */
+  canEditBranding: boolean
 }
 
 export function ProfileForms({
   account,
   company,
   canEditCompany,
+  canEditBranding,
 }: ProfileFormsProps) {
   const router = useRouter()
   const [signingOut, setSigningOut] = React.useState(false)
@@ -288,6 +292,32 @@ export function ProfileForms({
                   />
                 </div>
               </div>
+
+              {canEditBranding ? (
+                <div className="grid gap-1.5">
+                  <Label htmlFor="company-logo">Logo URL</Label>
+                  <Input
+                    id="company-logo"
+                    name="logo"
+                    type="url"
+                    placeholder="https://example.com/logo.png"
+                    defaultValue={company.logo ?? ""}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Shown on service reports and your homeowner pages.
+                  </p>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2 rounded-lg border border-dashed border-border p-3 text-sm text-muted-foreground">
+                  <Lock className="size-4 shrink-0" />
+                  Custom branding (logo) is available on paid plans — see{" "}
+                  <a href="/account/package" className="underline underline-offset-2">
+                    plans
+                  </a>
+                  .
+                </div>
+              )}
+
               <div>
                 <SaveButton pending={companyPending} />
               </div>

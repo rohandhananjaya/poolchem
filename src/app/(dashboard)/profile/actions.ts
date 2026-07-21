@@ -5,6 +5,8 @@ import { createClient as createAdminClient } from "@supabase/supabase-js";
 
 import { requireAuth, requireOwner } from "@/lib/auth";
 import { updateCompany } from "@/lib/db/company";
+import { getCompanyPackage } from "@/lib/db/packages";
+import { checkFeatureAccess } from "@/lib/package-features";
 import {
   updateUser,
   deleteUser,
@@ -59,12 +61,19 @@ export async function updateCompanyAction(
   if (name === "") return { ok: false, error: "Company name is required." };
   if (email === "") return { ok: false, error: "Company email is required." };
 
+  const companyPackage = await getCompanyPackage(user.companyId);
+  const canEditBranding =
+    !!companyPackage && checkFeatureAccess(companyPackage, "custom_branding");
+
   try {
     await updateCompany(user.companyId, {
       name,
       email,
       phone: formOptionalText(formData, "phone"),
       address: formOptionalText(formData, "address"),
+      ...(canEditBranding
+        ? { logo: formOptionalText(formData, "logo") }
+        : {}),
     });
     revalidatePath("/profile");
     return { ok: true };

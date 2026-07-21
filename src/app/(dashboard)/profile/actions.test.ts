@@ -7,6 +7,9 @@ vi.mock("@/lib/auth", () => ({
 vi.mock("@/lib/db/company", () => ({
   updateCompany: vi.fn(),
 }));
+vi.mock("@/lib/db/packages", () => ({
+  getCompanyPackage: vi.fn(),
+}));
 vi.mock("@/lib/db/users", () => ({
   updateUser: vi.fn(),
   deleteUser: vi.fn(),
@@ -29,6 +32,7 @@ vi.mock("@supabase/supabase-js", () => ({
 
 const { requireAuth, requireOwner } = await import("@/lib/auth");
 const { updateCompany } = await import("@/lib/db/company");
+const { getCompanyPackage } = await import("@/lib/db/packages");
 const { updateUser } = await import("@/lib/db/users");
 const { createClient } = await import("@/lib/supabase/server");
 const { revalidatePath } = await import("next/cache");
@@ -94,6 +98,13 @@ describe("updateAccountAction", () => {
 describe("updateCompanyAction", () => {
   it("updates company details when user is owner", async () => {
     vi.mocked(requireOwner).mockResolvedValue(mockUser as never);
+    vi.mocked(getCompanyPackage).mockResolvedValue({
+      package: null,
+      status: "TRIAL",
+      trialStart: new Date(),
+      trialEnd: null,
+      paidAt: null,
+    } as never);
 
     const result = await updateCompanyAction(
       { ok: false },
@@ -106,8 +117,73 @@ describe("updateCompanyAction", () => {
       email: "co@test.com",
       phone: null,
       address: null,
+      logo: null,
     });
     expect(revalidatePath).toHaveBeenCalledWith("/profile");
+  });
+
+  it("saves the logo when the plan includes custom_branding", async () => {
+    vi.mocked(requireOwner).mockResolvedValue(mockUser as never);
+    vi.mocked(getCompanyPackage).mockResolvedValue({
+      package: null,
+      status: "TRIAL",
+      trialStart: new Date(),
+      trialEnd: null,
+      paidAt: null,
+    } as never);
+
+    const result = await updateCompanyAction(
+      { ok: false },
+      formData({
+        name: "Co",
+        email: "co@test.com",
+        logo: "https://example.com/logo.png",
+      }),
+    );
+
+    expect(result).toEqual({ ok: true });
+    expect(updateCompany).toHaveBeenCalledWith("company-1", {
+      name: "Co",
+      email: "co@test.com",
+      phone: null,
+      address: null,
+      logo: "https://example.com/logo.png",
+    });
+  });
+
+  it("ignores the logo field when the plan lacks custom_branding", async () => {
+    vi.mocked(requireOwner).mockResolvedValue(mockUser as never);
+    vi.mocked(getCompanyPackage).mockResolvedValue({
+      package: {
+        id: "pkg-1",
+        slug: "basic",
+        name: "Basic",
+        price: 0,
+        sortOrder: 0,
+        features: { custom_branding: false } as never,
+      },
+      status: "ACTIVE",
+      trialStart: null,
+      trialEnd: null,
+      paidAt: new Date(),
+    } as never);
+
+    const result = await updateCompanyAction(
+      { ok: false },
+      formData({
+        name: "Co",
+        email: "co@test.com",
+        logo: "https://example.com/logo.png",
+      }),
+    );
+
+    expect(result).toEqual({ ok: true });
+    expect(updateCompany).toHaveBeenCalledWith("company-1", {
+      name: "Co",
+      email: "co@test.com",
+      phone: null,
+      address: null,
+    });
   });
 
   it("returns error when name is missing", async () => {
