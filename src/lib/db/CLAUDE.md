@@ -17,10 +17,15 @@ Get the tenant with `getCompanyId()` / `requireAuth()` from [../auth.ts](../auth
 - `hasSuperAdmin() → boolean` — whether a SUPER_ADMIN exists yet; gates the `/setup` bootstrap wizard
 
 **pools.ts**
+- `getPoolCount(companyId) → number`
+- `getPoolsPaginated(companyId, page, filters?) → { pools: PoolWithLastVisit[]; total: number }`
 - `getPoolsByCompany(companyId) → PoolWithLastVisit[]`
+- `getAllPoolsForExport(companyId) → Pool[]` — active + inactive, for CSV export
 - `getPoolById(poolId, companyId) → Pool | null`
 - `createPool(data: CreatePoolData, companyId) → Pool`
+- `createPoolsBulk(rows: CreatePoolData[], companyId) → { created: Pool[]; failed: { index, error }[] }` — per-row isolated, for CSV import
 - `updatePool(poolId, data: UpdatePoolData, companyId) → Pool`
+- `deletePool(poolId, companyId) → void`
 - `getPoolByQR(qrCode) → Pool | null`
 - `getPoolByPublicToken(publicToken, visitLimit)` — **public, unscoped**; homeowner share link
 - `generateQRCode(poolId) → string`
@@ -60,10 +65,10 @@ Get the tenant with `getCompanyId()` / `requireAuth()` from [../auth.ts](../auth
 **platform-settings.ts** — single-row platform config.
 - `getPlatformSettings() → { trialDays }` · `updateTrialDays(days) → { trialDays }`
 
-## Tests (60 tests across 7 files)
+## Tests (64 tests across 7 files)
 
 All DB tests mock `@/lib/prisma` and require `server-only` to be stubbed (handled by the Vitest config alias). Tests are in the same directory with `.test.ts` suffix:
-- `visits.test.ts` — 17 tests · `company.test.ts` — 9 · `pools.test.ts` — 16
+- `visits.test.ts` — 17 tests · `company.test.ts` — 9 · `pools.test.ts` — 20
 - `users.test.ts` — 11 · `reports.test.ts` — 3 · `schedule.test.ts` — 2 · `dashboard.test.ts` — 2
 
 ## Notes

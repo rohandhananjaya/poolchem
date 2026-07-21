@@ -120,6 +120,8 @@ export interface CreatePoolData {
   address?: string | null;
   image?: string | null;
   notes?: string | null;
+  homeownerEmail?: string | null;
+  homeownerPhone?: string | null;
 }
 
 /** Fields that may be changed on an existing pool. */
@@ -190,10 +192,43 @@ export async function createPool(
       address: data.address ?? null,
       image: data.image ?? null,
       notes: data.notes ?? null,
+      homeownerEmail: data.homeownerEmail ?? null,
+      homeownerPhone: data.homeownerPhone ?? null,
       qrCode: newQRCode(),
       company: { connect: { id: companyId } },
     },
   });
+}
+
+/**
+ * Creates each pool in `rows`, in order, isolating any per-row failure
+ * instead of aborting the whole batch — used by CSV import, where partial
+ * success (skip the bad rows, keep the good ones) is the desired behavior.
+ */
+export async function createPoolsBulk(
+  rows: CreatePoolData[],
+  companyId: string,
+): Promise<{ created: Pool[]; failed: { index: number; error: string }[] }> {
+  const created: Pool[] = [];
+  const failed: { index: number; error: string }[] = [];
+
+  for (let i = 0; i < rows.length; i++) {
+    try {
+      created.push(await createPool(rows[i], companyId));
+    } catch {
+      failed.push({ index: i, error: "Could not create this pool." });
+    }
+  }
+
+  return { created, failed };
+}
+
+/**
+ * All of a company's pools, active and inactive, ordered by name — for a
+ * full CSV export (unlike {@link getPoolsByCompany}, which is active-only).
+ */
+export async function getAllPoolsForExport(companyId: string): Promise<Pool[]> {
+  return prisma.pool.findMany({ where: { companyId }, orderBy: { name: "asc" } });
 }
 
 /**

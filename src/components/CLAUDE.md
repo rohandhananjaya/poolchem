@@ -9,6 +9,9 @@ Feature components grouped by domain; shadcn/ui primitives in [ui/](ui/) (style 
 ## dashboard/
 `StatsRow` (KPI tiles) · `VisitCard` (list item) · `EmptyState` · `ScanFab` (floating scan button) · `RefreshButton` · `DashboardSkeleton`
 
+## pools/
+`AddPoolDialog` / `EditPoolDialog` / `DeletePoolDialog` (create/edit/delete forms, post to `pools/actions.ts`) · `PoolRow` (list card, opens `EditPoolDialog`) · `PoolActions` (edit/delete menu) · `PoolsFilters` (search/status bar) · `PoolAnalysis` · `ImportPoolsDialog` (CSV bulk-import: file picker, client-side preview, per-row skip/reason summary; gated by `canImportExport`) · `ExportPoolsButton` (CSV download via client-side Blob; gated by `canImportExport`) — both import/export gated behind the `csv_import` plan feature (`checkFeatureAccess`), showing a locked upsell hint when unavailable.
+
 ## visits/
 `WaterReadingInput` (test-strip scan button = "coming soon") · `ChemicalRecommendations` · `AddChemicalDialog` (manual chemical entry popup; `onAdd(VisitChemical)`) · `WaterHealthGauge` · `VisitNotes` (voice recording = "coming soon")
 

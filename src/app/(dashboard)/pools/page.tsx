@@ -4,10 +4,14 @@ import { Waves } from "lucide-react"
 import { requireActivePackage } from "@/lib/auth"
 import { getPoolsPaginated, POOLS_PAGE_SIZE } from "@/lib/db/pools"
 import type { PoolsFilters as PoolsFilterParams } from "@/lib/db/pools"
+import { getCompanyPackage } from "@/lib/db/packages"
+import { checkFeatureAccess } from "@/lib/package-features"
 import { Shell } from "@/components/ui/shell"
 import { AddPoolDialog } from "@/components/pools/AddPoolDialog"
 import { PoolRow } from "@/components/pools/PoolRow"
 import { PoolsFilters } from "@/components/pools/PoolsFilters"
+import { ImportPoolsDialog } from "@/components/pools/ImportPoolsDialog"
+import { ExportPoolsButton } from "@/components/pools/ExportPoolsButton"
 import { EmptyState } from "@/components/ui/empty-state"
 import { Pagination } from "@/components/ui/pagination"
 import { buildQueryString } from "@/lib/url"
@@ -35,7 +39,13 @@ export default async function PoolsPage({
     status: effectiveStatus,
   }
 
-  const { pools, total } = await getPoolsPaginated(user.companyId, currentPage, filters)
+  const [{ pools, total }, companyPackage] = await Promise.all([
+    getPoolsPaginated(user.companyId, currentPage, filters),
+    getCompanyPackage(user.companyId),
+  ])
+
+  const canImportExport =
+    canManage && !!companyPackage && checkFeatureAccess(companyPackage, "csv_import")
 
   const totalPages = Math.ceil(total / POOLS_PAGE_SIZE)
   const spForLinks = new URLSearchParams()
@@ -49,7 +59,9 @@ export default async function PoolsPage({
     <Shell title="Pools">
       <div className="space-y-3">
         {canManage && (
-          <div className="flex items-center justify-end">
+          <div className="flex flex-wrap items-center justify-end gap-2">
+            <ExportPoolsButton canImportExport={canImportExport} />
+            <ImportPoolsDialog canImportExport={canImportExport} />
             <AddPoolDialog />
           </div>
         )}

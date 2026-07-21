@@ -10,6 +10,8 @@ const {
   getPoolsByCompany,
   getPoolById,
   createPool,
+  createPoolsBulk,
+  getAllPoolsForExport,
   updatePool,
   deletePool,
   getPoolByQR,
@@ -96,6 +98,79 @@ describe("createPool", () => {
       }),
     });
     expect(result).toEqual(mockPool);
+  });
+
+  it("passes homeownerEmail and homeownerPhone through", async () => {
+    prismaMock.pool.create.mockResolvedValue(mockPool);
+
+    await createPool(
+      {
+        name: "New Pool",
+        volume: 15_000,
+        homeownerEmail: "owner@example.com",
+        homeownerPhone: "555-1234",
+      },
+      companyId,
+    );
+
+    expect(prismaMock.pool.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        homeownerEmail: "owner@example.com",
+        homeownerPhone: "555-1234",
+      }),
+    });
+  });
+});
+
+describe("createPoolsBulk", () => {
+  it("creates all rows when every one succeeds", async () => {
+    prismaMock.pool.create
+      .mockResolvedValueOnce({ ...mockPool, id: "pool-1", name: "Pool 1" })
+      .mockResolvedValueOnce({ ...mockPool, id: "pool-2", name: "Pool 2" });
+
+    const result = await createPoolsBulk(
+      [
+        { name: "Pool 1", volume: 10_000 },
+        { name: "Pool 2", volume: 20_000 },
+      ],
+      companyId,
+    );
+
+    expect(result.created).toHaveLength(2);
+    expect(result.failed).toEqual([]);
+  });
+
+  it("isolates a single-row failure while still creating the rest", async () => {
+    prismaMock.pool.create
+      .mockResolvedValueOnce({ ...mockPool, id: "pool-1", name: "Pool 1" })
+      .mockRejectedValueOnce(new Error("db error"))
+      .mockResolvedValueOnce({ ...mockPool, id: "pool-3", name: "Pool 3" });
+
+    const result = await createPoolsBulk(
+      [
+        { name: "Pool 1", volume: 10_000 },
+        { name: "Pool 2", volume: 20_000 },
+        { name: "Pool 3", volume: 30_000 },
+      ],
+      companyId,
+    );
+
+    expect(result.created).toHaveLength(2);
+    expect(result.failed).toEqual([{ index: 1, error: "Could not create this pool." }]);
+  });
+});
+
+describe("getAllPoolsForExport", () => {
+  it("returns active and inactive pools, scoped and ordered by name", async () => {
+    prismaMock.pool.findMany.mockResolvedValue([mockPool, { ...mockPool, id: "pool-2", isActive: false }]);
+
+    const result = await getAllPoolsForExport(companyId);
+
+    expect(prismaMock.pool.findMany).toHaveBeenCalledWith({
+      where: { companyId },
+      orderBy: { name: "asc" },
+    });
+    expect(result).toHaveLength(2);
   });
 });
 
