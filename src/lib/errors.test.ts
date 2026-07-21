@@ -6,6 +6,7 @@ import {
   UnauthorizedError,
   NotFoundError,
   ValidationError,
+  RateLimitError,
   isAppError,
   toUserMessage,
 } from "./errors";
@@ -61,6 +62,15 @@ describe("ValidationError", () => {
     expect(error.code).toBe("VALIDATION");
     expect(error.status).toBe(400);
     expect(error.message).toContain("valid");
+  });
+});
+
+describe("RateLimitError", () => {
+  it("sets code=RATE_LIMITED and status=429", () => {
+    const error = new RateLimitError();
+    expect(error.code).toBe("RATE_LIMITED");
+    expect(error.status).toBe(429);
+    expect(error.message).toContain("Too many requests");
   });
 });
 

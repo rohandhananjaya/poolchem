@@ -318,8 +318,14 @@ export function ProfileForms({
                 </div>
               )}
 
-              <div>
+              <div className="flex flex-wrap items-center gap-4">
                 <SaveButton pending={companyPending} />
+                <a
+                  href="/account/api-keys"
+                  className="text-sm font-medium text-foreground underline underline-offset-2 hover:text-muted-foreground"
+                >
+                  Manage API keys
+                </a>
               </div>
             </form>
           ) : (

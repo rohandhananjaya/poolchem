@@ -27,12 +27,20 @@ This section previously listed a `(public)/` route group (blog, about-us, servic
 - `reports/` — water-health report history; `getCompanyReportData`
 - `profile/` — account + company settings. `actions.ts`: `updateAccountAction`, `updateCompanyAction`
 - `account/package/` — tenant's own plan page (trial status, feature checklist, compare/pay plans). `actions.ts`: `payNowAction`, `startTrialAction`, `getCurrentPackageAction`
+- `account/api-keys/` — OWNER-only API key management (`api_access` plan feature), gated the same way as `custom_branding`/`csv_import`. `page.tsx` → `getApiKeysByCompany` + `<ApiKeysManager>`. `actions.ts`: `createApiKeyAction` (re-checks `api_access`, returns the plaintext secret once), `revokeApiKeyAction`
 
 ### admin/ — SUPER_ADMIN-only (each page calls `requireSuperAdmin()` itself; no shared `admin/layout.tsx` gate)
 - `admin/companies/`, `admin/companies/[companyId]/` — company list + detail/edit
 - `admin/users/` — cross-tenant user management
 - `admin/diagnostics/` — server health / system log viewer
 - `admin/packages/` — plan catalog CRUD (pricing/features/sort order) + platform trial-length setting + per-company plan/status override. `actions.ts`: `createPackageAction`, `updatePackageAction`, `deletePackageAction`, `adminSetCompanyPackageAction`, `updateTrialDaysAction`
+
+## src/app/api/v1/ — REST API for the `api_access` plan feature
+Bearer-token auth (`Authorization: Bearer <key>`), NOT Supabase cookies — see `authenticateApiKey` in [../lib/api-keys/auth.ts](../lib/api-keys/auth.ts). Excluded from `proxy.ts`'s matcher entirely. Read-only (GET) in v1; each handler re-checks `api_access` live and enforces a per-key rate limit (`checkAndIncrementRateLimit`) before calling the same `db/` helpers the dashboard uses.
+- `pools/route.ts`, `pools/[poolId]/route.ts`
+- `visits/route.ts` (paginated/filterable via `getCompanyReportData`), `visits/[visitId]/route.ts`
+- `schedule/route.ts`
+- `stats/live/route.ts` — pre-existing, unauthenticated server-stats endpoint (unrelated to API keys)
 
 ## Conventions
 - Server Actions live beside the page in `actions.ts` / `*-actions.tsx`; always re-auth inside the action (don't trust the client).

@@ -65,11 +65,19 @@ Get the tenant with `getCompanyId()` / `requireAuth()` from [../auth.ts](../auth
 **platform-settings.ts** — single-row platform config.
 - `getPlatformSettings() → { trialDays }` · `updateTrialDays(days) → { trialDays }`
 
-## Tests (64 tests across 7 files)
+**api-keys.ts** — credentials for the `/api/v1` REST API (`api_access` plan feature) and their rate-limit counters.
+- `getApiKeysByCompany(companyId) → ApiKeySummary[]` — never includes `keyHash`
+- `createApiKey(companyId, name) → { key: ApiKeySummary; plaintextSecret: string }` — secret shown once, only its hash is persisted
+- `revokeApiKey(keyId, companyId) → void` — throws `NotFoundError` if not found/already revoked
+- `findActiveApiKeyByHash(keyHash)` — **public, unscoped**; how a request's company is discovered from its bearer secret
+- `touchApiKeyLastUsed(keyId) → void`
+- `checkAndIncrementRateLimit(apiKeyId, limitPerMinute) → RateLimitResult` — fixed 1-minute-window counter, no external cache/queue
+
+## Tests (64+ tests across 8 files)
 
 All DB tests mock `@/lib/prisma` and require `server-only` to be stubbed (handled by the Vitest config alias). Tests are in the same directory with `.test.ts` suffix:
 - `visits.test.ts` — 17 tests · `company.test.ts` — 9 · `pools.test.ts` — 20
-- `users.test.ts` — 11 · `reports.test.ts` — 3 · `schedule.test.ts` — 2 · `dashboard.test.ts` — 2
+- `users.test.ts` — 11 · `reports.test.ts` — 3 · `schedule.test.ts` — 2 · `dashboard.test.ts` — 2 · `api-keys.test.ts` — 13
 
 ## Notes
 - `VisitReadings` / `VisitChemical` types live in visits.ts; `VisitReadings` extends `WaterReadingInput` (from [../pool-chemistry.ts](../pool-chemistry.ts)) minus `temperature`.

@@ -72,9 +72,13 @@ function copyCookies(from: NextResponse, to: NextResponse) {
 }
 
 export const config = {
-  // Run on everything except static assets and image files. Auth proxies should
-  // run broadly so sessions refresh on every navigation.
+  // Run on everything except static assets, image files, and /api/* — API
+  // routes authenticate via their own bearer-token check (see
+  // src/lib/api-keys/auth.ts), not a Supabase cookie session, so running the
+  // session-refresh logic against them is both pointless and unnecessary
+  // latency. Auth proxies should otherwise run broadly so sessions refresh on
+  // every navigation.
   matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+    "/((?!api|_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
   ],
 };

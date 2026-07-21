@@ -54,6 +54,7 @@ model Company {
   auditLogs AuditLog[]
   companyPackage CompanyPackage?
   invoices Invoice[]
+  apiKeys ApiKey[]
 
   @@map("companies")
 }
@@ -306,4 +307,44 @@ model AuditLog {
   @@index([companyId, createdAt])
   @@index([action])
   @@map("audit_logs")
+}
+
+// ── API access (api_access plan feature) ──────────────────────────
+
+/// A generated credential for the `/api/v1` REST API, scoped to one company.
+/// The full secret is only ever known to the caller at creation time — only its
+/// sha256 hash (for lookup) and a short display prefix are persisted.
+model ApiKey {
+  id         String    @id @default(cuid())
+  companyId  String
+  name       String
+  // First ~12 chars of the raw secret, shown in the UI so an owner can tell
+  // keys apart without ever seeing the full secret again after creation.
+  keyPrefix  String
+  // sha256 of the full secret. Looked up directly (unique), not compared —
+  // no salt needed since the secret itself already has 192 bits of entropy.
+  keyHash    String    @unique
+  lastUsedAt DateTime?
+  revokedAt  DateTime?
+  createdAt  DateTime  @default(now())
+
+  company Company       @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  usage   ApiKeyUsage[]
+
+  @@index([companyId])
+  @@map("api_keys")
+}
+
+/// Fixed 1-minute-window request counter per key, used to enforce API rate
+/// limiting without any external cache/queue infrastructure.
+model ApiKeyUsage {
+  id          String   @id @default(cuid())
+  apiKeyId    String
+  windowStart DateTime // truncated to the minute
+  count       Int      @default(0)
+
+  apiKey ApiKey @relation(fields: [apiKeyId], references: [id], onDelete: Cascade)
+
+  @@unique([apiKeyId, windowStart])
+  @@map("api_key_usage")
 }

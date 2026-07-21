@@ -22,7 +22,10 @@ Feature components grouped by domain; shadcn/ui primitives in [ui/](ui/) (style 
 `ScheduleVisitCard` · `ScheduleVisitForm` (Dialog popup with pool/date/tech-search; posts to `schedule/actions.ts`)
 
 ## profile/
-`ProfileForms` (account + company forms, posts to `profile/actions.ts`)
+`ProfileForms` (account + company forms, posts to `profile/actions.ts`) — links out to `/account/api-keys` for owners
+
+## account/
+`ApiKeysManager` (list/generate/revoke API keys for the `api_access` plan feature; one-time secret reveal on generation; locked upsell hint when `canUseApiKeys` is false — same idiom as `csv_import`/`custom_branding`)
 
 ## homeowner/
 `share-button` (copies/shares the public pool link)

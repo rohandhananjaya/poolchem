@@ -12,6 +12,7 @@ export const ERROR_MESSAGES = {
   UNAUTHORIZED: "You don't have permission to do that.",
   NOT_FOUND: "We couldn't find what you were looking for.",
   VALIDATION: "Some of the information provided isn't valid.",
+  RATE_LIMITED: "Too many requests. Please slow down and try again shortly.",
   GENERIC: "Something went wrong. Please try again.",
   SAVE_FAILED: "Failed to save. Please try again.",
   NETWORK: "We couldn't reach the server. Check your connection and try again.",
@@ -22,6 +23,7 @@ export type ErrorCode =
   | "UNAUTHORIZED"
   | "NOT_FOUND"
   | "VALIDATION"
+  | "RATE_LIMITED"
   | "APP"
 
 export interface AppErrorOptions {
@@ -91,6 +93,16 @@ export class ValidationError extends AppError {
     options: Omit<AppErrorOptions, "code" | "status"> = {},
   ) {
     super(message, { ...options, code: "VALIDATION", status: 400 })
+  }
+}
+
+/** A caller (e.g. an API key) exceeded its allotted request rate. */
+export class RateLimitError extends AppError {
+  constructor(
+    message: string = ERROR_MESSAGES.RATE_LIMITED,
+    options: Omit<AppErrorOptions, "code" | "status"> = {},
+  ) {
+    super(message, { ...options, code: "RATE_LIMITED", status: 429 })
   }
 }
 
