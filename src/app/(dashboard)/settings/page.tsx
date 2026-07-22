@@ -27,7 +27,7 @@ export default async function ProfilePage() {
       : false
 
   return (
-    <Shell title="Profile">
+    <Shell title="Settings">
       <ProfileForms
         account={{ name: user.name, email: user.email, role }}
         company={company ? {

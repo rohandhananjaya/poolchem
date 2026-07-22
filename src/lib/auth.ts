@@ -156,7 +156,7 @@ export async function getCompanyId(): Promise<string | null> {
  * SUPER_ADMIN (no company) always passes. Redirects to `/account/package`
  * so an expired/cancelled company can choose a plan — this is the paywall
  * gate called from pages that require real app usage, not from
- * `/account/package`, `/profile`, or any `/admin/*` page.
+ * `/account/package`, `/settings`, or any `/admin/*` page.
  */
 export async function requireActivePackage(): Promise<User> {
   const user = await requireAuth();

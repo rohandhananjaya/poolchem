@@ -11,6 +11,7 @@ import {
   FileText,
   House,
   LogOut,
+  Settings,
   Shield,
   User,
   Users,
@@ -49,7 +50,7 @@ const NAV_ITEMS: NavItem[] = [
   { href: "/admin/companies", label: "Companies", icon: Building2, roles: ["SUPER_ADMIN"] },
   { href: "/admin/users", label: "Users", icon: Users, roles: ["SUPER_ADMIN"] },
   { href: "/admin/diagnostics", label: "Diagnostics", icon: Activity, roles: ["SUPER_ADMIN"] },
-  { href: "/profile", label: "Profile", icon: User },
+  { href: "/settings", label: "Settings", icon: Settings },
 ]
 
 const ROLE_LABELS: Record<UserRole, string> = {
@@ -225,6 +226,13 @@ function UserMenu({
             {ROLE_LABELS[user.role]}
           </span>
         </DropdownMenuLabel>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem asChild>
+          <Link href="/settings#profile" className="cursor-pointer">
+            <User />
+            Profile
+          </Link>
+        </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem
           variant="destructive"

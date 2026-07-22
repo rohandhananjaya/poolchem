@@ -3,7 +3,7 @@ import { FormSkeleton } from "@/components/ui/loading-skeleton"
 
 export default function ProfileLoading() {
   return (
-    <Shell title="Profile">
+    <Shell title="Settings">
       <FormSkeleton fields={5} />
     </Shell>
   )

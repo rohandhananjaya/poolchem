@@ -39,7 +39,7 @@ export async function updateAccountAction(
 
   try {
     await updateUser(user.id, user.companyId, { name });
-    revalidatePath("/profile");
+    revalidatePath("/settings");
     return { ok: true };
   } catch {
     return { ok: false, error: "Could not update your account. Please try again." };
@@ -75,7 +75,7 @@ export async function updateCompanyAction(
         ? { logo: formOptionalText(formData, "logo") }
         : {}),
     });
-    revalidatePath("/profile");
+    revalidatePath("/settings");
     return { ok: true };
   } catch {
     return { ok: false, error: "Could not update company details. Please try again." };
@@ -120,7 +120,7 @@ export async function deleteAccountAction(
     // 2. Delete the Prisma User record (personal data).
     await deleteUser(user.id, user.companyId);
 
-    revalidatePath("/profile");
+    revalidatePath("/settings");
     return { ok: true };
   } catch {
     return {

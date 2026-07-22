@@ -27,7 +27,7 @@ import {
   deleteAccountAction,
   exportDataAction,
   type FormState,
-} from "@/app/(dashboard)/profile/actions"
+} from "@/app/(dashboard)/settings/actions"
 
 const INITIAL_STATE: FormState = { ok: false }
 
@@ -127,8 +127,9 @@ export function ProfileForms({
 
   return (
     <div className="space-y-6">
-      {/* Account */}
-      <Card title="Account">
+      {/* Profile */}
+      <section id="profile">
+      <Card title="Profile">
         <Tabs defaultValue="personal">
           <TabsList>
             <TabsTrigger value="personal">Personal</TabsTrigger>
@@ -242,6 +243,7 @@ export function ProfileForms({
           </TabsContent>
         </Tabs>
       </Card>
+      </section>
 
       {/* Company */}
       {company ? (

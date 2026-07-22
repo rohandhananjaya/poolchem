@@ -77,7 +77,7 @@ describe("updateAccountAction", () => {
     expect(updateUser).toHaveBeenCalledWith("user-1", "company-1", {
       name: "New Name",
     });
-    expect(revalidatePath).toHaveBeenCalledWith("/profile");
+    expect(revalidatePath).toHaveBeenCalledWith("/settings");
   });
 
   it("returns error when name is empty", async () => {
@@ -119,7 +119,7 @@ describe("updateCompanyAction", () => {
       address: null,
       logo: null,
     });
-    expect(revalidatePath).toHaveBeenCalledWith("/profile");
+    expect(revalidatePath).toHaveBeenCalledWith("/settings");
   });
 
   it("saves the logo when the plan includes custom_branding", async () => {
@@ -315,7 +315,7 @@ describe("deleteAccountAction", () => {
 
     expect(result).toEqual({ ok: true });
     expect(deleteUser).toHaveBeenCalledWith("user-1", "company-1");
-    expect(revalidatePath).toHaveBeenCalledWith("/profile");
+    expect(revalidatePath).toHaveBeenCalledWith("/settings");
   });
 
   it("still succeeds when Supabase admin API is unavailable", async () => {

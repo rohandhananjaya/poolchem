@@ -25,7 +25,7 @@ This section previously listed a `(public)/` route group (blog, about-us, servic
   - `report/` — generated service report. `page.tsx` uses `generateServiceReport`; `report-actions.tsx` (mailto send + external QR — both MVP placeholders, see [../../to-do.md](../../to-do.md))
 - `schedule/` — upcoming visits; `getScheduleData`. `actions.ts`: `scheduleVisitAction`
 - `reports/` — water-health report history; `getCompanyReportData`
-- `profile/` — account + company settings. `actions.ts`: `updateAccountAction`, `updateCompanyAction`
+- `settings/` — account + company settings. `actions.ts`: `updateAccountAction`, `updateCompanyAction`
 - `account/package/` — tenant's own plan page (trial status, feature checklist, compare/pay plans). `actions.ts`: `payNowAction`, `startTrialAction`, `getCurrentPackageAction`
 - `account/api-keys/` — OWNER-only API key management (`api_access` plan feature), gated the same way as `custom_branding`/`csv_import`. `page.tsx` → `getApiKeysByCompany` + `<ApiKeysManager>`. `actions.ts`: `createApiKeyAction` (re-checks `api_access`, returns the plaintext secret once), `revokeApiKeyAction`
 
