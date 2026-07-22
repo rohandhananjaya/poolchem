@@ -3,10 +3,11 @@
 import * as React from "react"
 import { useRouter } from "next/navigation"
 import { format } from "date-fns"
-import { Key, Lock, Copy, Check, Trash2 } from "lucide-react"
+import { Key, Copy, Check, Trash2 } from "lucide-react"
 import { toast } from "sonner"
 
 import { Button } from "@/components/ui/button"
+import { UpgradeDialog } from "@/components/upgrade-dialog"
 import {
   Dialog,
   DialogContent,
@@ -96,16 +97,7 @@ export function ApiKeysManager({
   }
 
   if (!canUseApiKeys) {
-    return (
-      <div className="flex items-center gap-2 rounded-lg border border-dashed border-border px-3 py-1.5 text-sm text-muted-foreground">
-        <Lock className="size-4 shrink-0" />
-        API access is available on paid plans — see{" "}
-        <a href="/account/package" className="underline underline-offset-2">
-          plans
-        </a>
-        .
-      </div>
-    )
+    return <UpgradeDialog featureName="API access" buttonLabel="API keys" />
   }
 
   return (

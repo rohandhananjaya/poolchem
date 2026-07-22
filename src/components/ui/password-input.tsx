@@ -37,6 +37,7 @@ function PasswordInput({
         size="icon"
         tabIndex={-1}
         className="absolute right-0 top-0 h-full px-2.5 text-muted-foreground hover:text-foreground"
+        onMouseDown={(e) => e.preventDefault()}
         onClick={() => setVisible((v) => !v)}
       >
         <Icon className="size-4" />

@@ -2,11 +2,12 @@
 
 import * as React from "react"
 import { useRouter } from "next/navigation"
-import { Download, Lock, LogOut, Trash2 } from "lucide-react"
+import { Download, LogOut, Trash2 } from "lucide-react"
 import { toast } from "sonner"
 
 import { createClient } from "@/lib/supabase/client"
 import { Button } from "@/components/ui/button"
+import { UpgradeDialog } from "@/components/upgrade-dialog"
 import {
   Dialog,
   DialogContent,
@@ -308,14 +309,7 @@ export function ProfileForms({
                   </p>
                 </div>
               ) : (
-                <div className="flex items-center gap-2 rounded-lg border border-dashed border-border p-3 text-sm text-muted-foreground">
-                  <Lock className="size-4 shrink-0" />
-                  Custom branding (logo) is available on paid plans — see{" "}
-                  <a href="/account/package" className="underline underline-offset-2">
-                    plans
-                  </a>
-                  .
-                </div>
+                <UpgradeDialog featureName="Custom branding" buttonLabel="Logo" />
               )}
 
               <div className="flex flex-wrap items-center gap-4">

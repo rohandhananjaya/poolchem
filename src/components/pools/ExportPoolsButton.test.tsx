@@ -12,6 +12,11 @@ vi.mock("@/app/(dashboard)/pools/actions", () => ({
 }));
 vi.mock("sonner", () => ({ toast: mockToast }));
 
+const mockRouterPush = vi.fn();
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ push: mockRouterPush }),
+}));
+
 import { ExportPoolsButton } from "./ExportPoolsButton";
 
 beforeEach(() => {
@@ -19,10 +24,14 @@ beforeEach(() => {
 });
 
 describe("ExportPoolsButton", () => {
-  it("renders a locked hint when the plan does not include csv_import", () => {
+  it("renders a locked upgrade button when the plan does not include csv_import", async () => {
+    const user = userEvent.setup();
     render(<ExportPoolsButton canImportExport={false} />);
+    const btn = screen.getByRole("button", { name: /export/i });
+    expect(btn).toBeInTheDocument();
+    await user.click(btn);
     expect(screen.getByText(/available on paid plans/i)).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /export/i })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /see plans/i })).toBeInTheDocument();
   });
 
   it("exports pools and shows a success toast", async () => {

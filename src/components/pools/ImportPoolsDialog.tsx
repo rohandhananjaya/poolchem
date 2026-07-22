@@ -3,10 +3,11 @@
 import * as React from "react"
 import { useRouter } from "next/navigation"
 import Papa from "papaparse"
-import { Upload, Lock } from "lucide-react"
+import { Upload } from "lucide-react"
 import { toast } from "sonner"
 
 import { Button } from "@/components/ui/button"
+import { UpgradeDialog } from "@/components/upgrade-dialog"
 import {
   Dialog,
   DialogContent,
@@ -76,16 +77,7 @@ export function ImportPoolsDialog({
   }
 
   if (!canImportExport) {
-    return (
-      <div className="flex items-center gap-2 rounded-lg border border-dashed border-border px-3 py-1.5 text-sm text-muted-foreground">
-        <Lock className="size-4 shrink-0" />
-        CSV import is available on paid plans — see{" "}
-        <a href="/account/package" className="underline underline-offset-2">
-          plans
-        </a>
-        .
-      </div>
-    )
+    return <UpgradeDialog featureName="CSV import" buttonLabel="Import" />
   }
 
   return (

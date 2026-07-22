@@ -4,8 +4,9 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 const mockRefresh = vi.fn();
+const mockRouterPush = vi.fn();
 vi.mock("next/navigation", () => ({
-  useRouter: () => ({ refresh: mockRefresh }),
+  useRouter: () => ({ refresh: mockRefresh, push: mockRouterPush }),
 }));
 
 const mockImportPoolsAction = vi.fn();
@@ -28,10 +29,14 @@ beforeEach(() => {
 });
 
 describe("ImportPoolsDialog", () => {
-  it("renders a locked hint when the plan does not include csv_import", () => {
+  it("renders a locked upgrade button when the plan does not include csv_import", async () => {
+    const user = userEvent.setup();
     render(<ImportPoolsDialog canImportExport={false} />);
+    const btn = screen.getByRole("button", { name: /import/i });
+    expect(btn).toBeInTheDocument();
+    await user.click(btn);
     expect(screen.getByText(/available on paid plans/i)).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /import/i })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /see plans/i })).toBeInTheDocument();
   });
 
   it("opens the dialog and previews a selected CSV", async () => {
