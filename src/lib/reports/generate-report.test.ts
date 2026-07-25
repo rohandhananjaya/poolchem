@@ -40,6 +40,9 @@ const mockCompany = {
   stripeCustomerId: null,
   stripeSubscriptionId: null,
   subscriptionStatus: null,
+  paypalSubscriptionId: null,
+  paypalPlanId: null,
+  fromEmail: null,
   createdAt: new Date(),
   updatedAt: new Date(),
 };

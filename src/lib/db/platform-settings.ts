@@ -6,6 +6,9 @@ const SETTINGS_ID = "singleton"
 
 export interface PlatformSettingsInfo {
   trialDays: number
+  stripeEnabled: boolean
+  paypalEnabled: boolean
+  paymentDevMode: boolean
 }
 
 export async function getPlatformSettings(): Promise<PlatformSettingsInfo> {
@@ -14,7 +17,12 @@ export async function getPlatformSettings(): Promise<PlatformSettingsInfo> {
     update: {},
     create: { id: SETTINGS_ID },
   })
-  return { trialDays: settings.trialDays }
+  return {
+    trialDays: settings.trialDays,
+    stripeEnabled: settings.stripeEnabled,
+    paypalEnabled: settings.paypalEnabled,
+    paymentDevMode: settings.paymentDevMode,
+  }
 }
 
 export async function updateTrialDays(days: number): Promise<PlatformSettingsInfo> {
@@ -23,5 +31,10 @@ export async function updateTrialDays(days: number): Promise<PlatformSettingsInf
     update: { trialDays: days },
     create: { id: SETTINGS_ID, trialDays: days },
   })
-  return { trialDays: settings.trialDays }
+  return {
+    trialDays: settings.trialDays,
+    stripeEnabled: settings.stripeEnabled,
+    paypalEnabled: settings.paypalEnabled,
+    paymentDevMode: settings.paymentDevMode,
+  }
 }

@@ -42,6 +42,8 @@ model Company {
   stripeCustomerId     String?   @unique
   stripeSubscriptionId String?   @unique
   subscriptionStatus   String?
+  paypalSubscriptionId String?   @unique
+  paypalPlanId         String?
   // Configurable "from" address for transactional emails (branding).
   // Falls back to the app-level default when null.
   fromEmail            String?
@@ -265,9 +267,12 @@ model CompanyPackage {
 
 /// Single-row table for platform-wide, super-admin-editable settings.
 model PlatformSettings {
-  id        String   @id @default("singleton")
-  trialDays Int      @default(30)
-  updatedAt DateTime @updatedAt
+  id             String   @id @default("singleton")
+  trialDays      Int      @default(30)
+  stripeEnabled  Boolean  @default(false)
+  paypalEnabled  Boolean  @default(false)
+  paymentDevMode Boolean  @default(true)
+  updatedAt      DateTime @updatedAt
 
   @@map("platform_settings")
 }

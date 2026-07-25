@@ -117,6 +117,66 @@ export async function startTrial(companyId: string): Promise<CompanyPackageInfo>
   return toCompanyPackageInfo(cp)
 }
 
+export async function handlePaymentSuccess(
+  companyId: string,
+  packageSlug: string,
+  provider: "stripe" | "paypal",
+  providerSubscriptionId: string,
+  providerCustomerId: string,
+): Promise<CompanyPackageInfo> {
+  const pkg = await prisma.package.findUnique({ where: { slug: packageSlug } })
+  if (!pkg) throw new Error(`Package "${packageSlug}" not found.`)
+
+  const now = new Date()
+
+  const updateData: Record<string, unknown> = {}
+  if (provider === "stripe") {
+    updateData.stripeSubscriptionId = providerSubscriptionId
+    updateData.stripeCustomerId = providerCustomerId
+    updateData.subscriptionStatus = "active"
+  } else {
+    updateData.paypalSubscriptionId = providerSubscriptionId
+    updateData.paypalPlanId = pkg.id
+  }
+
+  const [cp] = await prisma.$transaction([
+    prisma.companyPackage.upsert({
+      where: { companyId },
+      update: {
+        packageId: pkg.id,
+        status: "ACTIVE",
+        trialStart: null,
+        trialEnd: null,
+        paidAt: now,
+      },
+      create: {
+        companyId,
+        packageId: pkg.id,
+        status: "ACTIVE",
+        paidAt: now,
+      },
+      include: { package: true },
+    }),
+    prisma.invoice.create({
+      data: {
+        companyId,
+        packageId: pkg.id,
+        amount: pkg.price,
+        status: "PAID",
+        paidAt: now,
+        periodStart: now,
+        periodEnd: new Date(now.getTime() + 30 * 86400000),
+      },
+    }),
+    prisma.company.update({
+      where: { id: companyId },
+      data: updateData,
+    }),
+  ])
+
+  return toCompanyPackageInfo(cp)
+}
+
 export async function simulatePayment(
   companyId: string,
   packageSlug: string,

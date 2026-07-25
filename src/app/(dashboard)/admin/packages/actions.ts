@@ -11,6 +11,7 @@ import {
   countCompaniesOnPackage,
 } from "@/lib/db/packages"
 import { updateTrialDays } from "@/lib/db/platform-settings"
+import { updatePaymentSettings } from "@/lib/db/payment-settings"
 import type { PackageFeatures } from "@/lib/package-features"
 import { logger } from "@/lib/log"
 import { audit } from "@/lib/audit"
@@ -133,6 +134,27 @@ export async function updateTrialDaysAction(formData: FormData) {
     context: "admin.packages.updateTrialDaysAction",
     userId: currentUser.id,
     metadata: { trialDays: days },
+  })
+  revalidatePath("/admin/packages")
+}
+
+export async function updatePaymentSettingsAction(formData: FormData) {
+  const currentUser = await requireSuperAdmin()
+
+  const stripeEnabled = formData.get("stripeEnabled") === "on"
+  const paypalEnabled = formData.get("paypalEnabled") === "on"
+  const paymentDevMode = formData.get("paymentDevMode") !== "live"
+
+  await updatePaymentSettings({
+    stripeEnabled,
+    paypalEnabled,
+    paymentDevMode,
+  })
+
+  logger.info("Payment settings updated", {
+    context: "admin.packages.updatePaymentSettingsAction",
+    userId: currentUser.id,
+    metadata: { stripeEnabled, paypalEnabled, paymentDevMode },
   })
   revalidatePath("/admin/packages")
 }

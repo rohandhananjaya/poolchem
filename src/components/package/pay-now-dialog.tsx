@@ -2,12 +2,10 @@
 
 import * as React from "react"
 import { useRouter } from "next/navigation"
-import { CheckCircle2 } from "lucide-react"
+import { CheckCircle2, CreditCard } from "lucide-react"
 import { toast } from "sonner"
 
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
 import {
   Dialog,
   DialogContent,
@@ -17,89 +15,143 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
-import { payNowAction } from "@/app/(dashboard)/account/package/actions"
+import { createPaymentAction } from "@/app/(dashboard)/account/package/actions"
 import { formatPrice, type PackageInfo } from "@/lib/package-features"
 
 interface PayNowDialogProps {
   pkg: PackageInfo
   trigger?: React.ReactNode
+  stripeEnabled: boolean
+  paypalEnabled: boolean
 }
 
-export function PayNowDialog({ pkg, trigger }: PayNowDialogProps) {
+export function PayNowDialog({ pkg, trigger, stripeEnabled, paypalEnabled }: PayNowDialogProps) {
   const router = useRouter()
   const [open, setOpen] = React.useState(false)
-  const [step, setStep] = React.useState<"form" | "success">("form")
+  const [step, setStep] = React.useState<"choice" | "success" | "error">("choice")
   const [pending, startTransition] = React.useTransition()
+  const [errorMsg, setErrorMsg] = React.useState<string>("")
 
-  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault()
-    const formData = new FormData(e.currentTarget)
+  const hasProviders = stripeEnabled || paypalEnabled
+  const singleProvider = stripeEnabled !== paypalEnabled
+
+  async function handlePay(provider?: "stripe" | "paypal") {
+    const formData = new FormData()
     formData.set("package", pkg.slug)
+    if (provider) formData.set("provider", provider)
 
     startTransition(async () => {
-      const result = await payNowAction({ ok: false }, formData)
-      if (result.ok) {
+      const result = await createPaymentAction({ ok: false }, formData)
+      if (result.ok && result.redirectUrl) {
+        window.location.href = result.redirectUrl
+      } else if (result.ok) {
         setStep("success")
         toast.success("Payment successful!")
         router.refresh()
       } else {
+        setErrorMsg(result.error ?? "Payment failed.")
+        setStep("error")
         toast.error(result.error ?? "Payment failed.")
       }
     })
   }
 
+  function reset() {
+    setStep("choice")
+    setErrorMsg("")
+  }
+
   return (
-    <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (!o) setStep("form") }}>
+    <Dialog
+      open={open}
+      onOpenChange={(o) => {
+        setOpen(o)
+        if (!o) reset()
+      }}
+    >
       <DialogTrigger asChild>
-        {trigger ?? <Button size="lg" className="w-full">Pay {formatPrice(pkg.price)}</Button>}
+        {trigger ?? (
+          <Button size="lg" className="w-full">
+            {hasProviders ? `Subscribe ${formatPrice(pkg.price)}` : `Pay ${formatPrice(pkg.price)}`}
+          </Button>
+        )}
       </DialogTrigger>
       <DialogContent>
-        {step === "form" ? (
+        {step === "choice" && (
           <>
             <DialogHeader>
-              <DialogTitle>Pay {formatPrice(pkg.price)}</DialogTitle>
+              <DialogTitle>
+                {hasProviders ? `Subscribe to ${pkg.name}` : `Pay ${formatPrice(pkg.price)}`}
+              </DialogTitle>
               <DialogDescription>
-                This is a simulated payment. No real money will be charged.
+                {hasProviders
+                  ? "Choose a payment method to activate your subscription."
+                  : "No payment provider is configured for this platform."}
               </DialogDescription>
             </DialogHeader>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="rounded-lg border border-border bg-muted/30 p-3">
-                <p className="text-sm font-medium text-foreground">{pkg.name} Plan</p>
-                <p className="text-sm text-muted-foreground">{formatPrice(pkg.price)}/mo</p>
-              </div>
+
+            <div className="rounded-lg border border-border bg-muted/30 p-3">
+              <p className="text-sm font-medium text-foreground">{pkg.name} Plan</p>
+              <p className="text-sm text-muted-foreground">{formatPrice(pkg.price)}/mo</p>
+            </div>
+
+            {hasProviders && (
               <div className="space-y-3">
-                <div className="space-y-1.5">
-                  <Label htmlFor="card-number">Card number</Label>
-                  <Input
-                    id="card-number"
-                    name="cardNumber"
-                    placeholder="4242 4242 4242 4242"
-                    defaultValue="4242 4242 4242 4242"
-                    required
-                  />
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1.5">
-                    <Label htmlFor="expiry">Expiry</Label>
-                    <Input id="expiry" name="expiry" placeholder="12/28" defaultValue="12/28" required />
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label htmlFor="cvc">CVC</Label>
-                    <Input id="cvc" name="cvc" placeholder="123" defaultValue="123" required />
-                  </div>
-                </div>
+                {singleProvider ? (
+                  stripeEnabled && (
+                    <Button
+                      className="w-full"
+                      size="lg"
+                      disabled={pending}
+                      onClick={() => handlePay("stripe")}
+                    >
+                      <CreditCard className="mr-2 size-4" />
+                      {pending ? "Redirecting…" : `Pay with Card (Stripe)`}
+                    </Button>
+                  )
+                ) : (
+                  <>
+                    <Button
+                      className="w-full"
+                      size="lg"
+                      disabled={pending}
+                      onClick={() => handlePay("stripe")}
+                    >
+                      <CreditCard className="mr-2 size-4" />
+                      {pending ? "Redirecting…" : "Pay with Card (Stripe)"}
+                    </Button>
+                    <Button
+                      className="w-full"
+                      size="lg"
+                      variant="outline"
+                      disabled={pending}
+                      onClick={() => handlePay("paypal")}
+                    >
+                      <svg className="mr-2 size-4" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M7.076 21.337H2.47a.641.641 0 0 1-.633-.74L4.944.901C5.026.382 5.474 0 5.998 0h7.46c2.57 0 4.578.543 5.69 1.81 1.01 1.15 1.304 2.42 1.012 4.287-.023.143-.047.288-.077.437-.983 5.05-4.349 6.797-8.647 6.797h-2.19c-.524 0-.968.382-1.05.9l-1.12 7.106z"/>
+                      </svg>
+                      {pending ? "Redirecting…" : "Pay with PayPal"}
+                    </Button>
+                  </>
+                )}
               </div>
-              <DialogFooter>
-                <Button type="button" variant="outline" onClick={() => setOpen(false)}>
-                  Cancel
-                </Button>
-                <Button type="submit" disabled={pending}>
-                  {pending ? "Processing…" : `Pay ${formatPrice(pkg.price)}`}
-                </Button>
-              </DialogFooter>
-            </form>
+            )}
+
+            {!hasProviders && (
+              <p className="text-sm text-muted-foreground text-center">
+                Please contact support to set up a payment method.
+              </p>
+            )}
+
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setOpen(false)}>
+                Cancel
+              </Button>
+            </DialogFooter>
           </>
-        ) : (
+        )}
+
+        {step === "success" && (
           <>
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
@@ -118,6 +170,23 @@ export function PayNowDialog({ pkg, trigger }: PayNowDialogProps) {
             <DialogFooter>
               <Button onClick={() => { setOpen(false); router.refresh() }}>
                 Done
+              </Button>
+            </DialogFooter>
+          </>
+        )}
+
+        {step === "error" && (
+          <>
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2 text-destructive">
+                Payment failed
+              </DialogTitle>
+              <DialogDescription>{errorMsg}</DialogDescription>
+            </DialogHeader>
+            <DialogFooter>
+              <Button onClick={() => reset()}>Try again</Button>
+              <Button variant="outline" onClick={() => setOpen(false)}>
+                Close
               </Button>
             </DialogFooter>
           </>

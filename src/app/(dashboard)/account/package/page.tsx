@@ -3,6 +3,7 @@ import { Check, X, Clock } from "lucide-react"
 
 import { getCurrentUser, requireAuth } from "@/lib/auth"
 import { getAllPackages, getCompanyPackage } from "@/lib/db/packages"
+import { getPaymentSettings } from "@/lib/db/payment-settings"
 import { Shell } from "@/components/ui/shell"
 import { PackageBadge } from "@/components/package/package-badge"
 import { PayNowDialog } from "@/components/package/pay-now-dialog"
@@ -16,30 +17,46 @@ import {
 
 export const dynamic = "force-dynamic"
 
-export default async function AccountPackagePage() {
+export default async function AccountPackagePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ success?: string; cancelled?: string }>
+}) {
   await requireAuth()
   const user = await getCurrentUser()
   if (!user?.companyId) redirect("/dashboard")
 
-  const [companyPackage, allPackages] = await Promise.all([
+  const [companyPackage, allPackages, paymentSettings] = await Promise.all([
     getCompanyPackage(user.companyId),
     getAllPackages(),
+    getPaymentSettings(),
   ])
 
   if (!companyPackage) redirect("/dashboard")
 
+  const params = await searchParams
+  const justPaid = params.success === "1"
+
   const expired = isTrialExpired(companyPackage)
   const featureMatrix = getPlanFeatureMatrix(allPackages)
   const sortedPackages = [...allPackages].sort((a, b) => a.price - b.price)
-  // Full feature access during an active trial is independent of whether a
-  // plan happens to be attached to the row (see checkFeatureAccess) — the
-  // card should never show a specific plan's limited feature set while
-  // trialing, even if an admin override left a packageId set.
   const onTrial = companyPackage.status === "TRIAL" && !expired
 
   return (
     <Shell title="Your Plan">
       <div className="space-y-8">
+        {justPaid && (
+          <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-300">
+            Payment successful! Your subscription is being activated. Please refresh the page in a moment.
+          </div>
+        )}
+
+        {params.cancelled === "1" && (
+          <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-300">
+            Payment was cancelled. No charges were made.
+          </div>
+        )}
+
         {/* Current package card */}
         <div className="rounded-xl border border-border bg-card p-6">
           <div className="flex items-start justify-between gap-4">
@@ -115,9 +132,6 @@ export default async function AccountPackagePage() {
           </h2>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
             {sortedPackages.map((pkg) => {
-              // Only an ACTIVE subscription on this plan counts as "current" —
-              // an EXPIRED/CANCELLED company must still be able to re-pay for
-              // the same plan it was previously on, not just switch away from it.
               const isCurrent =
                 companyPackage.status === "ACTIVE" && companyPackage.package?.id === pkg.id
               return (
@@ -162,49 +176,11 @@ export default async function AccountPackagePage() {
                         Current plan
                       </p>
                     ) : (
-                      <div className="space-y-2">
-                        {companyPackage.status === "ACTIVE" &&
-                          companyPackage.package &&
-                          pkg.price > companyPackage.package.price && (
-                            <PayNowDialog
-                              pkg={pkg}
-                              trigger={
-                                <button
-                                  type="button"
-                                  className="w-full rounded-lg bg-teal-600 px-3 py-2 text-sm font-medium text-white hover:bg-teal-700 transition-colors"
-                                >
-                                  Upgrade to {pkg.name}
-                                </button>
-                              }
-                            />
-                          )}
-                        {companyPackage.status === "EXPIRED" && (
-                          <PayNowDialog
-                            pkg={pkg}
-                            trigger={
-                              <button
-                                type="button"
-                                className="w-full rounded-lg bg-teal-600 px-3 py-2 text-sm font-medium text-white hover:bg-teal-700 transition-colors"
-                              >
-                                Pay {formatPrice(pkg.price)}
-                              </button>
-                            }
-                          />
-                        )}
-                        {(companyPackage.status === "TRIAL" || companyPackage.status === "CANCELLED") && (
-                          <PayNowDialog
-                            pkg={pkg}
-                            trigger={
-                              <button
-                                type="button"
-                                className="w-full rounded-lg bg-teal-600 px-3 py-2 text-sm font-medium text-white hover:bg-teal-700 transition-colors"
-                              >
-                                Pay {formatPrice(pkg.price)}
-                              </button>
-                            }
-                          />
-                        )}
-                      </div>
+                      <PayNowDialog
+                        pkg={pkg}
+                        stripeEnabled={paymentSettings.stripeEnabled}
+                        paypalEnabled={paymentSettings.paypalEnabled}
+                      />
                     )}
                   </div>
                 </div>

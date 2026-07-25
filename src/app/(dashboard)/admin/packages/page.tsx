@@ -1,9 +1,10 @@
 import Link from "next/link"
-import { Package as PackageIcon, Plus, Pencil, Trash2, Clock } from "lucide-react"
+import { Package as PackageIcon, Plus, Pencil, Trash2, Clock, CreditCard, Bug } from "lucide-react"
 
 import { requireSuperAdmin } from "@/lib/auth"
 import { getAllPackages, getAllCompaniesWithPackages } from "@/lib/db/packages"
 import { getPlatformSettings } from "@/lib/db/platform-settings"
+import { getPaymentSettings } from "@/lib/db/payment-settings"
 import { Shell } from "@/components/ui/shell"
 import { Button } from "@/components/ui/button"
 import {
@@ -12,6 +13,7 @@ import {
   updatePackageAction,
   adminSetCompanyPackageAction,
   updateTrialDaysAction,
+  updatePaymentSettingsAction,
 } from "./actions"
 import { PackageFeatureFields } from "@/components/package/package-feature-fields"
 import { formatPrice } from "@/lib/package-features"
@@ -21,10 +23,11 @@ export const dynamic = "force-dynamic"
 export default async function AdminPackagesPage() {
   await requireSuperAdmin()
 
-  const [packages, companies, platformSettings] = await Promise.all([
+  const [packages, companies, platformSettings, paymentSettings] = await Promise.all([
     getAllPackages(),
     getAllCompaniesWithPackages(),
     getPlatformSettings(),
+    getPaymentSettings(),
   ])
 
   return (
@@ -52,6 +55,76 @@ export default async function AdminPackagesPage() {
               <p className="text-xs text-muted-foreground">
                 Every new company gets full feature access for this many days before choosing a plan.
               </p>
+            </form>
+          </div>
+        </section>
+
+        {/* Payment Provider Settings */}
+        <section>
+          <h2 className="text-lg font-semibold text-foreground mb-4">Payment Providers</h2>
+          <div className="rounded-xl border border-border bg-card p-4">
+            <form action={updatePaymentSettingsAction} className="space-y-4">
+              <div className="grid gap-4 sm:grid-cols-2">
+                <label className="flex items-center gap-3 rounded-lg border border-border bg-background p-3 cursor-pointer hover:bg-muted/50 transition-colors">
+                  <input
+                    type="checkbox"
+                    name="stripeEnabled"
+                    defaultChecked={paymentSettings.stripeEnabled}
+                    className="size-4 accent-teal-600"
+                  />
+                  <div>
+                    <div className="flex items-center gap-1.5 text-sm font-medium text-foreground">
+                      <CreditCard className="size-4" />
+                      Stripe
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Credit/debit card payments via Stripe Checkout
+                    </p>
+                  </div>
+                </label>
+
+                <label className="flex items-center gap-3 rounded-lg border border-border bg-background p-3 cursor-pointer hover:bg-muted/50 transition-colors">
+                  <input
+                    type="checkbox"
+                    name="paypalEnabled"
+                    defaultChecked={paymentSettings.paypalEnabled}
+                    className="size-4 accent-teal-600"
+                  />
+                  <div>
+                    <div className="flex items-center gap-1.5 text-sm font-medium text-foreground">
+                      <svg className="size-4" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M7.076 21.337H2.47a.641.641 0 0 1-.633-.74L4.944.901C5.026.382 5.474 0 5.998 0h7.46c2.57 0 4.578.543 5.69 1.81 1.01 1.15 1.304 2.42 1.012 4.287-.023.143-.047.288-.077.437-.983 5.05-4.349 6.797-8.647 6.797h-2.19c-.524 0-.968.382-1.05.9l-1.12 7.106z"/>
+                      </svg>
+                      PayPal
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      PayPal subscriptions
+                    </p>
+                  </div>
+                </label>
+              </div>
+
+              <div className="flex items-center gap-3">
+                <label className="flex items-center gap-2 text-sm text-foreground">
+                  <Bug className="size-4" />
+                  Mode:
+                </label>
+                <select
+                  name="paymentDevMode"
+                  defaultValue={paymentSettings.paymentDevMode ? "sandbox" : "live"}
+                  className="rounded-lg border border-border bg-background px-2 py-1.5 text-sm"
+                >
+                  <option value="sandbox">Sandbox (test)</option>
+                  <option value="live">Live (production)</option>
+                </select>
+                <p className="text-xs text-muted-foreground">
+                  {paymentSettings.paymentDevMode
+                    ? "Using test/sandbox API keys"
+                    : "Using live API keys"}
+                </p>
+              </div>
+
+              <Button type="submit" size="sm">Save Payment Settings</Button>
             </form>
           </div>
         </section>
@@ -201,4 +274,3 @@ export default async function AdminPackagesPage() {
     </Shell>
   )
 }
-
