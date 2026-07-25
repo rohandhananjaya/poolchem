@@ -70,7 +70,7 @@ export default async function AdminPackagesPage() {
                     type="checkbox"
                     name="stripeEnabled"
                     defaultChecked={paymentSettings.stripeEnabled}
-                    className="size-4 accent-teal-600"
+                    className="size-4 accent-brand-600"
                   />
                   <div>
                     <div className="flex items-center gap-1.5 text-sm font-medium text-foreground">
@@ -88,7 +88,7 @@ export default async function AdminPackagesPage() {
                     type="checkbox"
                     name="paypalEnabled"
                     defaultChecked={paymentSettings.paypalEnabled}
-                    className="size-4 accent-teal-600"
+                    className="size-4 accent-brand-600"
                   />
                   <div>
                     <div className="flex items-center gap-1.5 text-sm font-medium text-foreground">

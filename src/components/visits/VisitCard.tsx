@@ -152,7 +152,7 @@ export function VisitCard({ visit, timeLabel, currentUserId, userRole, techs }: 
                 Cancelled
               </span>
             ) : isOthersVisit ? (
-              <span className="inline-flex items-center gap-1.5 text-sm font-medium text-sky-600 dark:text-sky-400">
+              <span className="inline-flex items-center gap-1.5 text-sm font-medium text-brand-600 dark:text-brand-200">
                 <Play className="size-4" />
                 In Progress
               </span>
@@ -302,12 +302,12 @@ export function VisitCard({ visit, timeLabel, currentUserId, userRole, techs }: 
                     Cancelled
                   </span>
                 ) : isOthersVisit ? (
-                  <span className="inline-flex items-center gap-1.5 text-sm font-medium text-sky-600 dark:text-sky-400">
+                  <span className="inline-flex items-center gap-1.5 text-sm font-medium text-brand-600 dark:text-brand-200">
                     <Play className="size-4" />
                     In Progress
                   </span>
                 ) : inProgress ? (
-                  <span className="inline-flex items-center gap-1.5 text-sm font-medium text-sky-600 dark:text-sky-400">
+                  <span className="inline-flex items-center gap-1.5 text-sm font-medium text-brand-600 dark:text-brand-200">
                     <Play className="size-4" />
                     In Progress
                   </span>

@@ -3,7 +3,7 @@ import { Skeleton } from "@/components/ui/loading-skeleton"
 /** Mirrors the public homeowner dashboard (hero card, date tiles, timeline). */
 export default function HomeownerLoading() {
   return (
-    <main className="min-h-full bg-gradient-to-b from-sky-50 via-cyan-50/40 to-background dark:from-slate-950 dark:via-slate-950 dark:to-background">
+    <main className="min-h-full bg-gradient-to-b from-brand-50 via-brand-200/40 to-background dark:from-slate-950 dark:via-slate-950 dark:to-background">
       <div className="mx-auto w-full max-w-2xl px-4 py-8 sm:py-12">
         {/* Company chip */}
         <div className="mb-6 flex items-center justify-center gap-2">

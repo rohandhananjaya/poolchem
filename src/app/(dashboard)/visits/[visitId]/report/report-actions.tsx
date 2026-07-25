@@ -144,7 +144,7 @@ export function ReportActions({
       <Button
         type="button"
         size="lg"
-        className="bg-teal-600 text-white hover:bg-teal-700"
+        className="bg-brand-600 text-white hover:bg-brand-900"
         onClick={() => window.print()}
       >
         <Printer />

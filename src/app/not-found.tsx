@@ -11,11 +11,11 @@ export default function NotFound() {
   return (
     <div className="mx-auto flex min-h-svh w-full max-w-md flex-col items-center justify-center px-6 py-16 text-center">
       {/* Pool-themed illustration: a "404" floating on water. */}
-      <div className="relative flex size-32 items-center justify-center overflow-hidden rounded-full bg-gradient-to-b from-sky-100 to-cyan-200 dark:from-slate-800 dark:to-slate-900">
-        <span className="text-3xl font-bold tracking-tight text-teal-700 dark:text-teal-300">
+      <div className="relative flex size-32 items-center justify-center overflow-hidden rounded-full bg-gradient-to-b from-brand-50 to-brand-200 dark:from-slate-800 dark:to-slate-900">
+        <span className="text-3xl font-bold tracking-tight text-brand-900 dark:text-brand-200">
           404
         </span>
-        <Waves className="absolute bottom-3 left-1/2 size-16 -translate-x-1/2 text-cyan-500/40 dark:text-cyan-400/30" />
+        <Waves className="absolute bottom-3 left-1/2 size-16 -translate-x-1/2 text-brand-500/40 dark:text-brand-200/30" />
       </div>
 
       <h1 className="mt-6 text-xl font-semibold tracking-tight text-foreground">
@@ -36,7 +36,7 @@ export default function NotFound() {
       </div>
 
       <p className="mt-8 flex items-center gap-1.5 text-xs text-muted-foreground">
-        <Droplets className="size-3.5 text-teal-500" />
+        <Droplets className="size-3.5 text-brand-500" />
         Poolbench
       </p>
     </div>

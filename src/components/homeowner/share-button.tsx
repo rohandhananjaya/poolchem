@@ -53,7 +53,7 @@ export function ShareButton({ url, poolName }: ShareButtonProps) {
       type="button"
       size="lg"
       onClick={handleShare}
-      className="bg-teal-600 text-white hover:bg-teal-700"
+      className="bg-brand-600 text-white hover:bg-brand-900"
     >
       {copied ? <Check className="text-white" /> : <Share2 />}
       {copied ? "Link copied" : "Share this dashboard"}

@@ -649,7 +649,7 @@ export function VisitForm({
             <Button
               type="button"
               size="lg"
-              className="bg-teal-600 text-white hover:bg-teal-700 disabled:opacity-50"
+              className="bg-brand-600 text-white hover:bg-brand-900 disabled:opacity-50"
               onClick={handleComplete}
               disabled={!allFieldsFilled || isSubmitting || saving !== null}
             >

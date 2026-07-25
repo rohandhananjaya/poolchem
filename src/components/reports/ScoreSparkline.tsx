@@ -14,12 +14,10 @@ import {
 } from "recharts"
 import type { ReportScorePoint } from "@/lib/reports/generate-report"
 
-// Brand teal (Tailwind teal-600/500) — constant across light and dark, so we
-// use the fixed hex rather than reading a CSS var at runtime.
-const TEAL = { line: "#0d9488", glow: "#14b8a6" } as const
+const BRAND = { line: "#0077b6", glow: "#00b4d8" } as const
 
 const SCORE_COLORS = {
-  excellent: "#0d9488",
+  excellent: "#0077b6",
   good: "#2563eb",
   fair: "#d97706",
   poor: "#e11d48",
@@ -45,7 +43,7 @@ export interface ScoreSparklineProps {
 
 export function ScoreSparkline({ points }: ScoreSparklineProps) {
   const gradientId = useId()
-  const teal = TEAL
+  const brand = BRAND
 
   if (points.length === 0) {
     return (
@@ -101,8 +99,8 @@ export function ScoreSparkline({ points }: ScoreSparklineProps) {
         <AreaChart data={points} margin={{ top: 40, right: 12, left: -16, bottom: 0 }}>
           <defs>
             <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor={teal.glow} stopOpacity={0.28} />
-              <stop offset="100%" stopColor={teal.glow} stopOpacity={0.02} />
+              <stop offset="0%" stopColor={brand.glow} stopOpacity={0.28} />
+              <stop offset="100%" stopColor={brand.glow} stopOpacity={0.02} />
             </linearGradient>
           </defs>
           <CartesianGrid
@@ -129,7 +127,7 @@ export function ScoreSparkline({ points }: ScoreSparklineProps) {
           />
           <Tooltip
             cursor={{
-              stroke: teal.line,
+              stroke: brand.line,
               strokeWidth: 1.5,
               strokeOpacity: 0.5,
             }}
@@ -155,7 +153,7 @@ export function ScoreSparkline({ points }: ScoreSparklineProps) {
           <Area
             type="monotone"
             dataKey="score"
-            stroke={teal.line}
+            stroke={brand.line}
             fill={`url(#${gradientId})`}
             strokeWidth={2.5}
             strokeLinecap="round"

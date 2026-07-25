@@ -128,7 +128,7 @@ export default async function PublicReportPage({
                 className="size-12 rounded-xl object-cover"
               />
             ) : (
-              <div className="flex size-12 items-center justify-center rounded-xl bg-teal-600 text-base font-semibold text-white">
+              <div className="flex size-12 items-center justify-center rounded-xl bg-brand-600 text-base font-semibold text-white">
                 {initials(report.company.name)}
               </div>
             )}
@@ -143,7 +143,7 @@ export default async function PublicReportPage({
               </p>
             </div>
           </div>
-          <div className="hidden shrink-0 items-center gap-1.5 text-teal-600 sm:flex print:flex">
+          <div className="hidden shrink-0 items-center gap-1.5 text-brand-600 sm:flex print:flex">
             <Droplets className="size-5" />
             <span className="text-sm font-semibold">Poolbench</span>
           </div>
@@ -272,8 +272,8 @@ export default async function PublicReportPage({
             <h2 className="text-sm font-semibold text-foreground">
               Notes From Your Technician
             </h2>
-            <blockquote className="mt-2 flex gap-3 rounded-lg border-l-4 border-teal-500 bg-muted/40 p-4 print:bg-transparent">
-              <Quote className="size-4 shrink-0 text-teal-500" />
+            <blockquote className="mt-2 flex gap-3 rounded-lg border-l-4 border-brand-500 bg-muted/40 p-4 print:bg-transparent">
+              <Quote className="size-4 shrink-0 text-brand-500" />
               <p className="text-sm italic text-foreground">
                 {report.visit.notes}
               </p>
@@ -298,7 +298,7 @@ export default async function PublicReportPage({
         <footer className="mt-8 flex flex-col items-start justify-between gap-4 border-t border-border pt-5 sm:flex-row sm:items-center">
           {nextServiceDate && (
             <div className="flex items-center gap-2 text-sm">
-              <CalendarClock className="size-4 text-teal-600" />
+              <CalendarClock className="size-4 text-brand-600" />
               <span className="text-muted-foreground">Next service:</span>
               <span className="font-semibold text-foreground">
                 {format(nextServiceDate, "EEEE, MMMM d, yyyy")}
@@ -328,7 +328,7 @@ export default async function PublicReportPage({
 
       {/* Footer branding */}
       <footer className="mt-6 flex items-center justify-center gap-2 text-xs text-muted-foreground print:hidden">
-        <Droplets className="size-3 text-teal-500" />
+        <Droplets className="size-3 text-brand-500" />
         Powered by Poolbench
       </footer>
     </div>

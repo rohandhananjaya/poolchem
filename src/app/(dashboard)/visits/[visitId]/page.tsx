@@ -32,7 +32,7 @@ export default async function VisitPage({
   const statusBadgeClass = completed
     ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300"
     : inProgress
-      ? "bg-sky-100 text-sky-700 dark:bg-sky-950 dark:text-sky-300"
+      ? "bg-brand-50 text-brand-900 dark:bg-brand-900 dark:text-brand-200"
       : visit.status === "CANCELLED"
         ? "bg-muted text-muted-foreground"
         : "bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300"

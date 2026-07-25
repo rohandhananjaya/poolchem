@@ -6,7 +6,7 @@ import type { ChemicalRecommendation } from "@/lib/pool-chemistry"
 const SEVERITY_STYLES: Record<string, string> = {
   critical: "bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-300",
   moderate: "bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300",
-  minor: "bg-sky-100 text-sky-700 dark:bg-sky-950 dark:text-sky-300",
+  minor: "bg-brand-50 text-brand-900 dark:bg-brand-900 dark:text-brand-200",
 }
 
 export interface ChemicalRecommendationsProps {

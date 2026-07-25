@@ -24,7 +24,7 @@ export default async function InvitePage({
       <div className="w-full max-w-sm space-y-6">
         <div className="space-y-1.5 text-center">
           <Link href="/" className="inline-flex items-center gap-2 font-semibold tracking-tight mb-4">
-            <span className="flex size-8 items-center justify-center rounded-lg bg-sky-500 text-white shadow-sm">
+            <span className="flex size-8 items-center justify-center rounded-lg bg-brand-600 text-white shadow-sm">
               <Waves className="size-5" />
             </span>
             <span className="text-lg">Poolbench</span>

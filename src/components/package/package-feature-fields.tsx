@@ -11,7 +11,7 @@ function FeatureCheckbox({
 }) {
   return (
     <label className="flex items-center gap-2 text-xs text-foreground cursor-pointer">
-      <input type="checkbox" name={name} defaultChecked={defaultChecked} className="size-3.5 accent-teal-600" />
+      <input type="checkbox" name={name} defaultChecked={defaultChecked} className="size-3.5 accent-brand-600" />
       {label}
     </label>
   )

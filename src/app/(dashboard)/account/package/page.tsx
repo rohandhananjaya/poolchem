@@ -139,7 +139,7 @@ export default async function AccountPackagePage({
                   key={pkg.id}
                   className={`rounded-xl border p-5 ${
                     isCurrent
-                      ? "border-teal-500 bg-teal-50 dark:bg-teal-950/20"
+                      ? "border-brand-500 bg-brand-50 dark:bg-brand-900/20"
                       : "border-border bg-card"
                   }`}
                 >

@@ -84,7 +84,7 @@ function TimelineRow({ activity }: { activity: HomeownerActivity }) {
   const date = new Date(activity.date)
   return (
     <li className="flex items-center gap-4 py-3">
-      <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-teal-50 text-teal-600 dark:bg-teal-950/50 dark:text-teal-400">
+      <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-brand-50 text-brand-600 dark:bg-brand-900/50 dark:text-brand-200">
         <Droplets className="size-5" />
       </div>
       <div className="min-w-0 flex-1">
@@ -121,7 +121,7 @@ function DateTile({
 }) {
   return (
     <div className="flex items-start gap-3 rounded-2xl border border-border bg-card p-4">
-      <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-teal-50 text-teal-600 dark:bg-teal-950/50 dark:text-teal-400">
+      <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-brand-50 text-brand-600 dark:bg-brand-900/50 dark:text-brand-200">
         {icon}
       </div>
       <div className="min-w-0">
@@ -151,7 +151,7 @@ export default async function HomeownerDashboardPage({
   const nextIsOverdue = nextServiceDate ? isPast(nextServiceDate) : false
 
   return (
-    <main className="min-h-full bg-gradient-to-b from-sky-50 via-cyan-50/40 to-background dark:from-slate-950 dark:via-slate-950 dark:to-background">
+    <main className="min-h-full bg-gradient-to-b from-brand-50 via-brand-200/40 to-background dark:from-slate-950 dark:via-slate-950 dark:to-background">
       <div className="mx-auto w-full max-w-2xl px-4 py-8 sm:py-12">
         {/* Company chip */}
         <div className="mb-6 flex items-center justify-center gap-2 text-sm text-muted-foreground">
@@ -163,7 +163,7 @@ export default async function HomeownerDashboardPage({
               className="size-6 rounded-md object-cover"
             />
           ) : (
-            <Droplets className="size-4 text-teal-600" />
+            <Droplets className="size-4 text-brand-600" />
           )}
           <span>
             Managed by{" "}
@@ -181,7 +181,7 @@ export default async function HomeownerDashboardPage({
               className="h-44 w-full object-cover sm:h-56"
             />
           ) : (
-            <div className="flex h-32 w-full items-center justify-center bg-gradient-to-br from-teal-400 to-cyan-500 sm:h-40">
+            <div className="flex h-32 w-full items-center justify-center bg-gradient-to-br from-brand-600 to-brand-500 sm:h-40">
               <Waves className="size-12 text-white/80" />
             </div>
           )}
@@ -203,7 +203,7 @@ export default async function HomeownerDashboardPage({
               </div>
             ) : (
               <div className="mt-6 flex flex-col items-center gap-3 rounded-2xl bg-muted/50 p-8 text-center">
-                <Sparkles className="size-8 text-teal-500" />
+                <Sparkles className="size-8 text-brand-500" />
                 <p className="text-sm font-medium text-foreground">
                   Your dashboard is ready
                 </p>
@@ -292,7 +292,7 @@ export default async function HomeownerDashboardPage({
                 className="size-8 rounded-lg object-cover"
               />
             ) : (
-              <div className="flex size-8 items-center justify-center rounded-lg bg-teal-600 text-xs font-semibold text-white">
+              <div className="flex size-8 items-center justify-center rounded-lg bg-brand-600 text-xs font-semibold text-white">
                 {initials(company.name)}
               </div>
             )}
@@ -314,7 +314,7 @@ export default async function HomeownerDashboardPage({
               ))}
           </p>
           <p className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
-            <Droplets className="size-3 text-teal-500" />
+            <Droplets className="size-3 text-brand-500" />
             Powered by Poolbench
           </p>
         </footer>

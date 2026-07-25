@@ -27,7 +27,7 @@ export default async function OnboardingPage() {
       <div className="w-full max-w-lg space-y-8">
         {/* Header */}
         <div className="space-y-1.5 text-center">
-          <span className="inline-flex items-center justify-center size-12 rounded-xl bg-sky-100 text-sky-600 dark:bg-sky-950/60 dark:text-sky-400 mx-auto">
+          <span className="inline-flex items-center justify-center size-12 rounded-xl bg-brand-50 text-brand-600 dark:bg-brand-900/60 dark:text-brand-200 mx-auto">
             <Waves className="size-6" />
           </span>
           <h1 className="text-2xl font-semibold tracking-tight text-foreground mt-4">
