@@ -2,21 +2,29 @@ import Link from "next/link"
 import { ArrowLeft } from "lucide-react"
 
 import { requireSuperAdmin } from "@/lib/auth"
-import { prisma } from "@/lib/prisma"
+import { getCompaniesPaginated, COMPANIES_PAGE_SIZE } from "@/lib/db/company"
 import { Shell } from "@/components/ui/shell"
+import { Pagination } from "@/components/ui/pagination"
+import { buildQueryString } from "@/lib/url"
 import { CreateCompanyDialog } from "./create-company-dialog"
 
 export const dynamic = "force-dynamic"
 
-export default async function AdminCompaniesPage() {
+export default async function AdminCompaniesPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ page?: string }>
+}) {
   await requireSuperAdmin()
 
-  const companies = await prisma.company.findMany({
-    orderBy: { createdAt: "desc" },
-    include: {
-      _count: { select: { users: true, pools: true } },
-    },
-  })
+  const sp = await searchParams
+  const currentPage = Math.max(1, Number(sp.page) || 1)
+
+  const { companies, total } = await getCompaniesPaginated(currentPage)
+
+  const totalPages = Math.ceil(total / COMPANIES_PAGE_SIZE)
+  const buildHref = (page: number) =>
+    `/admin/companies?${buildQueryString(new URLSearchParams(), { page: String(page) })}`
 
   return (
     <Shell title="Companies">
@@ -72,12 +80,20 @@ export default async function AdminCompaniesPage() {
             </Link>
           ))}
 
-          {companies.length === 0 && (
+          {total === 0 && (
             <p className="py-8 text-center text-sm text-muted-foreground">
               No companies yet.
             </p>
           )}
         </div>
+
+        <Pagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          buildHref={buildHref}
+          itemLabel="company"
+          total={total}
+        />
       </div>
     </Shell>
   )

@@ -1,24 +1,45 @@
 import type { PaymentProvider, CreateCheckoutParams, CheckoutResult, WebhookEvent, WebhookHeaders } from "./types"
 
-const PAYPAL_API_BASE = process.env.PAYPAL_API_BASE ?? "https://api-m.sandbox.paypal.com"
-const PAYPAL_WEBHOOK_ID = process.env.PAYPAL_WEBHOOK_ID ?? ""
-
 interface PayPalAccessToken {
   access_token: string
   token_type: string
   expires_in: number
 }
 
-async function getAccessToken(): Promise<string> {
-  const clientId = process.env.PAYPAL_CLIENT_ID
-  const clientSecret = process.env.PAYPAL_CLIENT_SECRET
+function getPayPalConfig(devMode?: boolean) {
+  const apiBase = devMode
+    ? "https://api-m.sandbox.paypal.com"
+    : "https://api-m.paypal.com"
+  const clientId = devMode
+    ? process.env.PAYPAL_CLIENT_ID_SANDBOX
+    : process.env.PAYPAL_CLIENT_ID_LIVE
+  const clientSecret = devMode
+    ? process.env.PAYPAL_CLIENT_SECRET_SANDBOX
+    : process.env.PAYPAL_CLIENT_SECRET_LIVE
+  const webhookId = devMode
+    ? process.env.PAYPAL_WEBHOOK_ID_SANDBOX
+    : process.env.PAYPAL_WEBHOOK_ID_LIVE
+  return { apiBase, clientId, clientSecret, webhookId }
+}
+
+function validatePayPalConfig(devMode?: boolean) {
+  const suffix = devMode ? "SANDBOX" : "LIVE"
+  const { clientId, clientSecret, webhookId } = getPayPalConfig(devMode)
+  if (!clientId) throw new Error(`PAYPAL_CLIENT_ID_${suffix} is not set.`)
+  if (!clientSecret) throw new Error(`PAYPAL_CLIENT_SECRET_${suffix} is not set.`)
+  if (!webhookId) throw new Error(`PAYPAL_WEBHOOK_ID_${suffix} is not set.`)
+}
+
+async function getAccessToken(devMode?: boolean): Promise<string> {
+  const { apiBase, clientId, clientSecret } = getPayPalConfig(devMode)
   if (!clientId || !clientSecret) {
-    throw new Error("PAYPAL_CLIENT_ID or PAYPAL_CLIENT_SECRET is not set.")
+    const suffix = devMode ? "SANDBOX" : "LIVE"
+    throw new Error(`PAYPAL_CLIENT_ID_${suffix} or PAYPAL_CLIENT_SECRET_${suffix} is not set.`)
   }
 
   const basicAuth = Buffer.from(`${clientId}:${clientSecret}`).toString("base64")
 
-  const res = await fetch(`${PAYPAL_API_BASE}/v1/oauth2/token`, {
+  const res = await fetch(`${apiBase}/v1/oauth2/token`, {
     method: "POST",
     headers: {
       Authorization: `Basic ${basicAuth}`,
@@ -36,9 +57,10 @@ async function getAccessToken(): Promise<string> {
   return data.access_token
 }
 
-async function paypalFetch(path: string, options: RequestInit = {}): Promise<Response> {
-  const token = await getAccessToken()
-  return fetch(`${PAYPAL_API_BASE}${path}`, {
+async function paypalFetch(path: string, options: RequestInit = {}, devMode?: boolean): Promise<Response> {
+  const { apiBase } = getPayPalConfig(devMode)
+  const token = await getAccessToken(devMode)
+  return fetch(`${apiBase}${path}`, {
     ...options,
     headers: {
       ...options.headers,
@@ -51,7 +73,8 @@ async function paypalFetch(path: string, options: RequestInit = {}): Promise<Res
 export const paypalProvider: PaymentProvider = {
   name: "paypal",
 
-  async createCheckout(params: CreateCheckoutParams): Promise<CheckoutResult> {
+  async createCheckout(params: CreateCheckoutParams, devMode?: boolean): Promise<CheckoutResult> {
+    validatePayPalConfig(devMode)
     const unitAmount = (params.price / 100).toFixed(2)
 
     const planRes = await paypalFetch("/v1/billing/plans", {
@@ -85,7 +108,7 @@ export const paypalProvider: PaymentProvider = {
           packageSlug: params.packageSlug,
         }),
       }),
-    })
+    }, devMode)
 
     if (!planRes.ok) {
       const body = await planRes.text()
@@ -114,7 +137,7 @@ export const paypalProvider: PaymentProvider = {
           cancel_url: params.cancelUrl,
         },
       }),
-    })
+    }, devMode)
 
     if (!subRes.ok) {
       const body = await subRes.text()
@@ -137,10 +160,10 @@ export const paypalProvider: PaymentProvider = {
   async handleWebhook(
     payload: unknown,
     headers: WebhookHeaders,
+    devMode?: boolean,
   ): Promise<WebhookEvent> {
-    if (!PAYPAL_WEBHOOK_ID) {
-      throw new Error("PAYPAL_WEBHOOK_ID is not set.")
-    }
+    validatePayPalConfig(devMode)
+    const { apiBase, webhookId } = getPayPalConfig(devMode)
 
     const body = payload as string
     let parsed: { event_type: string; resource: Record<string, unknown> }
@@ -154,11 +177,11 @@ export const paypalProvider: PaymentProvider = {
     const { event_type, resource } = parsed
 
     const verification = await fetch(
-      `${PAYPAL_API_BASE}/v1/notifications/verify-webhook-signature`,
+      `${apiBase}/v1/notifications/verify-webhook-signature`,
       {
         method: "POST",
         headers: {
-          Authorization: `Bearer ${await getAccessToken()}`,
+          Authorization: `Bearer ${await getAccessToken(devMode)}`,
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
@@ -167,7 +190,7 @@ export const paypalProvider: PaymentProvider = {
           transmission_id: headers["paypal-transmission-id"] ?? "",
           transmission_sig: headers["paypal-transmission-sig"] ?? "",
           transmission_time: headers["paypal-transmission-time"] ?? "",
-          webhook_id: PAYPAL_WEBHOOK_ID,
+          webhook_id: webhookId,
           webhook_event: parsed,
         }),
       },
@@ -189,7 +212,7 @@ export const paypalProvider: PaymentProvider = {
       planId: string,
     ): Promise<{ companyId?: string; packageSlug?: string }> {
       try {
-        const planRes = await paypalFetch(`/v1/billing/plans/${planId}`)
+        const planRes = await paypalFetch(`/v1/billing/plans/${planId}`, {}, devMode)
         if (!planRes.ok) return {}
         const planData = await planRes.json()
         const metaStr = planData.metadata as string | undefined
@@ -223,6 +246,8 @@ export const paypalProvider: PaymentProvider = {
           subscriptionId = billingAgreementId
           const subRes = await paypalFetch(
             `/v1/billing/subscriptions/${billingAgreementId}`,
+            {},
+            devMode,
           )
           if (subRes.ok) {
             const subData = await subRes.json()
@@ -260,13 +285,14 @@ export const paypalProvider: PaymentProvider = {
     }
   },
 
-  async cancelSubscription(subscriptionId: string): Promise<void> {
+  async cancelSubscription(subscriptionId: string, devMode?: boolean): Promise<void> {
     const res = await paypalFetch(
       `/v1/billing/subscriptions/${subscriptionId}/cancel`,
       {
         method: "POST",
         body: JSON.stringify({ reason: "Cancelled by admin." }),
       },
+      devMode,
     )
 
     if (!res.ok) {

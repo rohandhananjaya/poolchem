@@ -6,6 +6,7 @@ import "server-only";
 
 import type { Company } from "@/generated/prisma/client";
 import { Prisma } from "@/generated/prisma/client";
+import { PAGE_SIZE } from "@/lib/config";
 import { getWaterHealthScore } from "@/lib/pool-chemistry";
 import { prisma } from "@/lib/prisma";
 
@@ -153,6 +154,39 @@ export async function getCompanyStats(
         );
 
   return { totalPools, visitsThisMonth, averageWaterHealth };
+}
+
+/** How many companies to show per page in the admin list. */
+export const COMPANIES_PAGE_SIZE = PAGE_SIZE;
+
+/** A company row with its user and pool counts. */
+type CompanyWithCounts = Prisma.CompanyGetPayload<{
+  include: { _count: { select: { users: true; pools: true } } }
+}>
+
+/**
+ * Returns a paginated list of all companies (super-admin view), each annotated
+ * with its user and pool counts. Ordered most-recent-first.
+ */
+export async function getCompaniesPaginated(
+  page: number = 1,
+): Promise<{ companies: CompanyWithCounts[]; total: number }> {
+  const limit = COMPANIES_PAGE_SIZE;
+  const skip = (page - 1) * limit;
+
+  const [companies, total] = await Promise.all([
+    prisma.company.findMany({
+      orderBy: { createdAt: "desc" },
+      skip,
+      take: limit,
+      include: {
+        _count: { select: { users: true, pools: true } },
+      },
+    }),
+    prisma.company.count(),
+  ]);
+
+  return { companies, total };
 }
 
 /**

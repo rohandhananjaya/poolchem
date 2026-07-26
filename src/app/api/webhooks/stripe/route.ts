@@ -1,14 +1,16 @@
 import { NextResponse } from "next/server"
 import { stripeProvider } from "@/lib/payment/stripe"
 import { handlePaymentSuccess } from "@/lib/db/packages"
+import { getPaymentSettings } from "@/lib/db/payment-settings"
 
 export async function POST(request: Request) {
   const rawBody = await request.text()
+  const { paymentDevMode } = await getPaymentSettings()
 
   try {
     const event = await stripeProvider.handleWebhook(rawBody, {
       "stripe-signature": request.headers.get("stripe-signature") ?? undefined,
-    })
+    }, paymentDevMode)
 
     if (event.event === "subscription_activated" && event.companyId && event.packageSlug) {
       await handlePaymentSuccess(

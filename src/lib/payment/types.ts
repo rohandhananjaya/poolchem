@@ -33,9 +33,9 @@ export interface WebhookHeaders {
 
 export interface PaymentProvider {
   name: PaymentProviderName
-  createCheckout(params: CreateCheckoutParams): Promise<CheckoutResult>
-  handleWebhook(payload: unknown, headers: WebhookHeaders): Promise<WebhookEvent>
-  cancelSubscription(subscriptionId: string): Promise<void>
+  createCheckout(params: CreateCheckoutParams, devMode?: boolean): Promise<CheckoutResult>
+  handleWebhook(payload: unknown, headers: WebhookHeaders, devMode?: boolean): Promise<WebhookEvent>
+  cancelSubscription(subscriptionId: string, devMode?: boolean): Promise<void>
 }
 
 export interface PaymentSettings {

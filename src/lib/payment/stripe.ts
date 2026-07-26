@@ -1,17 +1,27 @@
 import Stripe from "stripe"
 import type { PaymentProvider, CreateCheckoutParams, CheckoutResult, WebhookEvent, WebhookHeaders } from "./types"
 
-function getStripe(): Stripe {
-  const key = process.env.STRIPE_SECRET_KEY
-  if (!key) throw new Error("STRIPE_SECRET_KEY is not set.")
+function getStripe(devMode?: boolean): Stripe {
+  const key = devMode
+    ? process.env.STRIPE_SECRET_KEY_SANDBOX
+    : process.env.STRIPE_SECRET_KEY_LIVE
+  if (!key) throw new Error(`STRIPE_SECRET_KEY_${devMode ? "SANDBOX" : "LIVE"} is not set.`)
   return new Stripe(key)
+}
+
+function getWebhookSecret(devMode?: boolean): string {
+  const secret = devMode
+    ? process.env.STRIPE_WEBHOOK_SECRET_SANDBOX
+    : process.env.STRIPE_WEBHOOK_SECRET_LIVE
+  if (!secret) throw new Error(`STRIPE_WEBHOOK_SECRET_${devMode ? "SANDBOX" : "LIVE"} is not set.`)
+  return secret
 }
 
 export const stripeProvider: PaymentProvider = {
   name: "stripe",
 
-  async createCheckout(params: CreateCheckoutParams): Promise<CheckoutResult> {
-    const stripe = getStripe()
+  async createCheckout(params: CreateCheckoutParams, devMode?: boolean): Promise<CheckoutResult> {
+    const stripe = getStripe(devMode)
     const unitAmount = params.price
 
     const session = await stripe.checkout.sessions.create({
@@ -47,10 +57,10 @@ export const stripeProvider: PaymentProvider = {
   async handleWebhook(
     payload: unknown,
     headers: WebhookHeaders,
+    devMode?: boolean,
   ): Promise<WebhookEvent> {
-    const stripe = getStripe()
-    const secret = process.env.STRIPE_WEBHOOK_SECRET
-    if (!secret) throw new Error("STRIPE_WEBHOOK_SECRET is not set.")
+    const stripe = getStripe(devMode)
+    const secret = getWebhookSecret(devMode)
 
     const signature = headers["stripe-signature"]
     if (!signature) throw new Error("Missing stripe-signature header.")
@@ -111,8 +121,8 @@ export const stripeProvider: PaymentProvider = {
     }
   },
 
-  async cancelSubscription(subscriptionId: string): Promise<void> {
-    const stripe = getStripe()
+  async cancelSubscription(subscriptionId: string, devMode?: boolean): Promise<void> {
+    const stripe = getStripe(devMode)
     await stripe.subscriptions.cancel(subscriptionId)
   },
 }

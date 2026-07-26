@@ -10,6 +10,7 @@ Get the tenant with `getCompanyId()` / `requireAuth()` from [../auth.ts](../auth
 - `getCompanyById(companyId) → Company | null`
 - `updateCompany(companyId, data: UpdateCompanyData) → Company`
 - `getCompanyStats(companyId) → CompanyStats`
+- `getCompaniesPaginated(page?) → { companies: CompanyWithCounts[]; total: number }` — **unscoped**, super-admin list view
 
 **users.ts**
 - `updateUser(userId, companyId, data: UpdateUserData)`
@@ -58,8 +59,7 @@ Get the tenant with `getCompanyId()` / `requireAuth()` from [../auth.ts](../auth
 - `startTrial(companyId)` — full feature access, no plan chosen, for `PlatformSettings.trialDays`
 - `simulatePayment(companyId, packageSlug)` — sets `ACTIVE` + records an `Invoice` (simulated, no real billing)
 - `expireTrial(companyId)` / `checkAndExpireTrials()` — manual/batch expiry (not wired to a cron; expiry normally happens lazily via `getCompanyPackage`)
-- `adminSetPackage(companyId, packageId, status)` — super-admin override
-- `getCompanyInvoices(companyId)` · `getAllCompaniesWithPackages()`
+- `getCompanyInvoices(companyId)`
 - `createPackage(data)` · `updatePackage(id, data)` · `deletePackage(id)` · `countCompaniesOnPackage(packageId)` — plan-catalog CRUD for `/admin/packages`
 
 **platform-settings.ts** — single-row platform config.
@@ -76,7 +76,7 @@ Get the tenant with `getCompanyId()` / `requireAuth()` from [../auth.ts](../auth
 ## Tests (64+ tests across 8 files)
 
 All DB tests mock `@/lib/prisma` and require `server-only` to be stubbed (handled by the Vitest config alias). Tests are in the same directory with `.test.ts` suffix:
-- `visits.test.ts` — 17 tests · `company.test.ts` — 9 · `pools.test.ts` — 20
+- `visits.test.ts` — 17 tests · `company.test.ts` — 12 · `pools.test.ts` — 20
 - `users.test.ts` — 11 · `reports.test.ts` — 3 · `schedule.test.ts` — 2 · `dashboard.test.ts` — 2 · `api-keys.test.ts` — 13
 
 ## Notes

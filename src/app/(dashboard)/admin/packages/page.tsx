@@ -1,8 +1,7 @@
-import Link from "next/link"
 import { Package as PackageIcon, Plus, Pencil, Trash2, Clock, CreditCard, Bug } from "lucide-react"
 
 import { requireSuperAdmin } from "@/lib/auth"
-import { getAllPackages, getAllCompaniesWithPackages } from "@/lib/db/packages"
+import { getAllPackages } from "@/lib/db/packages"
 import { getPlatformSettings } from "@/lib/db/platform-settings"
 import { getPaymentSettings } from "@/lib/db/payment-settings"
 import { Shell } from "@/components/ui/shell"
@@ -11,7 +10,6 @@ import {
   deletePackageAction,
   createPackageAction,
   updatePackageAction,
-  adminSetCompanyPackageAction,
   updateTrialDaysAction,
   updatePaymentSettingsAction,
 } from "./actions"
@@ -23,9 +21,8 @@ export const dynamic = "force-dynamic"
 export default async function AdminPackagesPage() {
   await requireSuperAdmin()
 
-  const [packages, companies, platformSettings, paymentSettings] = await Promise.all([
+  const [packages, platformSettings, paymentSettings] = await Promise.all([
     getAllPackages(),
-    getAllCompaniesWithPackages(),
     getPlatformSettings(),
     getPaymentSettings(),
   ])
@@ -209,67 +206,6 @@ export default async function AdminPackagesPage() {
           </div>
         </section>
 
-        {/* Companies & their packages */}
-        <section>
-          <h2 className="text-lg font-semibold text-foreground mb-4">Companies</h2>
-          <div className="space-y-3">
-            {companies.map((c) => {
-              const cp = c.companyPackage
-              const statusColor = cp?.status === "ACTIVE" ? "text-emerald-600" : cp?.status === "TRIAL" ? "text-amber-600" : cp?.status === "EXPIRED" ? "text-red-600" : "text-muted-foreground"
-              return (
-                <div key={c.id} className="rounded-xl border border-border bg-card p-4">
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="min-w-0">
-                      <Link href={`/admin/companies/${c.id}`} className="text-sm font-semibold text-foreground hover:underline">
-                        {c.name}
-                      </Link>
-                      <p className="text-xs text-muted-foreground">
-                        {c._count.users} users · {c._count.pools} pools
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-3 shrink-0">
-                      {cp ? (
-                        <span className={`text-xs font-medium ${statusColor}`}>
-                          {cp.package?.name ?? "Trial — no plan chosen"} ({cp.status.toLowerCase()})
-                        </span>
-                      ) : (
-                        <span className="text-xs text-muted-foreground">No package</span>
-                      )}
-                      <details className="relative">
-                        <summary className="inline-flex cursor-pointer items-center justify-center size-7 rounded-lg border border-border bg-background text-muted-foreground hover:bg-muted">
-                          <Pencil className="size-3.5" />
-                        </summary>
-                        <div className="absolute right-0 top-full z-50 mt-2 w-64 rounded-xl border border-border bg-card p-4 shadow-lg">
-                          <form action={adminSetCompanyPackageAction} className="space-y-2 text-sm">
-                            <input type="hidden" name="companyId" value={c.id} />
-                            <div>
-                              <label className="block text-xs font-medium text-foreground mb-1">Package</label>
-                              <select name="packageId" defaultValue={cp?.package?.id ?? packages[0]?.id} className="w-full rounded-lg border border-border bg-background px-2 py-1.5 text-xs">
-                                {packages.map((p) => (
-                                  <option key={p.id} value={p.id}>{p.name}</option>
-                                ))}
-                              </select>
-                            </div>
-                            <div>
-                              <label className="block text-xs font-medium text-foreground mb-1">Status</label>
-                              <select name="status" defaultValue={cp?.status ?? "TRIAL"} className="w-full rounded-lg border border-border bg-background px-2 py-1.5 text-xs">
-                                <option value="TRIAL">Trial</option>
-                                <option value="ACTIVE">Active</option>
-                                <option value="EXPIRED">Expired</option>
-                                <option value="CANCELLED">Cancelled</option>
-                              </select>
-                            </div>
-                            <Button type="submit" size="xs" className="w-full">Update</Button>
-                          </form>
-                        </div>
-                      </details>
-                    </div>
-                  </div>
-                </div>
-              )
-            })}
-          </div>
-        </section>
       </div>
     </Shell>
   )

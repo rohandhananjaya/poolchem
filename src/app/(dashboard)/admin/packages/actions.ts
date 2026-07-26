@@ -7,14 +7,12 @@ import {
   createPackage,
   updatePackage,
   deletePackage,
-  adminSetPackage,
   countCompaniesOnPackage,
 } from "@/lib/db/packages"
 import { updateTrialDays } from "@/lib/db/platform-settings"
 import { updatePaymentSettings } from "@/lib/db/payment-settings"
 import type { PackageFeatures } from "@/lib/package-features"
 import { logger } from "@/lib/log"
-import { audit } from "@/lib/audit"
 
 function parsePackageFeaturesFromForm(formData: FormData): PackageFeatures {
   return {
@@ -95,28 +93,6 @@ export async function deletePackageAction(formData: FormData) {
     context: "admin.packages.deletePackageAction",
     userId: currentUser.id,
     metadata: { packageId: id },
-  })
-  revalidatePath("/admin/packages")
-}
-
-export async function adminSetCompanyPackageAction(formData: FormData) {
-  const currentUser = await requireSuperAdmin()
-
-  const companyId = formData.get("companyId") as string
-  const packageId = formData.get("packageId") as string
-  const status = formData.get("status") as "TRIAL" | "ACTIVE" | "EXPIRED" | "CANCELLED"
-
-  if (!companyId || !packageId || !status) {
-    throw new Error("Missing required fields.")
-  }
-
-  await adminSetPackage(companyId, packageId, status)
-  await audit.company(currentUser.id, companyId, "package_changed", { packageId, status })
-  logger.info("Company package changed by admin", {
-    context: "admin.packages.adminSetCompanyPackageAction",
-    companyId,
-    userId: currentUser.id,
-    metadata: { packageId, status },
   })
   revalidatePath("/admin/packages")
 }

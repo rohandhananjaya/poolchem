@@ -241,63 +241,10 @@ export async function checkAndExpireTrials(): Promise<number> {
   return result.count
 }
 
-export async function adminSetPackage(
-  companyId: string,
-  packageId: string,
-  status: "TRIAL" | "ACTIVE" | "EXPIRED" | "CANCELLED",
-): Promise<CompanyPackageInfo> {
-  const isTrial = status === "TRIAL"
-
-  // A trialing company never has a chosen plan — matches `startTrial()`, and
-  // keeps the UI (which shows "Free Trial" instead of a plan name/features
-  // purely off `status`) from ever contradicting the actual stored package.
-  if (!isTrial) {
-    const pkg = await prisma.package.findUnique({ where: { id: packageId } })
-    if (!pkg) throw new Error(`Package "${packageId}" not found.`)
-  }
-
-  const now = new Date()
-  const trialEnd = isTrial
-    ? new Date(now.getTime() + (await getPlatformSettings()).trialDays * 86400000)
-    : null
-
-  const cp = await prisma.companyPackage.upsert({
-    where: { companyId },
-    update: {
-      packageId: isTrial ? null : packageId,
-      status,
-      trialStart: isTrial ? now : null,
-      trialEnd,
-      paidAt: status === "ACTIVE" ? now : null,
-    },
-    create: {
-      companyId,
-      packageId: isTrial ? null : packageId,
-      status,
-      trialStart: isTrial ? now : null,
-      trialEnd,
-      paidAt: status === "ACTIVE" ? now : null,
-    },
-    include: { package: true },
-  })
-
-  return toCompanyPackageInfo(cp)
-}
-
 export async function getCompanyInvoices(companyId: string): Promise<Invoice[]> {
   return prisma.invoice.findMany({
     where: { companyId },
     orderBy: { createdAt: "desc" },
-  })
-}
-
-export async function getAllCompaniesWithPackages() {
-  return prisma.company.findMany({
-    orderBy: { createdAt: "desc" },
-    include: {
-      companyPackage: { include: { package: true } },
-      _count: { select: { users: true, pools: true } },
-    },
   })
 }
 

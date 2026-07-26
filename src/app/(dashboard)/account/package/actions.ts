@@ -6,6 +6,7 @@ import { getCompanyId } from "@/lib/auth"
 import { simulatePayment, startTrial, getCompanyPackage } from "@/lib/db/packages"
 import { getPackageBySlug } from "@/lib/db/packages"
 import { getActiveProviders } from "@/lib/payment"
+import { getPaymentSettings } from "@/lib/db/payment-settings"
 import type { CompanyPackageInfo } from "@/lib/package-features"
 import type { PaymentProviderName } from "@/lib/payment/types"
 
@@ -35,6 +36,8 @@ export async function createPaymentAction(
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"
 
     const providers = await getActiveProviders()
+    const paymentSettings = await getPaymentSettings()
+    const devMode = paymentSettings.paymentDevMode
 
     if (providers.length === 0) {
       return { ok: false, error: "No payment method is enabled. Please contact support." }
@@ -49,7 +52,7 @@ export async function createPaymentAction(
         name: pkg.name,
         successUrl: `${baseUrl}/account/package?success=1`,
         cancelUrl: `${baseUrl}/account/package`,
-      })
+      }, devMode)
       return {
         ok: true,
         companyPackage: undefined,
@@ -76,7 +79,7 @@ export async function createPaymentAction(
       name: pkg.name,
       successUrl: `${baseUrl}/account/package?success=1`,
       cancelUrl: `${baseUrl}/account/package`,
-    })
+    }, devMode)
 
     return {
       ok: true,

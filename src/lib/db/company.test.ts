@@ -12,6 +12,8 @@ const {
   createCompany,
   deleteCompany,
   getCompanyStats,
+  getCompaniesPaginated,
+  COMPANIES_PAGE_SIZE,
 } = await import("@/lib/db/company");
 
 const companyId = "company-1";
@@ -146,5 +148,55 @@ describe("getCompanyStats", () => {
     const result = await getCompanyStats(companyId);
 
     expect(result.averageWaterHealth).toBeNull();
+  });
+});
+
+describe("getCompaniesPaginated", () => {
+  const mockCompanies = Array.from({ length: 3 }, (_, i) => ({
+    ...mockCompany,
+    id: `company-${i + 1}`,
+    name: `Company ${i + 1}`,
+    _count: { users: i, pools: i * 2 },
+  }));
+
+  it("returns paginated companies with counts", async () => {
+    prismaMock.company.findMany.mockResolvedValue(mockCompanies);
+    prismaMock.company.count.mockResolvedValue(15);
+
+    const result = await getCompaniesPaginated(2);
+
+    expect(result.companies).toHaveLength(3);
+    expect(result.total).toBe(15);
+    expect(prismaMock.company.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        skip: COMPANIES_PAGE_SIZE,
+        take: COMPANIES_PAGE_SIZE,
+        include: { _count: { select: { users: true, pools: true } } },
+      }),
+    );
+    expect(prismaMock.company.count).toHaveBeenCalledOnce();
+  });
+
+  it("defaults to page 1", async () => {
+    prismaMock.company.findMany.mockResolvedValue(mockCompanies);
+    prismaMock.company.count.mockResolvedValue(3);
+
+    const result = await getCompaniesPaginated();
+
+    expect(result.companies).toHaveLength(3);
+    expect(result.total).toBe(3);
+    expect(prismaMock.company.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({ skip: 0 }),
+    );
+  });
+
+  it("returns empty array when no companies exist", async () => {
+    prismaMock.company.findMany.mockResolvedValue([]);
+    prismaMock.company.count.mockResolvedValue(0);
+
+    const result = await getCompaniesPaginated(1);
+
+    expect(result.companies).toEqual([]);
+    expect(result.total).toBe(0);
   });
 });

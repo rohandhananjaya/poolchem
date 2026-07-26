@@ -1,9 +1,11 @@
 import { NextResponse } from "next/server"
 import { paypalProvider } from "@/lib/payment/paypal"
 import { handlePaymentSuccess } from "@/lib/db/packages"
+import { getPaymentSettings } from "@/lib/db/payment-settings"
 
 export async function POST(request: Request) {
   const rawBody = await request.text()
+  const { paymentDevMode } = await getPaymentSettings()
 
   try {
     const event = await paypalProvider.handleWebhook(rawBody, {
@@ -12,7 +14,7 @@ export async function POST(request: Request) {
       "paypal-transmission-time": request.headers.get("paypal-transmission-time") ?? undefined,
       "paypal-auth-algo": request.headers.get("paypal-auth-algo") ?? undefined,
       "paypal-cert-url": request.headers.get("paypal-cert-url") ?? undefined,
-    })
+    }, paymentDevMode)
 
     if (event.event === "subscription_activated" && event.companyId && event.packageSlug) {
       await handlePaymentSuccess(
