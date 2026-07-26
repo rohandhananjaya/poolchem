@@ -125,13 +125,12 @@ export default function ScanPage() {
   return (
     <div className="fixed inset-0 z-50 flex flex-col bg-black text-white">
       {/* Live camera stream fills the screen; object-cover avoids letterboxing. */}
-      <div
-        id={READER_ID}
-        className={cn(
-          "absolute inset-0 [&_video]:h-full [&_video]:w-full [&_video]:object-cover",
-          !cameraActive && "hidden",
-        )}
-      />
+      <div className={cn("absolute inset-0", !cameraActive && "hidden")}>
+        <div
+          id={READER_ID}
+          className="h-full w-full [&_video]:!h-full [&_video]:!w-full [&_video]:object-cover"
+        />
+      </div>
 
       {/* Top bar: title + cancel. */}
       <header className="relative z-10 flex items-center justify-between gap-3 p-4">
