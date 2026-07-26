@@ -35,7 +35,7 @@ describe("ImportPoolsDialog", () => {
     const btn = screen.getByRole("button", { name: /import/i });
     expect(btn).toBeInTheDocument();
     await user.click(btn);
-    expect(screen.getByText(/available on paid plans/i)).toBeInTheDocument();
+    expect(screen.getByText(/not available in this plan/i)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /see plans/i })).toBeInTheDocument();
   });
 

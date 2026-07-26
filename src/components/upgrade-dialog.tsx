@@ -41,7 +41,7 @@ export function UpgradeDialog({
         <DialogHeader>
           <DialogTitle>{featureName}</DialogTitle>
           <DialogDescription>
-            {featureName} is available on paid plans.
+            {featureName} is not available in this plan.
           </DialogDescription>
         </DialogHeader>
         <DialogFooter>
