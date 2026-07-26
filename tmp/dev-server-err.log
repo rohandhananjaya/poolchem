@@ -1,0 +1,52 @@
+⚠ Self-signed certificates are currently an experimental feature, use with caution.
+⨯ Error: aborted
+    at ignore-listed frames {
+  code: 'ECONNRESET',
+  digest: '4120145771'
+}
+[browser] Encountered a script tag while rendering React component. Scripts inside React components are never executed when rendering on the client. Consider using template tag instead (https://developer.mozilla.org/en-US/docs/Web/HTML/Element/template). 
+    at completeWork (file://D:/Developments/Projects/Web APPs/poolbench/app/.next/dev/static/chunks/node_modules_next_dist_compiled_react-dom_096_9a-._.js:6945:102)
+    at runWithFiberInDEV (file://D:/Developments/Projects/Web APPs/poolbench/app/.next/dev/static/chunks/node_modules_next_dist_compiled_react-dom_096_9a-._.js:965:74)
+    at completeUnitOfWork (file://D:/Developments/Projects/Web APPs/poolbench/app/.next/dev/static/chunks/node_modules_next_dist_compiled_react-dom_096_9a-._.js:9622:23)
+    at performUnitOfWork (file://D:/Developments/Projects/Web APPs/poolbench/app/.next/dev/static/chunks/node_modules_next_dist_compiled_react-dom_096_9a-._.js:9557:28)
+    at workLoopSync (file://D:/Developments/Projects/Web APPs/poolbench/app/.next/dev/static/chunks/node_modules_next_dist_compiled_react-dom_096_9a-._.js:9449:40)
+    at renderRootSync (file://D:/Developments/Projects/Web APPs/poolbench/app/.next/dev/static/chunks/node_modules_next_dist_compiled_react-dom_096_9a-._.js:9433:13)
+    at performWorkOnRoot (file://D:/Developments/Projects/Web APPs/poolbench/app/.next/dev/static/chunks/node_modules_next_dist_compiled_react-dom_096_9a-._.js:9061:186)
+    at performWorkOnRootViaSchedulerTask (file://D:/Developments/Projects/Web APPs/poolbench/app/.next/dev/static/chunks/node_modules_next_dist_compiled_react-dom_096_9a-._.js:10255:9)
+    at MessagePort.performWorkUntilDeadline (file://D:/Developments/Projects/Web APPs/poolbench/app/.next/dev/static/chunks/node_modules_next_dist_compiled_1amofcm._.js:2647:64) (file://D:/Developments/Projects/Web APPs/poolbench/app/.next/dev/static/chunks/node_modules_next_dist_compiled_react-dom_096_9a-._.js:6945:102)
+[browser] Uncaught TypeError: Failed to execute 'measure' on 'Performance': '​HomeownerDashboardPage' cannot have a negative time stamp.
+    at flushComponentPerformance (file://D:/Developments/Projects/Web APPs/poolbench/app/.next/dev/static/chunks/node_modules_next_dist_compiled_react-server-dom-turbopack_164kp-6._.js:2184:45)
+    at flushComponentPerformance (file://D:/Developments/Projects/Web APPs/poolbench/app/.next/dev/static/chunks/node_modules_next_dist_compiled_react-server-dom-turbopack_164kp-6._.js:2156:31)
+    at flushInitialRenderPerformance (file://D:/Developments/Projects/Web APPs/poolbench/app/.next/dev/static/chunks/node_modules_next_dist_compiled_react-server-dom-turbopack_164kp-6._.js:2346:74)
+[browser] Uncaught TypeError: Failed to execute 'measure' on 'Performance': '​PublicReportPage' cannot have a negative time stamp.
+    at flushComponentPerformance (file://D:/Developments/Projects/Web APPs/poolbench/app/.next/dev/static/chunks/node_modules_next_dist_compiled_react-server-dom-turbopack_164kp-6._.js:2184:45)
+    at flushComponentPerformance (file://D:/Developments/Projects/Web APPs/poolbench/app/.next/dev/static/chunks/node_modules_next_dist_compiled_react-server-dom-turbopack_164kp-6._.js:2156:31)
+    at flushInitialRenderPerformance (file://D:/Developments/Projects/Web APPs/poolbench/app/.next/dev/static/chunks/node_modules_next_dist_compiled_react-server-dom-turbopack_164kp-6._.js:2346:74)
+[browser] Encountered a script tag while rendering React component. Scripts inside React components are never executed when rendering on the client. Consider using template tag instead (https://developer.mozilla.org/en-US/docs/Web/HTML/Element/template). 
+    at completeWork (file://D:/Developments/Projects/Web APPs/poolbench/app/.next/dev/static/chunks/node_modules_next_dist_compiled_react-dom_096_9a-._.js:6945:102)
+    at runWithFiberInDEV (file://D:/Developments/Projects/Web APPs/poolbench/app/.next/dev/static/chunks/node_modules_next_dist_compiled_react-dom_096_9a-._.js:965:74)
+    at completeUnitOfWork (file://D:/Developments/Projects/Web APPs/poolbench/app/.next/dev/static/chunks/node_modules_next_dist_compiled_react-dom_096_9a-._.js:9622:23)
+    at performUnitOfWork (file://D:/Developments/Projects/Web APPs/poolbench/app/.next/dev/static/chunks/node_modules_next_dist_compiled_react-dom_096_9a-._.js:9557:28)
+    at workLoopConcurrentByScheduler (file://D:/Developments/Projects/Web APPs/poolbench/app/.next/dev/static/chunks/node_modules_next_dist_compiled_react-dom_096_9a-._.js:9551:58)
+    at renderRootConcurrent (file://D:/Developments/Projects/Web APPs/poolbench/app/.next/dev/static/chunks/node_modules_next_dist_compiled_react-dom_096_9a-._.js:9534:71)
+    at performWorkOnRoot (file://D:/Developments/Projects/Web APPs/poolbench/app/.next/dev/static/chunks/node_modules_next_dist_compiled_react-dom_096_9a-._.js:9061:150)
+    at performWorkOnRootViaSchedulerTask (file://D:/Developments/Projects/Web APPs/poolbench/app/.next/dev/static/chunks/node_modules_next_dist_compiled_react-dom_096_9a-._.js:10255:9)
+    at MessagePort.performWorkUntilDeadline (file://D:/Developments/Projects/Web APPs/poolbench/app/.next/dev/static/chunks/node_modules_next_dist_compiled_1amofcm._.js:2647:64) (file://D:/Developments/Projects/Web APPs/poolbench/app/.next/dev/static/chunks/node_modules_next_dist_compiled_react-dom_096_9a-._.js:6945:102)
+[browser] Uncaught TypeError: Failed to execute 'measure' on 'Performance': '​HomeownerDashboardPage' cannot have a negative time stamp.
+    at flushComponentPerformance (file://D:/Developments/Projects/Web APPs/poolbench/app/.next/dev/static/chunks/node_modules_next_dist_compiled_react-server-dom-turbopack_164kp-6._.js:2184:45)
+    at flushComponentPerformance (file://D:/Developments/Projects/Web APPs/poolbench/app/.next/dev/static/chunks/node_modules_next_dist_compiled_react-server-dom-turbopack_164kp-6._.js:2156:31)
+    at flushInitialRenderPerformance (file://D:/Developments/Projects/Web APPs/poolbench/app/.next/dev/static/chunks/node_modules_next_dist_compiled_react-server-dom-turbopack_164kp-6._.js:2346:74)
+[browser] Uncaught TypeError: Failed to execute 'measure' on 'Performance': '​PublicReportPage' cannot have a negative time stamp.
+    at flushComponentPerformance (file://D:/Developments/Projects/Web APPs/poolbench/app/.next/dev/static/chunks/node_modules_next_dist_compiled_react-server-dom-turbopack_164kp-6._.js:2184:45)
+    at flushComponentPerformance (file://D:/Developments/Projects/Web APPs/poolbench/app/.next/dev/static/chunks/node_modules_next_dist_compiled_react-server-dom-turbopack_164kp-6._.js:2156:31)
+    at flushInitialRenderPerformance (file://D:/Developments/Projects/Web APPs/poolbench/app/.next/dev/static/chunks/node_modules_next_dist_compiled_react-server-dom-turbopack_164kp-6._.js:2346:74)
+[browser] Encountered a script tag while rendering React component. Scripts inside React components are never executed when rendering on the client. Consider using template tag instead (https://developer.mozilla.org/en-US/docs/Web/HTML/Element/template). 
+    at completeWork (file://D:/Developments/Projects/Web APPs/poolbench/app/.next/dev/static/chunks/node_modules_next_dist_compiled_react-dom_096_9a-._.js:6945:102)
+    at runWithFiberInDEV (file://D:/Developments/Projects/Web APPs/poolbench/app/.next/dev/static/chunks/node_modules_next_dist_compiled_react-dom_096_9a-._.js:965:74)
+    at completeUnitOfWork (file://D:/Developments/Projects/Web APPs/poolbench/app/.next/dev/static/chunks/node_modules_next_dist_compiled_react-dom_096_9a-._.js:9622:23)
+    at performUnitOfWork (file://D:/Developments/Projects/Web APPs/poolbench/app/.next/dev/static/chunks/node_modules_next_dist_compiled_react-dom_096_9a-._.js:9557:28)
+    at workLoopConcurrentByScheduler (file://D:/Developments/Projects/Web APPs/poolbench/app/.next/dev/static/chunks/node_modules_next_dist_compiled_react-dom_096_9a-._.js:9551:58)
+    at renderRootConcurrent (file://D:/Developments/Projects/Web APPs/poolbench/app/.next/dev/static/chunks/node_modules_next_dist_compiled_react-dom_096_9a-._.js:9534:71)
+    at performWorkOnRoot (file://D:/Developments/Projects/Web APPs/poolbench/app/.next/dev/static/chunks/node_modules_next_dist_compiled_react-dom_096_9a-._.js:9061:150)
+    at performWorkOnRootViaSchedulerTask (file://D:/Developments/Projects/Web APPs/poolbench/app/.next/dev/static/chunks/node_modules_next_dist_compiled_react-dom_096_9a-._.js:10255:9)
+    at MessagePort.performWorkUntilDeadline (file://D:/Developments/Projects/Web APPs/poolbench/app/.next/dev/static/chunks/node_modules_next_dist_compiled_1amofcm._.js:2647:64) (file://D:/Developments/Projects/Web APPs/poolbench/app/.next/dev/static/chunks/node_modules_next_dist_compiled_react-dom_096_9a-._.js:6945:102)
