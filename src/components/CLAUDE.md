@@ -16,7 +16,7 @@ Feature components grouped by domain; shadcn/ui primitives in [ui/](ui/) (style 
 `WaterReadingInput` (test-strip scan button = "coming soon") · `ChemicalRecommendations` · `AddChemicalDialog` (manual chemical entry popup; `onAdd(VisitChemical)`) · `WaterHealthGauge` · `VisitNotes` (voice recording = "coming soon")
 
 ## reports/
-`ReportRow` · `ScoreSparkline` (inline SVG water-health trend)
+`ReportRow` · `ScoreSparkline` (inline SVG water-health trend) · `WaterHealthSummary` (gauge + at-a-glance callout, used by both report pages)
 
 ## schedule/
 `ScheduleVisitCard` · `ScheduleVisitForm` (Dialog popup with pool/date/tech-search; posts to `schedule/actions.ts`)

@@ -20,7 +20,7 @@ import {
   type ReportParameter,
 } from "@/lib/reports/generate-report"
 import { cn } from "@/lib/utils"
-import { WaterHealthGauge } from "@/components/visits/WaterHealthGauge"
+import { WaterHealthSummary } from "@/components/reports/WaterHealthSummary"
 import { ScoreSparkline } from "@/components/reports/ScoreSparkline"
 import { ReportActions } from "./report-actions"
 
@@ -190,47 +190,7 @@ export default async function ReportPage({
         </div>
 
         {/* Water health score */}
-        <section className="mt-6 flex flex-col items-center gap-5 rounded-xl bg-muted/40 p-5 sm:flex-row sm:justify-around print:bg-transparent">
-          {report.waterHealth ? (
-            <>
-              <WaterHealthGauge
-                score={report.waterHealth.score}
-                status={report.waterHealth.status}
-                lsi={report.lsi}
-              />
-              <div className="min-w-0 flex-1 space-y-2 sm:max-w-xs">
-                {report.waterHealth.issues.length === 0 ? (
-                  <p className="text-sm font-medium text-emerald-700 dark:text-emerald-300">
-                    All parameters are within their ideal range — your water is
-                    in great shape.
-                  </p>
-                ) : (
-                  <>
-                    <p className="text-sm font-medium text-foreground">
-                      {report.waterHealth.issues.length} item
-                      {report.waterHealth.issues.length > 1 ? "s" : ""} to keep an
-                      eye on:
-                    </p>
-                    <ul className="space-y-1">
-                      {report.waterHealth.issues.map((issue, i) => (
-                        <li
-                          key={i}
-                          className="text-xs text-muted-foreground"
-                        >
-                          {issue}
-                        </li>
-                      ))}
-                    </ul>
-                  </>
-                )}
-              </div>
-            </>
-          ) : (
-            <p className="text-sm text-muted-foreground">
-              No water readings were recorded for this visit.
-            </p>
-          )}
-        </section>
+        <WaterHealthSummary waterHealth={report.waterHealth} lsi={report.lsi} />
 
         {/* What we tested */}
         {report.parameters.length > 0 && (
