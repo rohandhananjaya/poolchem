@@ -60,6 +60,7 @@ export async function completeVisitAction(
     data.nextServiceDate ? new Date(`${data.nextServiceDate}T12:00:00`) : null,
   );
   revalidatePath(`/visits/${visitId}`);
+  revalidatePath("/schedule");
 }
 
 /**

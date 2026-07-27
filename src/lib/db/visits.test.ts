@@ -295,6 +295,129 @@ describe("completeVisit", () => {
     expect(result.waterHealth.score).toBe(100);
     expect(result.waterHealth.status).toBe("EXCELLENT");
   });
+
+  it("auto-schedules a DRAFT next visit inheriting the tech when nextServiceDate is set and none is upcoming", async () => {
+    const existingVisit = {
+      id: visitId,
+      techId,
+      pool: { ...mockPool, volume: 10_000 },
+    };
+    prismaMock.serviceVisit.findUnique.mockResolvedValue(existingVisit);
+
+    const nextServiceDate = new Date("2026-08-15T12:00:00");
+    const txMock = {
+      waterReading: { create: vi.fn().mockResolvedValue({}) },
+      chemicalAdded: { createMany: vi.fn() },
+      serviceVisit: {
+        update: vi.fn().mockResolvedValue({
+          id: visitId,
+          status: "COMPLETED",
+          pool: mockPool,
+          tech: mockTech,
+          waterReadings: [readings],
+          chemicalsAdded: [],
+        }),
+        findFirst: vi.fn().mockResolvedValue(null),
+        create: vi.fn().mockResolvedValue({}),
+      },
+    };
+    prismaMock.$transaction.mockImplementation(
+      (fn: (tx: typeof txMock) => unknown) => fn(txMock),
+    );
+
+    await completeVisit(visitId, readings, [], null, nextServiceDate);
+
+    expect(txMock.serviceVisit.findFirst).toHaveBeenCalledWith({
+      where: {
+        poolId,
+        id: { not: visitId },
+        scheduledAt: { gte: expect.any(Date) },
+        status: { not: "CANCELLED" },
+      },
+      select: { id: true },
+    });
+    expect(txMock.serviceVisit.create).toHaveBeenCalledWith({
+      data: {
+        status: "DRAFT",
+        poolId,
+        techId,
+        scheduledAt: nextServiceDate,
+      },
+    });
+  });
+
+  it("skips creating a next visit when one is already upcoming for the pool", async () => {
+    const existingVisit = {
+      id: visitId,
+      techId,
+      pool: { ...mockPool, volume: 10_000 },
+    };
+    prismaMock.serviceVisit.findUnique.mockResolvedValue(existingVisit);
+
+    const txMock = {
+      waterReading: { create: vi.fn().mockResolvedValue({}) },
+      chemicalAdded: { createMany: vi.fn() },
+      serviceVisit: {
+        update: vi.fn().mockResolvedValue({
+          id: visitId,
+          status: "COMPLETED",
+          pool: mockPool,
+          tech: mockTech,
+          waterReadings: [readings],
+          chemicalsAdded: [],
+        }),
+        findFirst: vi.fn().mockResolvedValue({ id: "other-visit" }),
+        create: vi.fn(),
+      },
+    };
+    prismaMock.$transaction.mockImplementation(
+      (fn: (tx: typeof txMock) => unknown) => fn(txMock),
+    );
+
+    await completeVisit(
+      visitId,
+      readings,
+      [],
+      null,
+      new Date("2026-08-15T12:00:00"),
+    );
+
+    expect(txMock.serviceVisit.create).not.toHaveBeenCalled();
+  });
+
+  it("does not attempt to schedule a next visit when nextServiceDate is not provided", async () => {
+    const existingVisit = {
+      id: visitId,
+      techId,
+      pool: { ...mockPool, volume: 10_000 },
+    };
+    prismaMock.serviceVisit.findUnique.mockResolvedValue(existingVisit);
+
+    const txMock = {
+      waterReading: { create: vi.fn().mockResolvedValue({}) },
+      chemicalAdded: { createMany: vi.fn() },
+      serviceVisit: {
+        update: vi.fn().mockResolvedValue({
+          id: visitId,
+          status: "COMPLETED",
+          pool: mockPool,
+          tech: mockTech,
+          waterReadings: [readings],
+          chemicalsAdded: [],
+        }),
+        findFirst: vi.fn(),
+        create: vi.fn(),
+      },
+    };
+    prismaMock.$transaction.mockImplementation(
+      (fn: (tx: typeof txMock) => unknown) => fn(txMock),
+    );
+
+    await completeVisit(visitId, readings, []);
+
+    expect(txMock.serviceVisit.findFirst).not.toHaveBeenCalled();
+    expect(txMock.serviceVisit.create).not.toHaveBeenCalled();
+  });
 });
 
 describe("saveDraftVisit", () => {

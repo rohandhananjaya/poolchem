@@ -16,7 +16,7 @@ import {
   type WaterReadingInput,
 } from "@/lib/pool-chemistry";
 import { prisma } from "@/lib/prisma";
-import { ServiceVisitStatus } from "@/generated/prisma/client";
+import { Prisma, ServiceVisitStatus } from "@/generated/prisma/client";
 
 /** A full set of water-test readings recorded during a visit. */
 export interface VisitReadings extends Omit<WaterReadingInput, "temperature"> {
@@ -125,12 +125,46 @@ export interface CompletedVisit {
 }
 
 /**
+ * Auto-schedules the pool's next visit from a manually-set next-service date,
+ * inheriting the completed visit's tech. Skips if a future non-cancelled
+ * visit already exists for the pool (other than the one just completed).
+ */
+async function scheduleNextVisit(
+  tx: Prisma.TransactionClient,
+  poolId: string,
+  techId: string | null,
+  scheduledAt: Date,
+  completedVisitId: string,
+): Promise<void> {
+  const upcoming = await tx.serviceVisit.findFirst({
+    where: {
+      poolId,
+      id: { not: completedVisitId },
+      scheduledAt: { gte: new Date() },
+      status: { not: ServiceVisitStatus.CANCELLED },
+    },
+    select: { id: true },
+  });
+  if (upcoming) return;
+
+  await tx.serviceVisit.create({
+    data: {
+      status: ServiceVisitStatus.DRAFT,
+      poolId,
+      techId,
+      scheduledAt,
+    },
+  });
+}
+
+/**
  * Completes a visit: persists its water readings and chemical additions, marks
  * it COMPLETED, then computes (but does not persist) chemical recommendations
  * and a water-health score from the readings for the caller to display.
  *
- * The write is transactional — readings, chemicals and the status change all
- * commit together or not at all.
+ * The write is transactional — readings, chemicals, the status change, and
+ * (when a next-service date is set) auto-scheduling the pool's next visit
+ * all commit together or not at all.
  *
  * @throws {Error} If the visit does not exist.
  */
@@ -159,7 +193,7 @@ export async function completeVisit(
       });
     }
 
-    return tx.serviceVisit.update({
+    const updated = await tx.serviceVisit.update({
       where: { id: visitId },
       data: {
         status: ServiceVisitStatus.COMPLETED,
@@ -175,6 +209,18 @@ export async function completeVisit(
         chemicalsAdded: true,
       },
     });
+
+    if (nextServiceDate) {
+      await scheduleNextVisit(
+        tx,
+        existing.pool.id,
+        existing.techId,
+        nextServiceDate,
+        visitId,
+      );
+    }
+
+    return updated;
   });
 
   return {
