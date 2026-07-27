@@ -70,17 +70,54 @@ async function paypalFetch(path: string, options: RequestInit = {}, devMode?: bo
   })
 }
 
+const PRODUCT_NAME = "Poolbench Subscription"
+
+async function ensureProduct(devMode?: boolean): Promise<string> {
+  const res = await paypalFetch(
+    "/v1/catalogs/products",
+    {
+      method: "POST",
+      body: JSON.stringify({
+        name: PRODUCT_NAME,
+        type: "SERVICE",
+        description: "Poolbench monthly subscription service",
+      }),
+    },
+    devMode,
+  )
+
+  if (res.ok) {
+    const product = await res.json()
+    return product.id
+  }
+
+  const listRes = await paypalFetch(
+    "/v1/catalogs/products?page_size=20&total_required=true",
+    {},
+    devMode,
+  )
+
+  if (listRes.ok) {
+    const list = await listRes.json()
+    const match = list.products?.find((p: { name: string }) => p.name === PRODUCT_NAME)
+    if (match) return match.id
+  }
+
+  throw new Error("PayPal product setup failed — create a product named 'Poolbench Subscription' in your PayPal dashboard or check credentials.")
+}
+
 export const paypalProvider: PaymentProvider = {
   name: "paypal",
 
   async createCheckout(params: CreateCheckoutParams, devMode?: boolean): Promise<CheckoutResult> {
     validatePayPalConfig(devMode)
     const unitAmount = (params.price / 100).toFixed(2)
+    const productId = await ensureProduct(devMode)
 
     const planRes = await paypalFetch("/v1/billing/plans", {
       method: "POST",
       body: JSON.stringify({
-        product_id: "POOLBENCH_SUBSCRIPTION",
+        product_id: productId,
         name: params.name,
         description: `${params.name} — monthly subscription`,
         billing_cycles: [

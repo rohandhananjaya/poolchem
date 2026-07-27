@@ -10,6 +10,7 @@ import type { Resolver } from "react-hook-form"
 import { toast } from "sonner"
 
 import { ERROR_MESSAGES } from "@/lib/errors"
+import { readingsSchema } from "@/lib/validation/visit-readings"
 
 import {
   getWaterHealthScore,
@@ -31,15 +32,6 @@ import {
   type VisitFormValues,
 } from "./actions"
 import type { VisitReadings, VisitChemical } from "@/lib/db/visits"
-
-const readingsSchema = z.object({
-  ph: z.number().min(0).max(14).optional(),
-  freeChlorine: z.number().min(0).max(20).optional(),
-  totalAlkalinity: z.number().min(0).max(500).optional(),
-  calciumHardness: z.number().min(0).max(1000).optional(),
-  cyanuricAcid: z.number().min(0).max(300).optional(),
-  temperature: z.number().min(32).max(110).optional(),
-})
 
 const formSchema = z.object({
   readings: readingsSchema,
@@ -116,7 +108,7 @@ export function VisitForm({
     handleSubmit,
     watch,
     setValue,
-    formState: { isSubmitting },
+    formState: { isSubmitting, errors },
   } = useForm<FormData>({
     resolver: zodResolver(formSchema) as unknown as Resolver<FormData>,
     defaultValues: {
@@ -124,7 +116,10 @@ export function VisitForm({
       notes: visit.notes ?? "",
     },
     disabled: completed || isOthersVisit,
+    mode: "onChange",
   })
+
+  const hasValidationErrors = Object.keys(errors.readings ?? {}).length > 0
 
   // react-hook-form mutates the nested `readings` object in place, so
   // `watch("readings")` returns a referentially-stable object across renders.
@@ -302,9 +297,19 @@ export function VisitForm({
   const handleSaveDraft = useCallback(async () => {
     setSaving("draft")
     try {
-      await handleSubmit(async (data) => {
-        await saveDraftAction(visit.id, buildPayload(data))
-      })()
+      let valid = true
+      await handleSubmit(
+        async (data) => {
+          await saveDraftAction(visit.id, buildPayload(data))
+        },
+        () => {
+          valid = false
+        },
+      )()
+      if (!valid) {
+        toast.error("Please fix the highlighted fields before saving.")
+        return
+      }
       toast.info("Visit saved as draft")
     } catch (e) {
       console.error("Save draft failed:", e)
@@ -321,9 +326,19 @@ export function VisitForm({
     }
     setSaving("complete")
     try {
-      await handleSubmit(async (data) => {
-        await completeVisitAction(visit.id, buildPayload(data))
-      })()
+      let valid = true
+      await handleSubmit(
+        async (data) => {
+          await completeVisitAction(visit.id, buildPayload(data))
+        },
+        () => {
+          valid = false
+        },
+      )()
+      if (!valid) {
+        toast.error("Please fix the highlighted fields before completing the report.")
+        return
+      }
       toast.success("Report sent successfully")
       router.push(`/visits/${visit.id}`)
     } catch (e) {
@@ -638,7 +653,7 @@ export function VisitForm({
               variant="outline"
               size="lg"
               onClick={handleSaveDraft}
-              disabled={isSubmitting || saving !== null}
+              disabled={isSubmitting || saving !== null || hasValidationErrors}
             >
               {saving === "draft" ? (
                 <Loader2 className="size-4 animate-spin" />
@@ -651,7 +666,12 @@ export function VisitForm({
               size="lg"
               className="bg-brand-600 text-white hover:bg-brand-900 disabled:opacity-50"
               onClick={handleComplete}
-              disabled={!allFieldsFilled || isSubmitting || saving !== null}
+              disabled={
+                !allFieldsFilled ||
+                isSubmitting ||
+                saving !== null ||
+                hasValidationErrors
+              }
             >
               {saving === "complete" ? (
                 <Loader2 className="size-4 animate-spin" />
@@ -659,10 +679,16 @@ export function VisitForm({
               Complete &amp; Send Report
             </Button>
           </div>
-          {!allFieldsFilled && (
-            <p className="text-xs text-muted-foreground">
-              Enter all 6 readings to complete the report
+          {hasValidationErrors ? (
+            <p className="text-xs text-destructive">
+              Fix the highlighted reading before saving
             </p>
+          ) : (
+            !allFieldsFilled && (
+              <p className="text-xs text-muted-foreground">
+                Enter all 6 readings to complete the report
+              </p>
+            )
           )}
         </div>
       )}

@@ -13,6 +13,7 @@ import {
   type VisitReadings,
   type VisitChemical,
 } from "@/lib/db/visits";
+import { readingsSchema } from "@/lib/validation/visit-readings";
 import { ServiceVisitStatus } from "@/generated/prisma/client";
 
 export interface VisitFormValues {
@@ -29,6 +30,7 @@ export async function saveDraftAction(
 ) {
   const user = await requireTech();
   if (!user.companyId) throw new Error("No company affiliation.");
+  readingsSchema.parse(data.readings);
 
   await assertVisitAccess(visitId, user.companyId, user.id);
   await saveDraftVisit(
@@ -47,6 +49,7 @@ export async function completeVisitAction(
 ) {
   const user = await requireTech();
   if (!user.companyId) throw new Error("No company affiliation.");
+  readingsSchema.parse(data.readings);
 
   await assertVisitAccess(visitId, user.companyId, user.id);
   await completeVisit(
