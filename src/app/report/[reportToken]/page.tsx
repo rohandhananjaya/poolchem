@@ -114,10 +114,10 @@ export default async function PublicReportPage({
   const qrSrc = await generateQRDataUrl(report.homeownerUrl)
 
   return (
-    <div className="mx-auto w-full max-w-3xl px-4 py-6 md:px-6 md:py-8 print:max-w-none print:px-0 print:py-0">
+    <div className="printable-report mx-auto w-full max-w-3xl px-4 py-6 md:px-6 md:py-8 print:max-w-none print:p-10">
       <article className="rounded-2xl border border-border bg-card p-6 text-card-foreground shadow-sm print:rounded-none print:border-0 print:p-0 print:shadow-none">
         {/* Company header */}
-        <header className="flex items-center justify-between gap-4 border-b border-border pb-5">
+        <header className="flex items-center justify-between gap-4 border-b border-border pb-5 print:break-inside-avoid print:break-after-avoid">
           <div className="flex items-center gap-3">
             {report.company.logo ? (
               <Image
@@ -143,14 +143,10 @@ export default async function PublicReportPage({
               </p>
             </div>
           </div>
-          <div className="hidden shrink-0 items-center gap-1.5 text-brand-600 sm:flex print:flex">
-            <Droplets className="size-5" />
-            <span className="text-sm font-semibold">Poolbench</span>
-          </div>
         </header>
 
         {/* Title */}
-        <div className="mt-5">
+        <div className="mt-5 print:mt-0 print:pt-5 print:break-inside-avoid">
           <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
             Service Report
           </p>
@@ -171,8 +167,8 @@ export default async function PublicReportPage({
 
         {/* What we tested */}
         {report.parameters.length > 0 && (
-          <section className="mt-6">
-            <h2 className="text-sm font-semibold text-foreground">
+          <section className="mt-6 print:mt-0 print:pt-10">
+            <h2 className="text-sm font-semibold text-foreground print:break-after-avoid">
               What We Tested
             </h2>
             <div className="mt-2 overflow-x-auto">
@@ -196,8 +192,8 @@ export default async function PublicReportPage({
         )}
 
         {/* Chemicals added */}
-        <section className="mt-6">
-          <h2 className="text-sm font-semibold text-foreground">
+        <section className="mt-6 print:mt-0 print:pt-10">
+          <h2 className="text-sm font-semibold text-foreground print:break-after-avoid">
             Chemicals Added
           </h2>
           {report.chemicalsAdded.length === 0 ? (
@@ -209,7 +205,7 @@ export default async function PublicReportPage({
               {report.chemicalsAdded.map((chem, i) => (
                 <li
                   key={i}
-                  className="flex items-center justify-between gap-3 rounded-lg border border-border px-3 py-2"
+                  className="flex items-center justify-between gap-3 rounded-lg border border-border px-3 py-2 print:break-inside-avoid"
                 >
                   <span className="flex items-center gap-2 text-sm font-medium text-foreground">
                     <CheckCircle2 className="size-4 text-emerald-500" />
@@ -228,11 +224,11 @@ export default async function PublicReportPage({
 
         {/* Technician notes */}
         {report.visit.notes?.trim() && (
-          <section className="mt-6">
-            <h2 className="text-sm font-semibold text-foreground">
+          <section className="mt-6 print:mt-0 print:pt-10">
+            <h2 className="text-sm font-semibold text-foreground print:break-after-avoid">
               Notes From Your Technician
             </h2>
-            <blockquote className="mt-2 flex gap-3 rounded-lg border-l-4 border-brand-500 bg-muted/40 p-4 print:bg-transparent">
+            <blockquote className="mt-2 flex gap-3 rounded-lg border-l-4 border-brand-500 bg-muted/40 p-4 print:break-inside-avoid print:bg-transparent">
               <Quote className="size-4 shrink-0 text-brand-500" />
               <p className="text-sm italic text-foreground">
                 {report.visit.notes}
@@ -242,8 +238,8 @@ export default async function PublicReportPage({
         )}
 
         {/* Trend */}
-        <section className="mt-6">
-          <h2 className="text-sm font-semibold text-foreground">
+        <section className="mt-6 print:mt-0 print:pt-10 print:break-inside-avoid">
+          <h2 className="text-sm font-semibold text-foreground print:break-after-avoid">
             Water Health Trend
           </h2>
           <p className="text-xs text-muted-foreground">
@@ -255,12 +251,14 @@ export default async function PublicReportPage({
         </section>
 
         {/* Footer */}
-        <footer className="mt-8 flex flex-col items-start justify-between gap-4 border-t border-border pt-5 sm:flex-row sm:items-center">
+        <footer className="mt-8 flex flex-col items-start justify-between gap-4 border-t border-border pt-5 sm:flex-row sm:items-center print:mt-0 print:pt-12 print:break-inside-avoid">
           {nextServiceDate && (
-            <div className="flex items-center gap-2 text-sm">
-              <CalendarClock className="size-4 text-brand-600" />
-              <span className="text-muted-foreground">Next service:</span>
-              <span className="font-semibold text-foreground">
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
+              <span className="flex items-center gap-2 whitespace-nowrap text-muted-foreground">
+                <CalendarClock className="size-4 shrink-0 text-brand-600" />
+                Next service:
+              </span>
+              <span className="whitespace-nowrap font-semibold text-foreground">
                 {format(nextServiceDate, "EEEE, MMMM d, yyyy")}
               </span>
             </div>
@@ -287,7 +285,7 @@ export default async function PublicReportPage({
       </article>
 
       {/* Footer branding */}
-      <footer className="mt-6 flex items-center justify-center gap-2 text-xs text-muted-foreground print:hidden">
+      <footer className="mt-6 flex items-center justify-center gap-2 text-xs text-muted-foreground">
         <Droplets className="size-3 text-brand-500" />
         Powered by Poolbench
       </footer>

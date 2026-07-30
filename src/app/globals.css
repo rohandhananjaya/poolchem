@@ -231,7 +231,31 @@
   }
 
   @page {
-    margin: 1.5cm;
+    size: A4;
+    /* Slightly deeper top/bottom margin than sides — breathing room around
+       the report header and footer without wasting the page's width. This
+       only takes effect when the browser's print-dialog margin setting is
+       "Default" — it can't override a user's "None"/"Custom" choice there,
+       which is why the content padding below doesn't depend on it. */
+    margin: 2cm 1.8cm;
+  }
+
+  /* Full-page border frame for printable reports. `position: fixed` reprints
+     on every physical sheet in Chrome/Firefox, so a multi-page report gets a
+     border on each page rather than just once around the whole flow. Scoped
+     to `.printable-report` so unrelated pages aren't affected.
+     Inset a small fixed amount rather than 0: a fixed-position element's
+     containing block is the full paper box, not the `@page` content area, so
+     `inset: 0` draws the border right at the physical paper edge — inside
+     most printers' unprintable margin, and clipped/invisible unless the
+     browser's own print-margin setting happens to push it inward. Insetting
+     here keeps the border reliably visible regardless of that setting. */
+  .printable-report::before {
+    content: "";
+    position: fixed;
+    inset: 0.5cm;
+    border: 1.25pt solid #18181b;
+    pointer-events: none;
   }
 
   body {
@@ -244,5 +268,24 @@
     font-size: 14pt;
     font-weight: 400;
     line-height: 1.5;
+  }
+
+  /* The gauge's wave fill loops forever on screen; frozen for print so a
+     static capture never lands mid-wave (same class of bug as the sparkline
+     animation fix — a moving element caught mid-frame by a static snapshot). */
+  .animate-wave-flow {
+    animation: none !important;
+  }
+
+  /* Repeat the table header on every page a reading table spans, and never
+     split a single row across a page break (each section's own break
+     protection is applied via `print:break-inside-avoid` at the component
+     level — see the report pages and WaterHealthSummary). */
+  thead {
+    display: table-header-group;
+  }
+
+  tr {
+    break-inside: avoid;
   }
 }

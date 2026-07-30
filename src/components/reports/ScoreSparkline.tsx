@@ -158,8 +158,7 @@ export function ScoreSparkline({ points }: ScoreSparklineProps) {
             strokeWidth={2.5}
             strokeLinecap="round"
             strokeLinejoin="round"
-            isAnimationActive
-            animationDuration={800}
+            isAnimationActive={false}
             dot={({ cx, cy, index, payload }) => {
               if (typeof cx !== "number" || typeof cy !== "number") return null
               const point = (payload ?? points[index]) as ReportScorePoint | undefined

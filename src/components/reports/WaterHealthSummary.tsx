@@ -12,7 +12,7 @@ export interface WaterHealthSummaryProps {
 /** The gauge + at-a-glance callout shown at the top of a service report. */
 export function WaterHealthSummary({ waterHealth, lsi }: WaterHealthSummaryProps) {
   return (
-    <section className="mt-6 flex flex-col items-center gap-5 rounded-xl bg-muted/40 p-5 sm:flex-row sm:justify-center sm:gap-8 print:bg-transparent">
+    <section className="mt-6 flex flex-col items-center gap-5 rounded-xl bg-muted/40 p-5 sm:flex-row sm:justify-center sm:gap-8 print:mt-0 print:pt-10 print:break-inside-avoid print:bg-transparent">
       {waterHealth ? (
         <>
           <WaterHealthGauge
