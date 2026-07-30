@@ -8,8 +8,10 @@ import {
   CalendarClock,
   CheckCircle2,
   Droplets,
+  MapPin,
   Minus,
   Quote,
+  User,
 } from "lucide-react"
 
 import { requireTech } from "@/lib/auth"
@@ -37,14 +39,6 @@ export async function generateMetadata({
   return {
     title: `Service Report — ${report.pool.name} — ${format(new Date(report.visit.date), "MMM d, yyyy")}`,
   }
-}
-
-/** Returns the first character(s) usable as a logo fallback. */
-function initials(value: string): string {
-  const parts = value.trim().split(/\s+/).filter(Boolean)
-  if (parts.length === 0) return "?"
-  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase()
-  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
 }
 
 const STATUS_META: Record<
@@ -142,7 +136,7 @@ export default async function ReportPage({
         {/* Company header */}
         <header className="flex items-center justify-between gap-4 border-b border-border pb-5 print:break-inside-avoid print:break-after-avoid">
           <div className="flex items-center gap-3">
-            {report.company.logo ? (
+            {report.company.logo && (
               <Image
                 src={report.company.logo}
                 alt={report.company.name}
@@ -150,17 +144,13 @@ export default async function ReportPage({
                 height={48}
                 className="size-12 rounded-xl object-cover"
               />
-            ) : (
-              <div className="flex size-12 items-center justify-center rounded-xl bg-brand-600 text-base font-semibold text-white">
-                {initials(report.company.name)}
-              </div>
             )}
             <div className="min-w-0">
               <p className="truncate text-base font-semibold text-foreground">
                 {report.company.name}
               </p>
               <p className="truncate text-xs text-muted-foreground">
-                {[report.company.phone, report.company.email]
+                {[report.company.phone, report.company.address]
                   .filter(Boolean)
                   .join(" · ") || "Professional pool service"}
               </p>
@@ -176,13 +166,26 @@ export default async function ReportPage({
           <h1 className="mt-1 text-2xl font-bold tracking-tight text-foreground">
             {report.pool.name}
           </h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            {format(visitDate, "EEEE, MMMM d, yyyy")}
-            {report.pool.address ? ` · ${report.pool.address}` : ""}
-            {" · "}
-            {report.pool.volume.toLocaleString()} gal · Serviced by{" "}
-            {report.tech.name}
-          </p>
+          <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-sm text-muted-foreground">
+            <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
+              <CalendarClock className="size-4 shrink-0 text-brand-600" />
+              {format(visitDate, "EEEE, MMMM d, yyyy")}
+            </span>
+            {report.pool.address && (
+              <span className="inline-flex items-center gap-1.5">
+                <MapPin className="size-4 shrink-0 text-brand-600" />
+                {report.pool.address}
+              </span>
+            )}
+            <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
+              <Droplets className="size-4 shrink-0 text-brand-600" />
+              {report.pool.volume.toLocaleString()} gal
+            </span>
+            <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
+              <User className="size-4 shrink-0 text-brand-600" />
+              {report.tech.name}
+            </span>
+          </div>
         </div>
 
         {/* Water health score */}
