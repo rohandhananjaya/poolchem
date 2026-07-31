@@ -90,4 +90,29 @@ export const prismaMock = {
     deleteMany: vi.fn(),
     count: vi.fn(),
   },
+  companyPackage: {
+    findUnique: vi.fn(),
+    update: vi.fn(),
+    updateMany: vi.fn(),
+    upsert: vi.fn(),
+    count: vi.fn(),
+  },
+  package: {
+    findMany: vi.fn(),
+    findFirst: vi.fn(),
+    findUnique: vi.fn(),
+    create: vi.fn(),
+    update: vi.fn(),
+    delete: vi.fn(),
+  },
+  invoice: {
+    findMany: vi.fn(),
+    create: vi.fn(),
+  },
+  platformSettings: {
+    upsert: vi.fn(),
+  },
+  systemLog: {
+    create: vi.fn(),
+  },
 };

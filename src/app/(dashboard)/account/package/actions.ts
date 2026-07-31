@@ -3,7 +3,18 @@
 import { revalidatePath } from "next/cache"
 
 import { getCompanyId } from "@/lib/auth"
-import { simulatePayment, startTrial, getCompanyPackage, handlePaymentSuccess } from "@/lib/db/packages"
+import {
+  simulatePayment,
+  startTrial,
+  getCompanyPackage,
+  handlePaymentSuccess,
+  upgradeCompanyPackage,
+  scheduleDowngrade,
+  cancelPendingDowngrade,
+  simulateSwitch,
+  getCheckoutPlanRef,
+  confirmPendingUpgrade,
+} from "@/lib/db/packages"
 import { getPackageBySlug } from "@/lib/db/packages"
 import { getActiveProviders, getProvider } from "@/lib/payment"
 import { getPaymentSettings } from "@/lib/db/payment-settings"
@@ -14,6 +25,17 @@ export interface PaymentActionState {
   ok: boolean
   error?: string
   companyPackage?: CompanyPackageInfo
+  redirectUrl?: string
+}
+
+export interface SwitchPackageActionState {
+  ok: boolean
+  error?: string
+  companyPackage?: CompanyPackageInfo
+  kind?: "upgraded" | "downgrade_scheduled"
+  effectiveAt?: string
+  prorationAmount?: number
+  /** Set when PayPal requires the subscriber to re-approve the plan change — redirect the browser here. */
   redirectUrl?: string
 }
 
@@ -45,6 +67,7 @@ export async function createPaymentAction(
 
     if (providers.length === 1 && !providerName) {
       const activeProvider = providers[0]
+      const planRef = await getCheckoutPlanRef(packageSlug, activeProvider.name, devMode)
       const result = await activeProvider.createCheckout({
         companyId,
         packageSlug,
@@ -52,6 +75,7 @@ export async function createPaymentAction(
         name: pkg.name,
         successUrl: `${baseUrl}/account/package?success=1`,
         cancelUrl: `${baseUrl}/account/package`,
+        planRef,
       }, devMode)
       return {
         ok: true,
@@ -72,6 +96,7 @@ export async function createPaymentAction(
       return { ok: false, error: `Payment provider "${providerName}" is not available.` }
     }
 
+    const planRef = await getCheckoutPlanRef(packageSlug, chosenProvider.name, devMode)
     const result = await chosenProvider.createCheckout({
       companyId,
       packageSlug,
@@ -79,6 +104,7 @@ export async function createPaymentAction(
       name: pkg.name,
       successUrl: `${baseUrl}/account/package?success=1`,
       cancelUrl: `${baseUrl}/account/package`,
+      planRef,
     }, devMode)
 
     return {
@@ -163,6 +189,25 @@ export async function confirmPayPalSubscriptionAction(
   }
 }
 
+/**
+ * Completes an upgrade PayPal sent the subscriber off to re-approve, called
+ * from page.tsx's render when they're redirected back with `?paypal_upgrade=1`
+ * — same "run it during render, no revalidatePath" reasoning as
+ * `confirmPayPalSubscriptionAction` above.
+ */
+export async function confirmPayPalUpgradeAction(packageSlug: string): Promise<SwitchPackageActionState> {
+  try {
+    const companyId = await getCompanyId()
+    if (!companyId) return { ok: false, error: "No company found." }
+
+    const companyPackage = await confirmPendingUpgrade(companyId, packageSlug)
+    return { ok: true, companyPackage, kind: "upgraded" }
+  } catch (error) {
+    console.error(`Failed to confirm PayPal upgrade to "${packageSlug}":`, error)
+    return { ok: false, error: error instanceof Error ? error.message : "Could not confirm the upgrade." }
+  }
+}
+
 export async function payNowAction(
   _prev: PaymentActionState,
   formData: FormData,
@@ -219,4 +264,112 @@ export async function getPaymentProvidersAction(): Promise<{
 }> {
   const { getPaymentSettings } = await import("@/lib/db/payment-settings")
   return getPaymentSettings()
+}
+
+/**
+ * Switches a company already on an active paid plan to a different one.
+ * Upgrades (higher price) apply immediately with provider-native proration.
+ * Downgrades (lower price) are scheduled for the end of the current paid
+ * period — the company keeps its current plan's features until then.
+ */
+export async function switchPackageAction(
+  _prev: SwitchPackageActionState,
+  formData: FormData,
+): Promise<SwitchPackageActionState> {
+  try {
+    const companyId = await getCompanyId()
+    if (!companyId) return { ok: false, error: "No company found." }
+
+    const targetSlug = formData.get("package") as string
+    if (!targetSlug) return { ok: false, error: "No package selected." }
+
+    const current = await getCompanyPackage(companyId)
+    if (!current || current.status !== "ACTIVE" || !current.package) {
+      return { ok: false, error: "You don't have an active plan to switch from." }
+    }
+
+    const target = await getPackageBySlug(targetSlug)
+    if (!target) return { ok: false, error: "Package not found." }
+    if (target.id === current.package.id) {
+      return { ok: false, error: "You're already on this plan." }
+    }
+
+    if (target.price > current.package.price) {
+      const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://localhost:3000"
+      const outcome = await upgradeCompanyPackage(companyId, targetSlug, {
+        successUrl: `${baseUrl}/account/package?paypal_upgrade=1&package=${targetSlug}`,
+        cancelUrl: `${baseUrl}/account/package`,
+      })
+
+      if (outcome.status === "requires_approval") {
+        return { ok: true, redirectUrl: outcome.approvalUrl }
+      }
+
+      revalidatePath("/account/package")
+      return {
+        ok: true,
+        companyPackage: outcome.companyPackage,
+        kind: "upgraded",
+        prorationAmount: outcome.prorationAmount,
+      }
+    }
+
+    const { companyPackage, effectiveAt } = await scheduleDowngrade(companyId, targetSlug)
+    revalidatePath("/account/package")
+    return {
+      ok: true,
+      companyPackage,
+      kind: "downgrade_scheduled",
+      effectiveAt: effectiveAt.toISOString(),
+    }
+  } catch (error) {
+    return { ok: false, error: error instanceof Error ? error.message : "Could not switch plans." }
+  }
+}
+
+/** Cancels a downgrade that's scheduled but hasn't taken effect yet. */
+export async function cancelScheduledDowngradeAction(): Promise<SwitchPackageActionState> {
+  try {
+    const companyId = await getCompanyId()
+    if (!companyId) return { ok: false, error: "No company found." }
+
+    const companyPackage = await cancelPendingDowngrade(companyId)
+    revalidatePath("/account/package")
+    return { ok: true, companyPackage }
+  } catch (error) {
+    return {
+      ok: false,
+      error: error instanceof Error ? error.message : "Could not cancel the scheduled change.",
+    }
+  }
+}
+
+/**
+ * Dev/no-real-provider stand-in for `switchPackageAction`, mirroring how
+ * `payNowAction` stands in for `createPaymentAction`. Not wired to any UI
+ * button today (same as `payNowAction`) — available for local/manual testing
+ * of the switch flow without real PayPal/Stripe credentials.
+ */
+export async function simulateSwitchAction(
+  _prev: SwitchPackageActionState,
+  formData: FormData,
+): Promise<SwitchPackageActionState> {
+  try {
+    const companyId = await getCompanyId()
+    if (!companyId) return { ok: false, error: "No company found." }
+
+    const targetSlug = formData.get("package") as string
+    if (!targetSlug) return { ok: false, error: "No package selected." }
+
+    const result = await simulateSwitch(companyId, targetSlug)
+    revalidatePath("/account/package")
+    return {
+      ok: true,
+      companyPackage: result.companyPackage,
+      kind: result.kind,
+      effectiveAt: result.effectiveAt?.toISOString(),
+    }
+  } catch (error) {
+    return { ok: false, error: error instanceof Error ? error.message : "Could not switch plans." }
+  }
 }

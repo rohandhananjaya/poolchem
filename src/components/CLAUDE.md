@@ -31,7 +31,7 @@ Feature components grouped by domain; shadcn/ui primitives in [ui/](ui/) (style 
 `share-button` (copies/shares the public pool link)
 
 ## package/
-`PackageBadge` / `PackageBadgeLink` (status pill: Trial/Active/Expired/Cancelled, colored; `package` may be `null` while on trial with no plan chosen) · `PayNowDialog` (simulated payment dialog, no real billing) · `TrialBanner` (dismissible-by-state urgency banner, rendered once in `(dashboard)/layout.tsx`)
+`PackageBadge` / `PackageBadgeLink` (status pill: Trial/Active/Expired/Cancelled, colored; `package` may be `null` while on trial with no plan chosen) · `PayNowDialog` (first-time subscribe checkout dialog) · `SwitchPlanDialog` (shown instead of `PayNowDialog` once already on an active paid plan; upgrade = immediate + provider-prorated, downgrade = scheduled for period-end) · `PendingDowngradeNotice` (inline banner + cancel button shown when a downgrade is scheduled) · `TrialBanner` (dismissible-by-state urgency banner, rendered once in `(dashboard)/layout.tsx`)
 
 ## layout/
 `PublicHeader` (shared public site header; accepts `children` for custom nav/actions slot; default nav is pathname-aware via `PublicNavLinks`) · `PublicNavLinks` (client component; reads `usePathname()` to serve page-specific nav links) · `PublicFooter` (shared public site footer; `showSocial` toggles social icons)

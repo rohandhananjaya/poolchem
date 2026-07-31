@@ -71,6 +71,24 @@ export async function getCompanyById(
 }
 
 /**
+ * Finds the company whose currently-recorded subscription id matches, for a
+ * given provider. Returns `null` if no company currently has this id active —
+ * e.g. it was already superseded by a plan switch before an async cancellation
+ * webhook for the old id arrives, which is a benign, ignorable miss.
+ */
+export async function getCompanyBySubscriptionId(
+  provider: "stripe" | "paypal",
+  subscriptionId: string,
+): Promise<Company | null> {
+  return prisma.company.findFirst({
+    where:
+      provider === "stripe"
+        ? { stripeSubscriptionId: subscriptionId }
+        : { paypalSubscriptionId: subscriptionId },
+  });
+}
+
+/**
  * Updates a company's profile.
  *
  * @throws {Error} If no company with `companyId` exists.

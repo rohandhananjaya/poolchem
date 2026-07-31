@@ -7,7 +7,9 @@ import { getPaymentSettings } from "@/lib/db/payment-settings"
 import { Shell } from "@/components/ui/shell"
 import { PackageBadge } from "@/components/package/package-badge"
 import { PayNowDialog } from "@/components/package/pay-now-dialog"
-import { confirmPayPalSubscriptionAction } from "./actions"
+import { SwitchPlanDialog } from "@/components/package/switch-plan-dialog"
+import { PendingDowngradeNotice } from "@/components/package/pending-downgrade-notice"
+import { confirmPayPalSubscriptionAction, confirmPayPalUpgradeAction } from "./actions"
 import {
   isTrialExpired,
   formatPrice,
@@ -21,7 +23,14 @@ export const dynamic = "force-dynamic"
 export default async function AccountPackagePage({
   searchParams,
 }: {
-  searchParams: Promise<{ success?: string; cancelled?: string; subscription_id?: string }>
+  searchParams: Promise<{
+    success?: string
+    cancelled?: string
+    subscription_id?: string
+    paypal_upgrade?: string
+    package?: string
+    upgraded?: string
+  }>
 }) {
   await requireAuth()
   const user = await getCurrentUser()
@@ -29,6 +38,7 @@ export default async function AccountPackagePage({
 
   const params = await searchParams
   const justPaid = params.success === "1"
+  const justUpgraded = params.paypal_upgrade === "1" && !!params.package
 
   let activationPending = false
   if (justPaid && params.subscription_id) {
@@ -40,6 +50,16 @@ export default async function AccountPackagePage({
       redirect("/account/package?success=1")
     }
     activationPending = true
+  }
+
+  let upgradeConfirmError: string | undefined
+  if (justUpgraded) {
+    const result = await confirmPayPalUpgradeAction(params.package!)
+    if (result.ok) {
+      // Same "drop the one-time query params" reasoning as the checkout return above.
+      redirect("/account/package?upgraded=1")
+    }
+    upgradeConfirmError = result.error
   }
 
   const [companyPackage, allPackages, paymentSettings] = await Promise.all([
@@ -54,6 +74,7 @@ export default async function AccountPackagePage({
   const featureMatrix = getPlanFeatureMatrix(allPackages)
   const sortedPackages = [...allPackages].sort((a, b) => a.price - b.price)
   const onTrial = companyPackage.status === "TRIAL" && !expired
+  const isActivePaid = companyPackage.status === "ACTIVE" && !!companyPackage.package
 
   return (
     <Shell title="Your Plan">
@@ -69,6 +90,18 @@ export default async function AccountPackagePage({
         {params.cancelled === "1" && (
           <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-300">
             Payment was cancelled. No charges were made.
+          </div>
+        )}
+
+        {params.upgraded === "1" && (
+          <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-300">
+            Plan upgraded! Your new plan is now active.
+          </div>
+        )}
+
+        {upgradeConfirmError && (
+          <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-300">
+            {upgradeConfirmError}
           </div>
         )}
 
@@ -106,6 +139,13 @@ export default async function AccountPackagePage({
               <Clock className="size-4" />
               Your trial has ended. Choose a plan below to continue using Poolbench.
             </div>
+          )}
+
+          {companyPackage.pendingPackage && companyPackage.pendingEffectiveAt && (
+            <PendingDowngradeNotice
+              packageName={companyPackage.pendingPackage.name}
+              effectiveAt={companyPackage.pendingEffectiveAt}
+            />
           )}
 
           {onTrial ? (
@@ -190,6 +230,12 @@ export default async function AccountPackagePage({
                       <p className="text-center text-xs text-muted-foreground">
                         Current plan
                       </p>
+                    ) : isActivePaid ? (
+                      <SwitchPlanDialog
+                        pkg={pkg}
+                        currentPrice={companyPackage.package!.price}
+                        currentName={companyPackage.package!.name}
+                      />
                     ) : (
                       <PayNowDialog
                         pkg={pkg}

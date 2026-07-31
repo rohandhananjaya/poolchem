@@ -29,6 +29,9 @@ export interface CompanyPackageInfo {
   trialStart: Date | null
   trialEnd: Date | null
   paidAt: Date | null
+  /** Set while a downgrade is scheduled but hasn't taken effect yet. */
+  pendingPackage: PackageInfo | null
+  pendingEffectiveAt: Date | null
 }
 
 export function parseFeatures(json: string): PackageFeatures {
@@ -47,6 +50,8 @@ export function checkFeatureAccess(
   if (companyPackage.status === "TRIAL" && !isTrialExpired(companyPackage)) {
     return true
   }
+
+  if (companyPackage.status !== "ACTIVE") return false
 
   if (!companyPackage.package) return false
 
@@ -73,6 +78,8 @@ export function hasPoolCapacity(
   if (companyPackage.status === "TRIAL" && !isTrialExpired(companyPackage)) {
     return true
   }
+
+  if (companyPackage.status !== "ACTIVE") return false
 
   if (!companyPackage.package) return false
 

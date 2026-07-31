@@ -26,7 +26,7 @@ This section previously listed a `(public)/` route group (blog, about-us, servic
 - `schedule/` — upcoming visits; `getScheduleData`. `actions.ts`: `scheduleVisitAction`
 - `reports/` — water-health report history; `getCompanyReportData`
 - `settings/` — account + company settings. `actions.ts`: `updateAccountAction`, `updateCompanyAction`
-- `account/package/` — tenant's own plan page (trial status, feature checklist, compare/pay plans). `actions.ts`: `payNowAction`, `startTrialAction`, `getCurrentPackageAction`
+- `account/package/` — tenant's own plan page (trial status, feature checklist, compare/pay/switch plans). `actions.ts`: `createPaymentAction`/`confirmPayPalSubscriptionAction` (first-time subscribe), `switchPackageAction`/`cancelScheduledDowngradeAction` (upgrade immediately or schedule a downgrade for period-end, once already on a paid plan), `confirmPayPalUpgradeAction` (completes an upgrade PayPal sent the subscriber off to re-approve — called from `page.tsx`'s render on the `?paypal_upgrade=1&package=` return leg, same pattern as `confirmPayPalSubscriptionAction`), `payNowAction`/`simulateSwitchAction` (dev/no-provider stand-ins, not wired to any button), `startTrialAction`, `getCurrentPackageAction`
 - `account/api-keys/` — OWNER-only API key management (`api_access` plan feature), gated the same way as `custom_branding`/`csv_import`. `page.tsx` → `getApiKeysByCompany` + `<ApiKeysManager>`. `actions.ts`: `createApiKeyAction` (re-checks `api_access`, returns the plaintext secret once), `revokeApiKeyAction`
 
 ### admin/ — SUPER_ADMIN-only (each page calls `requireSuperAdmin()` itself; no shared `admin/layout.tsx` gate)

@@ -1,4 +1,14 @@
-import type { PaymentProvider, CreateCheckoutParams, CheckoutResult, WebhookEvent, WebhookHeaders, SubscriptionStatus } from "./types"
+import type {
+  PaymentProvider,
+  CreateCheckoutParams,
+  CheckoutResult,
+  WebhookEvent,
+  WebhookHeaders,
+  SubscriptionStatus,
+  PlanRefParams,
+  ReviseSubscriptionParams,
+  ReviseSubscriptionResult,
+} from "./types"
 
 interface PayPalAccessToken {
   access_token: string
@@ -73,6 +83,21 @@ async function paypalFetch(path: string, options: RequestInit = {}, devMode?: bo
 const PRODUCT_NAME = "Poolbench Subscription"
 
 async function ensureProduct(devMode?: boolean): Promise<string> {
+  // PayPal has no dedup-by-name — POSTing again would mint a second product,
+  // and plans on different products can't be revised into one another
+  // (PLAN_PRODUCT_NOT_COMPATIBLE). Always look for the existing one first.
+  const listRes = await paypalFetch(
+    "/v1/catalogs/products?page_size=20&total_required=true",
+    {},
+    devMode,
+  )
+
+  if (listRes.ok) {
+    const list = await listRes.json()
+    const match = list.products?.find((p: { name: string }) => p.name === PRODUCT_NAME)
+    if (match) return match.id
+  }
+
   const res = await paypalFetch(
     "/v1/catalogs/products",
     {
@@ -89,18 +114,6 @@ async function ensureProduct(devMode?: boolean): Promise<string> {
   if (res.ok) {
     const product = await res.json()
     return product.id
-  }
-
-  const listRes = await paypalFetch(
-    "/v1/catalogs/products?page_size=20&total_required=true",
-    {},
-    devMode,
-  )
-
-  if (listRes.ok) {
-    const list = await listRes.json()
-    const match = list.products?.find((p: { name: string }) => p.name === PRODUCT_NAME)
-    if (match) return match.id
   }
 
   throw new Error("PayPal product setup failed — create a product named 'Poolbench Subscription' in your PayPal dashboard or check credentials.")
@@ -122,54 +135,67 @@ function decodeCustomId(customId: string | undefined): { companyId?: string; pac
   return { companyId, packageSlug }
 }
 
+/**
+ * Creates a fresh PayPal Billing Plan for a package's price. Extracted so both
+ * `createCheckout` (first-time subscribe) and `createPlanRef` (plan-switching,
+ * which caches the result on the Package row) share one implementation.
+ */
+async function createPayPalPlan(params: PlanRefParams, devMode?: boolean): Promise<string> {
+  const unitAmount = (params.price / 100).toFixed(2)
+  const productId = await ensureProduct(devMode)
+
+  const planRes = await paypalFetch("/v1/billing/plans", {
+    method: "POST",
+    body: JSON.stringify({
+      product_id: productId,
+      name: params.name,
+      description: `${params.name} — monthly subscription`,
+      billing_cycles: [
+        {
+          frequency: { interval_unit: "MONTH", interval_count: 1 },
+          tenure_type: "REGULAR",
+          sequence: 1,
+          total_cycles: 0,
+          pricing_scheme: {
+            fixed_price: {
+              value: unitAmount,
+              currency_code: "USD",
+            },
+          },
+        },
+      ],
+      payment_preferences: {
+        auto_bill_outstanding: true,
+        setup_fee: { value: "0.00", currency_code: "USD" },
+        setup_fee_failure_action: "CONTINUE",
+        payment_failure_threshold: 3,
+      },
+    }),
+  }, devMode)
+
+  if (!planRes.ok) {
+    const body = await planRes.text()
+    throw new Error(`PayPal plan creation failed (${planRes.status}): ${body}`)
+  }
+
+  const plan = await planRes.json()
+  return plan.id
+}
+
 export const paypalProvider: PaymentProvider = {
   name: "paypal",
 
   async createCheckout(params: CreateCheckoutParams, devMode?: boolean): Promise<CheckoutResult> {
     validatePayPalConfig(devMode)
-    const unitAmount = (params.price / 100).toFixed(2)
-    const productId = await ensureProduct(devMode)
-
-    const planRes = await paypalFetch("/v1/billing/plans", {
-      method: "POST",
-      body: JSON.stringify({
-        product_id: productId,
-        name: params.name,
-        description: `${params.name} — monthly subscription`,
-        billing_cycles: [
-          {
-            frequency: { interval_unit: "MONTH", interval_count: 1 },
-            tenure_type: "REGULAR",
-            sequence: 1,
-            total_cycles: 0,
-            pricing_scheme: {
-              fixed_price: {
-                value: unitAmount,
-                currency_code: "USD",
-              },
-            },
-          },
-        ],
-        payment_preferences: {
-          auto_bill_outstanding: true,
-          setup_fee: { value: "0.00", currency_code: "USD" },
-          setup_fee_failure_action: "CONTINUE",
-          payment_failure_threshold: 3,
-        },
-      }),
-    }, devMode)
-
-    if (!planRes.ok) {
-      const body = await planRes.text()
-      throw new Error(`PayPal plan creation failed (${planRes.status}): ${body}`)
-    }
-
-    const plan = await planRes.json()
+    const planId = params.planRef ?? await createPayPalPlan(
+      { slug: params.packageSlug, name: params.name, price: params.price },
+      devMode,
+    )
 
     const subRes = await paypalFetch("/v1/billing/subscriptions", {
       method: "POST",
       body: JSON.stringify({
-        plan_id: plan.id,
+        plan_id: planId,
         start_time: new Date(Date.now() + 60000).toISOString(),
         quantity: "1",
         custom_id: encodeCustomId(params.companyId, params.packageSlug),
@@ -311,6 +337,18 @@ export const paypalProvider: PaymentProvider = {
           providerCustomerId: (resource.subscriber as Record<string, unknown>)?.email_address as string ?? "",
         }
 
+      // Fires once a subscriber approves a revise that needed re-approval —
+      // custom_id here still reflects the ORIGINAL signup package, so the
+      // resulting plan_id is what identifies which Package this became.
+      case "BILLING.SUBSCRIPTION.UPDATED":
+        return {
+          event: "subscription_plan_changed",
+          providerSubscriptionId: resourceId,
+          providerCustomerId: (resource.subscriber as Record<string, unknown>)?.email_address as string ?? "",
+          companyId: decodedCompanyId,
+          providerPlanId: resource.plan_id as string | undefined,
+        }
+
       default:
         throw new Error(`Unhandled PayPal event type: ${event_type}`)
     }
@@ -333,6 +371,7 @@ export const paypalProvider: PaymentProvider = {
       providerCustomerId: sub.subscriber?.email_address as string ?? "",
       companyId,
       packageSlug,
+      planId: sub.plan_id as string | undefined,
     }
   },
 
@@ -350,5 +389,72 @@ export const paypalProvider: PaymentProvider = {
       const body = await res.text()
       throw new Error(`PayPal cancel failed (${res.status}): ${body}`)
     }
+  },
+
+  async createPlanRef(params: PlanRefParams, devMode?: boolean): Promise<string> {
+    validatePayPalConfig(devMode)
+    return createPayPalPlan(params, devMode)
+  },
+
+  async reviseSubscription(
+    params: ReviseSubscriptionParams,
+    devMode?: boolean,
+  ): Promise<ReviseSubscriptionResult> {
+    validatePayPalConfig(devMode)
+
+    const body: Record<string, unknown> = { plan_id: params.newPlanRef }
+    if (params.successUrl && params.cancelUrl) {
+      // Only relevant when PayPal decides this revise needs subscriber
+      // re-approval — without it PayPal falls back to a generic PayPal page
+      // that never returns the subscriber to the app.
+      body.application_context = {
+        brand_name: "Poolbench",
+        return_url: params.successUrl,
+        cancel_url: params.cancelUrl,
+      }
+    }
+
+    const res = await paypalFetch(
+      `/v1/billing/subscriptions/${params.subscriptionId}/revise`,
+      {
+        method: "POST",
+        body: JSON.stringify(body),
+      },
+      devMode,
+    )
+
+    if (!res.ok) {
+      const body = await res.text()
+      throw new Error(`PayPal subscription revise failed (${res.status}): ${body}`)
+    }
+
+    const result = await res.json()
+    const approvalLink = result.links?.find(
+      (l: { rel: string; href: string }) => l.rel === "approve",
+    )?.href
+
+    if (approvalLink) {
+      return { status: "requires_approval", approvalUrl: approvalLink }
+    }
+
+    return { status: "applied" }
+  },
+
+  async getCurrentPeriodEnd(subscriptionId: string, devMode?: boolean): Promise<Date> {
+    validatePayPalConfig(devMode)
+
+    const res = await paypalFetch(`/v1/billing/subscriptions/${subscriptionId}`, {}, devMode)
+    if (!res.ok) {
+      const body = await res.text()
+      throw new Error(`PayPal subscription lookup failed (${res.status}): ${body}`)
+    }
+
+    const sub = await res.json()
+    const nextBillingTime = sub.billing_info?.next_billing_time as string | undefined
+    if (!nextBillingTime) {
+      throw new Error(`PayPal subscription ${subscriptionId} has no billing_info.next_billing_time.`)
+    }
+
+    return new Date(nextBillingTime)
   },
 }

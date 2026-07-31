@@ -229,17 +229,24 @@ enum InvoiceStatus {
 
 /// A predefined plan/package that companies can subscribe to.
 model Package {
-  id        String   @id @default(cuid())
-  slug      String   @unique
-  name      String
-  price     Int      // cents (e.g., 1900 = $19.00)
-  features  String   // JSON string — parsed at runtime
-  sortOrder Int      @default(0)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id           String   @id @default(cuid())
+  slug         String   @unique
+  name         String
+  price        Int      // cents (e.g., 1900 = $19.00)
+  features     String   // JSON string — parsed at runtime
+  sortOrder    Int      @default(0)
+  /// Cached, lazily-created Stripe Price id for this package — reused across
+  /// checkouts/revisions instead of creating a fresh ephemeral price each time.
+  stripePriceId String?
+  /// Cached, lazily-created PayPal Billing Plan id for this package — reused
+  /// across checkouts/revisions instead of creating a fresh plan each time.
+  paypalPlanId  String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
-  companyPackages CompanyPackage[]
-  invoices        Invoice[]
+  companyPackages        CompanyPackage[]
+  pendingForCompanies    CompanyPackage[] @relation("PendingPackage")
+  invoices               Invoice[]
 
   @@map("packages")
 }
@@ -254,14 +261,20 @@ model CompanyPackage {
   trialStart DateTime?
   trialEnd   DateTime?
   paidAt     DateTime?
+  /// A scheduled downgrade's target package — set alongside `pendingEffectiveAt`,
+  /// applied lazily once that date has passed (see getCompanyPackage).
+  pendingPackageId   String?
+  pendingEffectiveAt DateTime?
   createdAt  DateTime             @default(now())
   updatedAt  DateTime             @updatedAt
 
-  company Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  package Package? @relation(fields: [packageId], references: [id], onDelete: Restrict)
+  company        Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  package        Package? @relation(fields: [packageId], references: [id], onDelete: Restrict)
+  pendingPackage Package? @relation("PendingPackage", fields: [pendingPackageId], references: [id], onDelete: Restrict)
 
   @@index([companyId])
   @@index([packageId])
+  @@index([pendingEffectiveAt])
   @@map("company_packages")
 }
 

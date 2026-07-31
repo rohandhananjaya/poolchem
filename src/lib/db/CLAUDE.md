@@ -8,6 +8,7 @@ Get the tenant with `getCompanyId()` / `requireAuth()` from [../auth.ts](../auth
 
 **company.ts**
 - `getCompanyById(companyId) → Company | null`
+- `getCompanyBySubscriptionId(provider, subscriptionId) → Company | null` — finds the company whose *currently-recorded* subscription id matches; used by the payment webhook routes to disambiguate a stale/superseded cancellation
 - `updateCompany(companyId, data: UpdateCompanyData) → Company`
 - `getCompanyStats(companyId) → CompanyStats`
 - `getCompaniesPaginated(page?) → { companies: CompanyWithCounts[]; total: number }` — **unscoped**, super-admin list view
@@ -54,13 +55,22 @@ Get the tenant with `getCompanyId()` / `requireAuth()` from [../auth.ts](../auth
 
 **packages.ts** — subscription/trial system. `Package` (plan definitions, platform-wide, not tenant-scoped) vs `CompanyPackage` (one per company; `packageId` is `null` while on trial with no plan chosen yet).
 - `getAllPackages() → PackageInfo[]` · `getPackageBySlug(slug)` · `getPackageById(id)`
-- `getCompanyPackage(companyId) → CompanyPackageInfo | null` — lazily flips an overdue `TRIAL` to `EXPIRED` on read
+- `getCheckoutPlanRef(packageSlug, providerName, devMode) → string | undefined` — PayPal only; resolves (and caches) the plan a first-time checkout must reuse so it lands on the same plan/product later upgrade/downgrade revises target. Returns `undefined` for Stripe (its checkout prices inline, no shared-product constraint)
+- `getCompanyPackage(companyId) → CompanyPackageInfo | null` — lazily flips an overdue `TRIAL` to `EXPIRED`, and applies a due scheduled downgrade (see `scheduleDowngrade`), on read
 - `getOrCreateCompanyPackage(companyId) → CompanyPackageInfo` — starts a trial if the company has no row yet
 - `startTrial(companyId)` — full feature access, no plan chosen, for `PlatformSettings.trialDays`
+- `handlePaymentSuccess(companyId, packageSlug, provider, providerSubscriptionId, providerCustomerId)` — activates a plan from a webhook/first-checkout; also cancels a live subscription on the *other* provider if one exists (payment-method switch)
+- `upgradeCompanyPackage(companyId, targetPackageSlug, returnUrls?) → UpgradeOutcome` — revises the company's existing subscription to a pricier plan immediately, provider-prorated. Returns `{status: "applied", companyPackage, prorationAmount?}` normally, or `{status: "requires_approval", approvalUrl}` if PayPal demands the subscriber re-approve (nothing is written to the DB in that case — `returnUrls` is where PayPal sends them back)
+- `confirmPendingUpgrade(companyId, targetPackageSlug) → CompanyPackageInfo` — completes an upgrade left pending by `requires_approval`, called from the account page once the subscriber is redirected back; polls PayPal briefly for the plan to actually match before applying
+- `handlePlanRevisionConfirmed(companyId, providerPlanId) → CompanyPackageInfo` — webhook counterpart to `confirmPendingUpgrade` (looks the Package up by its cached plan ref since the webhook's `custom_id` still reflects the original signup package); both funnel through the same idempotent apply, so whichever fires first wins and the other is a no-op
+- `scheduleDowngrade(companyId, targetPackageSlug) → { companyPackage, effectiveAt }` — schedules a move to a cheaper plan for the end of the current paid period; current plan/features stay active until then
+- `cancelPendingDowngrade(companyId)` — cancels a scheduled-but-not-yet-applied downgrade; idempotent no-op if nothing pending
+- `handleSubscriptionCancelled(companyId)` — sets `status: CANCELLED`, called from the payment webhook routes
+- `simulateSwitch(companyId, targetPackageSlug)` — dev/no-provider stand-in for upgrade/downgrade, mirrors `simulatePayment`
 - `simulatePayment(companyId, packageSlug)` — sets `ACTIVE` + records an `Invoice` (simulated, no real billing)
 - `expireTrial(companyId)` / `checkAndExpireTrials()` — manual/batch expiry (not wired to a cron; expiry normally happens lazily via `getCompanyPackage`)
 - `getCompanyInvoices(companyId)`
-- `createPackage(data)` · `updatePackage(id, data)` · `deletePackage(id)` · `countCompaniesOnPackage(packageId)` — plan-catalog CRUD for `/admin/packages`
+- `createPackage(data)` · `updatePackage(id, data)` · `deletePackage(id)` · `countCompaniesOnPackage(packageId)` — plan-catalog CRUD for `/admin/packages`; counts a package as "in use" if any company has it as current OR pending
 
 **platform-settings.ts** — single-row platform config.
 - `getPlatformSettings() → { trialDays }` · `updateTrialDays(days) → { trialDays }`

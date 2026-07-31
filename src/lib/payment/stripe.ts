@@ -1,5 +1,14 @@
 import Stripe from "stripe"
-import type { PaymentProvider, CreateCheckoutParams, CheckoutResult, WebhookEvent, WebhookHeaders } from "./types"
+import type {
+  PaymentProvider,
+  CreateCheckoutParams,
+  CheckoutResult,
+  WebhookEvent,
+  WebhookHeaders,
+  PlanRefParams,
+  ReviseSubscriptionParams,
+  ReviseSubscriptionResult,
+} from "./types"
 
 function getStripe(devMode?: boolean): Stripe {
   const key = devMode
@@ -15,6 +24,26 @@ function getWebhookSecret(devMode?: boolean): string {
     : process.env.STRIPE_WEBHOOK_SECRET_LIVE
   if (!secret) throw new Error(`STRIPE_WEBHOOK_SECRET_${devMode ? "SANDBOX" : "LIVE"} is not set.`)
   return secret
+}
+
+const STRIPE_PRODUCT_NAME = "Poolbench Subscription"
+
+/**
+ * Every package's Price must belong to a Product. Rather than one Product per
+ * package, all packages share this one — created once, found by name on every
+ * later call (same idempotent create-or-find pattern as PayPal's ensureProduct;
+ * no separate caching needed since this only runs when a package's Price
+ * hasn't been created yet).
+ */
+async function ensureStripeProduct(devMode?: boolean): Promise<string> {
+  const stripe = getStripe(devMode)
+
+  const products = await stripe.products.list({ limit: 100 })
+  const match = products.data.find((p) => p.name === STRIPE_PRODUCT_NAME && p.active)
+  if (match) return match.id
+
+  const product = await stripe.products.create({ name: STRIPE_PRODUCT_NAME })
+  return product.id
 }
 
 export const stripeProvider: PaymentProvider = {
@@ -124,5 +153,56 @@ export const stripeProvider: PaymentProvider = {
   async cancelSubscription(subscriptionId: string, devMode?: boolean): Promise<void> {
     const stripe = getStripe(devMode)
     await stripe.subscriptions.cancel(subscriptionId)
+  },
+
+  async createPlanRef(params: PlanRefParams, devMode?: boolean): Promise<string> {
+    const stripe = getStripe(devMode)
+    const productId = await ensureStripeProduct(devMode)
+
+    const price = await stripe.prices.create({
+      product: productId,
+      unit_amount: params.price,
+      currency: "usd",
+      recurring: { interval: "month" },
+      nickname: params.name,
+    })
+
+    return price.id
+  },
+
+  async reviseSubscription(
+    params: ReviseSubscriptionParams,
+    devMode?: boolean,
+  ): Promise<ReviseSubscriptionResult> {
+    const stripe = getStripe(devMode)
+
+    const subscription = await stripe.subscriptions.retrieve(params.subscriptionId)
+    const currentItemId = subscription.items.data[0]?.id
+    if (!currentItemId) {
+      throw new Error(`Stripe subscription ${params.subscriptionId} has no line items to revise.`)
+    }
+
+    const updated = await stripe.subscriptions.update(params.subscriptionId, {
+      items: [{ id: currentItemId, price: params.newPlanRef }],
+      proration_behavior: params.isUpgrade ? "always_invoice" : "none",
+      expand: ["latest_invoice"],
+    })
+
+    let prorationAmount: number | undefined
+    if (params.isUpgrade && updated.latest_invoice && typeof updated.latest_invoice !== "string") {
+      prorationAmount = updated.latest_invoice.amount_due
+    }
+
+    return { status: "applied", prorationAmount }
+  },
+
+  async getCurrentPeriodEnd(subscriptionId: string, devMode?: boolean): Promise<Date> {
+    const stripe = getStripe(devMode)
+    const subscription = await stripe.subscriptions.retrieve(subscriptionId)
+    const currentPeriodEnd = subscription.items.data[0]?.current_period_end
+    if (!currentPeriodEnd) {
+      throw new Error(`Stripe subscription ${subscriptionId} has no current_period_end.`)
+    }
+    return new Date(currentPeriodEnd * 1000)
   },
 }

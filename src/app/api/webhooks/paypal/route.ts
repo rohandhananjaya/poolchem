@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server"
 import { paypalProvider } from "@/lib/payment/paypal"
-import { handlePaymentSuccess } from "@/lib/db/packages"
+import { handlePaymentSuccess, handleSubscriptionCancelled, handlePlanRevisionConfirmed } from "@/lib/db/packages"
 import { getPaymentSettings } from "@/lib/db/payment-settings"
+import { getCompanyBySubscriptionId } from "@/lib/db/company"
 
 export async function POST(request: Request) {
   const rawBody = await request.text()
@@ -24,6 +25,20 @@ export async function POST(request: Request) {
         event.providerSubscriptionId,
         event.providerCustomerId,
       )
+    }
+
+    if (event.event === "subscription_plan_changed" && event.companyId && event.providerPlanId) {
+      await handlePlanRevisionConfirmed(event.companyId, event.providerPlanId)
+    }
+
+    if (event.event === "subscription_cancelled") {
+      // If this id no longer matches any company's currently-recorded active
+      // subscription, it's a stale cancellation — e.g. the side effect of our
+      // own cross-provider switch, which already cleared this id — ignore it.
+      const company = await getCompanyBySubscriptionId("paypal", event.providerSubscriptionId)
+      if (company) {
+        await handleSubscriptionCancelled(company.id)
+      }
     }
 
     return NextResponse.json({ received: true })
