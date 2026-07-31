@@ -290,7 +290,7 @@ export default async function ReportPage({
             </div>
           )}
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 self-end sm:self-auto sm:ml-auto">
             <div className="text-right">
               <p className="text-xs font-medium text-foreground">
                 View your pool anytime

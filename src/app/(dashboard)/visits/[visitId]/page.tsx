@@ -118,6 +118,7 @@ export default async function VisitPage({
       </div>
 
       <VisitForm
+        key={visit.id}
         visit={JSON.parse(JSON.stringify(visit))}
         lastReadings={lastReadings ? JSON.parse(JSON.stringify(lastReadings)) : null}
         currentUser={{ id: user.id, name: user.name }}
