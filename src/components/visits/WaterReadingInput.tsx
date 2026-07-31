@@ -46,7 +46,7 @@ export function WaterReadingInput<T extends FieldValues>({
     }
   } catch {}
 
-  const showUseLast =
+  const showLastReading =
     lastReading !== null &&
     lastReading !== undefined &&
     !hasValue &&
@@ -55,14 +55,14 @@ export function WaterReadingInput<T extends FieldValues>({
   return (
     <div className="space-y-1.5">
       <div className="flex items-center justify-between gap-2">
-        <div className="flex items-center gap-1.5">
+        <div className="flex min-w-0 items-center gap-1.5">
           <Label htmlFor={name} className="text-sm font-medium">
             {label}
           </Label>
           {hasValue && idealRange && (
             <span
               className={cn(
-                "inline-block size-2 rounded-full",
+                "inline-block size-2 shrink-0 rounded-full",
                 isInRange && "bg-emerald-500",
                 isOutOfRange && "bg-amber-500",
               )}
@@ -71,25 +71,15 @@ export function WaterReadingInput<T extends FieldValues>({
           )}
           {!hasValue && idealRange && (
             <span
-              className="inline-block size-2 rounded-full bg-muted-foreground/30"
+              className="inline-block size-2 shrink-0 rounded-full bg-muted-foreground/30"
               aria-label="No reading entered"
             />
           )}
-          {idealRange && (
-            <span className="text-xs text-muted-foreground">
-              Ideal: {idealRange.min}–{idealRange.max}
-            </span>
-          )}
         </div>
-        {showUseLast && (
-          <button
-            type="button"
-            onClick={() => field.onChange(lastReading)}
-            className="shrink-0 text-xs text-muted-foreground hover:text-primary transition-colors"
-          >
-            Use Last:{" "}
-            <span className="font-mono tabular-nums">{lastReading}</span>
-          </button>
+        {idealRange && (
+          <span className="shrink-0 font-mono text-xs tabular-nums text-muted-foreground">
+            {idealRange.min}–{idealRange.max}
+          </span>
         )}
       </div>
 
@@ -105,9 +95,6 @@ export function WaterReadingInput<T extends FieldValues>({
               "border-amber-400 ring-2 ring-amber-400/30 focus-visible:border-amber-500 focus-visible:ring-amber-500/40",
             error && "border-destructive",
           )}
-          placeholder={
-            lastReading != null ? `Last: ${lastReading}` : undefined
-          }
           disabled={disabled}
           {...field}
           value={value ?? ""}
@@ -123,6 +110,12 @@ export function WaterReadingInput<T extends FieldValues>({
           </span>
         )}
       </div>
+
+      {showLastReading && (
+        <span className="text-xs text-muted-foreground">
+          Last read : <span className="font-mono tabular-nums">{lastReading}</span>
+        </span>
+      )}
 
       {error && (
         <p className="text-xs text-destructive">{error.message}</p>

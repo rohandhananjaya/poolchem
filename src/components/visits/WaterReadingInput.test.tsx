@@ -45,7 +45,7 @@ describe("WaterReadingInput", () => {
     expect(screen.getByText("ppm")).toBeInTheDocument();
   });
 
-  it("shows 'Use Last' button when lastReading is provided and no value is set", () => {
+  it("shows the last reading as a label when provided and no value is set", () => {
     renderWithForm(
       <WaterReadingInput
         name="ph"
@@ -55,11 +55,12 @@ describe("WaterReadingInput", () => {
         control={undefined as never}
       />,
     );
-    expect(screen.getByText(/Use Last/)).toBeInTheDocument();
+    expect(screen.getByText(/Last read/)).toBeInTheDocument();
     expect(screen.getByText("7.5")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Last read/i })).not.toBeInTheDocument();
   });
 
-  it("hides 'Use Last' when disabled", () => {
+  it("hides the last-reading label when disabled", () => {
     renderWithForm(
       <WaterReadingInput
         name="ph"
@@ -70,7 +71,7 @@ describe("WaterReadingInput", () => {
         control={undefined as never}
       />,
     );
-    expect(screen.queryByText(/Use Last/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Last read/)).not.toBeInTheDocument();
   });
 
   it("does not error for an unknown parameter label", () => {

@@ -254,7 +254,7 @@
     content: "";
     position: fixed;
     inset: 0.5cm;
-    border: 1.25pt solid #18181b;
+    border: 1pt solid #d4d4d8;
     pointer-events: none;
   }
 
