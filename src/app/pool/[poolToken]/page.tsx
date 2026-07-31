@@ -4,6 +4,7 @@ import {
   CalendarCheck,
   CalendarClock,
   Droplets,
+  MapPin,
   Sparkles,
   Waves,
 } from "lucide-react"
@@ -41,14 +42,6 @@ export async function generateMetadata({
     alternates: { canonical: `/pool/${poolToken}` },
     robots: { index: false, follow: false },
   }
-}
-
-/** Initials fallback for a missing logo. */
-function initials(value: string): string {
-  const parts = value.trim().split(/\s+/).filter(Boolean)
-  if (parts.length === 0) return "?"
-  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase()
-  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
 }
 
 const STATUS_LABEL: Record<WaterHealthStatus, string> = {
@@ -190,6 +183,12 @@ export default async function HomeownerDashboardPage({
             <h1 className="text-center text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
               {pool.name}
             </h1>
+            {pool.address && (
+              <p className="mt-1 flex items-center justify-center gap-1.5 text-center text-sm text-muted-foreground">
+                <MapPin className="size-4 shrink-0 text-brand-600" />
+                {pool.address}
+              </p>
+            )}
 
             {waterHealth ? (
               <div className="mt-6 flex flex-col items-center gap-4">
@@ -284,27 +283,20 @@ export default async function HomeownerDashboardPage({
         {/* Footer */}
         <footer className="mt-10 flex flex-col items-center gap-3 border-t border-border pt-6 text-center">
           <div className="flex items-center gap-2">
-            {company.logo ? (
+            {company.logo && (
               // eslint-disable-next-line @next/next/no-img-element
               <img
                 src={company.logo}
                 alt={company.name}
                 className="size-8 rounded-lg object-cover"
               />
-            ) : (
-              <div className="flex size-8 items-center justify-center rounded-lg bg-brand-600 text-xs font-semibold text-white">
-                {initials(company.name)}
-              </div>
             )}
             <p className="text-sm font-semibold text-foreground">
               Managed by {company.name}
             </p>
           </div>
           <p className="text-xs text-muted-foreground">
-            {[
-              company.phone,
-              company.email ? company.email : null,
-            ]
+            {[company.phone, company.address]
               .filter(Boolean)
               .map((detail, i) => (
                 <span key={i}>

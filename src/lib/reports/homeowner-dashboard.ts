@@ -52,11 +52,12 @@ export interface HomeownerDashboard {
   pool: {
     name: string;
     image: string | null;
+    address: string | null;
   };
   company: {
     name: string;
     logo: string | null;
-    email: string;
+    address: string | null;
     phone: string | null;
   };
   /** Latest water-health assessment, or `null` when no visit has a reading. */
@@ -165,11 +166,12 @@ export async function getHomeownerDashboard(
     pool: {
       name: pool.name,
       image: pool.image,
+      address: pool.address,
     },
     company: {
       name: pool.company.name,
       logo: pool.company.logo,
-      email: pool.company.email,
+      address: pool.company.address,
       phone: pool.company.phone,
     },
     waterHealth,
