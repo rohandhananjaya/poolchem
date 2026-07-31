@@ -16,7 +16,7 @@ This project uses **Next.js 16, React 19, Prisma 7, Tailwind v4, and Zod v4** â€
 ## Commands
 
 ```bash
-npm run dev          # dev server (http://localhost:3000)
+npm run dev          # dev server (https://localhost:3000, self-signed cert via --experimental-https)
 npm run build        # production build (runs prisma generate then next build)
 npm run lint         # eslint
 npm test             # vitest run (one-shot)

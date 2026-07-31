@@ -34,7 +34,7 @@ export async function sendReportEmailAction(
     const visit = await getVisitById(visitId, user.companyId);
     if (!visit) return { ok: false, error: "Visit not found." };
 
-    const origin = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+    const origin = process.env.NEXT_PUBLIC_APP_URL ?? "https://localhost:3000";
     const reportUrl = visit.publicToken
       ? `${origin}/report/${visit.publicToken}`
       : `${origin}/visits/${visitId}/report`;

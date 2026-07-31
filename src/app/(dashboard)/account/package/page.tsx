@@ -7,6 +7,7 @@ import { getPaymentSettings } from "@/lib/db/payment-settings"
 import { Shell } from "@/components/ui/shell"
 import { PackageBadge } from "@/components/package/package-badge"
 import { PayNowDialog } from "@/components/package/pay-now-dialog"
+import { confirmPayPalSubscriptionAction } from "./actions"
 import {
   isTrialExpired,
   formatPrice,
@@ -20,11 +21,26 @@ export const dynamic = "force-dynamic"
 export default async function AccountPackagePage({
   searchParams,
 }: {
-  searchParams: Promise<{ success?: string; cancelled?: string }>
+  searchParams: Promise<{ success?: string; cancelled?: string; subscription_id?: string }>
 }) {
   await requireAuth()
   const user = await getCurrentUser()
   if (!user?.companyId) redirect("/dashboard")
+
+  const params = await searchParams
+  const justPaid = params.success === "1"
+
+  let activationPending = false
+  if (justPaid && params.subscription_id) {
+    const result = await confirmPayPalSubscriptionAction(params.subscription_id)
+    if (result.ok) {
+      // Drop PayPal's subscription_id/ba_token/token from the URL now that
+      // they've served their purpose, so they don't linger in browser
+      // history or leak via the Referer header on a later page load.
+      redirect("/account/package?success=1")
+    }
+    activationPending = true
+  }
 
   const [companyPackage, allPackages, paymentSettings] = await Promise.all([
     getCompanyPackage(user.companyId),
@@ -33,9 +49,6 @@ export default async function AccountPackagePage({
   ])
 
   if (!companyPackage) redirect("/dashboard")
-
-  const params = await searchParams
-  const justPaid = params.success === "1"
 
   const expired = isTrialExpired(companyPackage)
   const featureMatrix = getPlanFeatureMatrix(allPackages)
@@ -47,7 +60,9 @@ export default async function AccountPackagePage({
       <div className="space-y-8">
         {justPaid && (
           <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-300">
-            Payment successful! Your subscription is being activated. Please refresh the page in a moment.
+            {activationPending
+              ? "Payment received! Finishing activation — refresh the page in a few seconds to see your new plan."
+              : "Payment successful! Your subscription is now active."}
           </div>
         )}
 

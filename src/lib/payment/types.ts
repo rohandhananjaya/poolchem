@@ -31,11 +31,20 @@ export interface WebhookHeaders {
   "paypal-cert-url"?: string
 }
 
+export interface SubscriptionStatus {
+  status: string
+  providerCustomerId: string
+  companyId?: string
+  packageSlug?: string
+}
+
 export interface PaymentProvider {
   name: PaymentProviderName
   createCheckout(params: CreateCheckoutParams, devMode?: boolean): Promise<CheckoutResult>
   handleWebhook(payload: unknown, headers: WebhookHeaders, devMode?: boolean): Promise<WebhookEvent>
   cancelSubscription(subscriptionId: string, devMode?: boolean): Promise<void>
+  /** Synchronous status check for providers whose webhook can't be reached (e.g. local dev). */
+  getSubscriptionStatus?(subscriptionId: string, devMode?: boolean): Promise<SubscriptionStatus>
 }
 
 export interface PaymentSettings {

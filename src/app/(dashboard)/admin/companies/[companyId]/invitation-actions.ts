@@ -52,7 +52,7 @@ export async function sendInvitationAction(
       },
     });
 
-    const origin = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+    const origin = process.env.NEXT_PUBLIC_APP_URL ?? "https://localhost:3000";
     const inviteUrl = `${origin}/invite/${invitation.token}`;
     const from = getCompanyFromEmail(company);
 

@@ -1,4 +1,4 @@
-import type { PaymentProvider, CreateCheckoutParams, CheckoutResult, WebhookEvent, WebhookHeaders } from "./types"
+import type { PaymentProvider, CreateCheckoutParams, CheckoutResult, WebhookEvent, WebhookHeaders, SubscriptionStatus } from "./types"
 
 interface PayPalAccessToken {
   access_token: string
@@ -106,6 +106,22 @@ async function ensureProduct(devMode?: boolean): Promise<string> {
   throw new Error("PayPal product setup failed — create a product named 'Poolbench Subscription' in your PayPal dashboard or check credentials.")
 }
 
+/**
+ * PayPal's Billing Plans resource has no field for arbitrary custom data —
+ * a `metadata` key on plan creation is silently dropped and never returned.
+ * `custom_id` on the Subscription itself IS persisted and echoed back, so
+ * companyId/packageSlug are packed into it here instead.
+ */
+function encodeCustomId(companyId: string, packageSlug: string): string {
+  return `${companyId}:${packageSlug}`
+}
+
+function decodeCustomId(customId: string | undefined): { companyId?: string; packageSlug?: string } {
+  if (!customId) return {}
+  const [companyId, packageSlug] = customId.split(":")
+  return { companyId, packageSlug }
+}
+
 export const paypalProvider: PaymentProvider = {
   name: "paypal",
 
@@ -140,10 +156,6 @@ export const paypalProvider: PaymentProvider = {
           setup_fee_failure_action: "CONTINUE",
           payment_failure_threshold: 3,
         },
-        metadata: JSON.stringify({
-          companyId: params.companyId,
-          packageSlug: params.packageSlug,
-        }),
       }),
     }, devMode)
 
@@ -160,7 +172,7 @@ export const paypalProvider: PaymentProvider = {
         plan_id: plan.id,
         start_time: new Date(Date.now() + 60000).toISOString(),
         quantity: "1",
-        custom_id: params.companyId,
+        custom_id: encodeCustomId(params.companyId, params.packageSlug),
         application_context: {
           brand_name: "Poolbench",
           locale: "en-US",
@@ -243,41 +255,26 @@ export const paypalProvider: PaymentProvider = {
     }
 
     const resourceId = resource.id as string
-    const customId = resource.custom_id as string | undefined
-
-    async function getPlanMetadata(
-      planId: string,
-    ): Promise<{ companyId?: string; packageSlug?: string }> {
-      try {
-        const planRes = await paypalFetch(`/v1/billing/plans/${planId}`, {}, devMode)
-        if (!planRes.ok) return {}
-        const planData = await planRes.json()
-        const metaStr = planData.metadata as string | undefined
-        if (!metaStr) return {}
-        return JSON.parse(metaStr)
-      } catch {
-        return {}
-      }
-    }
+    const { companyId: decodedCompanyId, packageSlug: decodedPackageSlug } = decodeCustomId(
+      resource.custom_id as string | undefined,
+    )
 
     switch (event_type) {
       case "BILLING.SUBSCRIPTION.ACTIVATED": {
-        const planId = resource.plan_id as string | undefined
-        const meta = planId ? await getPlanMetadata(planId) : {}
         return {
           event: "subscription_activated",
           providerSubscriptionId: resourceId,
           providerCustomerId: (resource.subscriber as Record<string, unknown>)?.email_address as string ?? "",
-          companyId: customId ?? meta.companyId,
-          packageSlug: meta.packageSlug,
+          companyId: decodedCompanyId,
+          packageSlug: decodedPackageSlug,
         }
       }
 
       case "PAYMENT.SALE.COMPLETED": {
         const billingAgreementId = resource.billing_agreement_id as string | undefined
         let subscriptionId = resourceId
-        let companyId = customId
-        let packageSlug: string | undefined
+        let companyId = decodedCompanyId
+        let packageSlug = decodedPackageSlug
 
         if (billingAgreementId) {
           subscriptionId = billingAgreementId
@@ -288,12 +285,9 @@ export const paypalProvider: PaymentProvider = {
           )
           if (subRes.ok) {
             const subData = await subRes.json()
-            companyId = subData.custom_id as string | undefined
-            const planId = subData.plan_id as string | undefined
-            if (planId) {
-              const meta = await getPlanMetadata(planId)
-              packageSlug = meta.packageSlug
-            }
+            const decoded = decodeCustomId(subData.custom_id as string | undefined)
+            companyId = decoded.companyId
+            packageSlug = decoded.packageSlug
           }
         }
 
@@ -319,6 +313,26 @@ export const paypalProvider: PaymentProvider = {
 
       default:
         throw new Error(`Unhandled PayPal event type: ${event_type}`)
+    }
+  },
+
+  async getSubscriptionStatus(subscriptionId: string, devMode?: boolean): Promise<SubscriptionStatus> {
+    validatePayPalConfig(devMode)
+
+    const res = await paypalFetch(`/v1/billing/subscriptions/${subscriptionId}`, {}, devMode)
+    if (!res.ok) {
+      const body = await res.text()
+      throw new Error(`PayPal subscription lookup failed (${res.status}): ${body}`)
+    }
+
+    const sub = await res.json()
+    const { companyId, packageSlug } = decodeCustomId(sub.custom_id as string | undefined)
+
+    return {
+      status: sub.status as string,
+      providerCustomerId: sub.subscriber?.email_address as string ?? "",
+      companyId,
+      packageSlug,
     }
   },
 
