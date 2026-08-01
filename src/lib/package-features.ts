@@ -7,7 +7,7 @@ export interface PackageFeatures {
   service_reports: boolean
   qr_code: boolean
   scheduling: boolean
-  multi_tech: boolean
+  max_techs: number
   priority_support: boolean
   custom_branding: boolean
   api_access: boolean
@@ -88,6 +88,28 @@ export function hasPoolCapacity(
   return currentCount < max
 }
 
+/**
+ * Whether a company can add one more technician, given how many it already
+ * has (including pending invitations). Full access during an active trial;
+ * otherwise checked against the chosen plan's `max_techs` (`-1` = unlimited).
+ */
+export function hasTechCapacity(
+  companyPackage: CompanyPackageInfo,
+  currentCount: number,
+): boolean {
+  if (companyPackage.status === "TRIAL" && !isTrialExpired(companyPackage)) {
+    return true
+  }
+
+  if (companyPackage.status !== "ACTIVE") return false
+
+  if (!companyPackage.package) return false
+
+  const max = companyPackage.package.features.max_techs
+  if (max === -1) return true
+  return currentCount < max
+}
+
 export function isTrialExpired(companyPackage: CompanyPackageInfo): boolean {
   if (companyPackage.status !== "TRIAL") return false
   if (!companyPackage.trialEnd) return false
@@ -105,7 +127,7 @@ export const FEATURE_LABELS: { key: keyof PackageFeatures; label: string }[] = [
   { key: "service_reports", label: "Service reports" },
   { key: "qr_code", label: "QR code visit start" },
   { key: "scheduling", label: "Scheduling & history" },
-  { key: "multi_tech", label: "Multi-tech support" },
+  { key: "max_techs", label: "Max technicians" },
   { key: "priority_support", label: "Priority support" },
   { key: "custom_branding", label: "Custom branding" },
   { key: "api_access", label: "API access" },

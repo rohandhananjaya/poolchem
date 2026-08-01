@@ -22,7 +22,7 @@ function parsePackageFeaturesFromForm(formData: FormData): PackageFeatures {
     service_reports: formData.get("features.service_reports") === "on",
     qr_code: formData.get("features.qr_code") === "on",
     scheduling: formData.get("features.scheduling") === "on",
-    multi_tech: formData.get("features.multi_tech") === "on",
+    max_techs: parseInt(formData.get("features.max_techs") as string, 10) || 1,
     priority_support: formData.get("features.priority_support") === "on",
     custom_branding: formData.get("features.custom_branding") === "on",
     api_access: formData.get("features.api_access") === "on",

@@ -61,7 +61,7 @@ const nonTrialCompanyPackage = (maxPools: number) => ({
       service_reports: true,
       qr_code: true,
       scheduling: true,
-      multi_tech: true,
+      max_techs: -1,
       priority_support: true,
       custom_branding: true,
       api_access: true,

@@ -51,11 +51,6 @@ export function PackageFeatureFields({
           defaultChecked={features?.scheduling}
         />
         <FeatureCheckbox
-          name={`${prefix}.multi_tech`}
-          label="Multi Tech"
-          defaultChecked={features?.multi_tech}
-        />
-        <FeatureCheckbox
           name={`${prefix}.priority_support`}
           label="Priority Support"
           defaultChecked={features?.priority_support}
@@ -81,6 +76,15 @@ export function PackageFeatureFields({
             name={`${prefix}.max_pools`}
             type="number"
             defaultValue={features?.max_pools ?? 5}
+            className="w-full rounded-lg border border-border bg-background px-2 py-1 text-xs"
+          />
+        </div>
+        <div>
+          <label className="block text-xs font-medium text-foreground mb-1">Max Technicians</label>
+          <input
+            name={`${prefix}.max_techs`}
+            type="number"
+            defaultValue={features?.max_techs ?? 1}
             className="w-full rounded-lg border border-border bg-background px-2 py-1 text-xs"
           />
         </div>

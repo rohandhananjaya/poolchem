@@ -58,6 +58,13 @@ export async function getInvitationsByCompany(companyId: string) {
   })
 }
 
+/** Counts pending TECH invitations for a company — used to enforce a plan's `max_techs`. */
+export async function getPendingTechInvitationCount(companyId: string): Promise<number> {
+  return prisma.invitation.count({
+    where: { companyId, role: "TECH", accepted: false, expiresAt: { gte: new Date() } },
+  })
+}
+
 /** Deletes an invitation by id (scoped to company). */
 export async function deleteInvitation(id: string, companyId: string) {
   const { count } = await prisma.invitation.deleteMany({

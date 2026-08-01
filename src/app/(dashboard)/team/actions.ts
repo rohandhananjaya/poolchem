@@ -5,10 +5,27 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { requireOwner } from "@/lib/auth";
 import { createAdminClient, deleteAuthUserByEmail } from "@/lib/supabase/admin";
-import { createUser, deleteUser, updateUserAdmin } from "@/lib/db/users";
-import { createInvitation } from "@/lib/db/invitations";
+import { createUser, deleteUser, updateUserAdmin, getCompanyTechCount } from "@/lib/db/users";
+import { createInvitation, getPendingTechInvitationCount } from "@/lib/db/invitations";
+import { getCompanyPackage } from "@/lib/db/packages";
+import { hasTechCapacity } from "@/lib/package-features";
 import type { UserRole } from "@/generated/prisma/client";
 import { formText } from "@/lib/utils";
+
+async function checkTechCapacity(companyId: string): Promise<string | null> {
+  const [companyPackage, techCount, pendingInvites] = await Promise.all([
+    getCompanyPackage(companyId),
+    getCompanyTechCount(companyId),
+    getPendingTechInvitationCount(companyId),
+  ]);
+  if (!companyPackage || !hasTechCapacity(companyPackage, techCount + pendingInvites)) {
+    const max = companyPackage?.package?.features.max_techs;
+    return typeof max === "number"
+      ? `Your plan allows up to ${max} technician${max === 1 ? "" : "s"} — upgrade to add more.`
+      : "Choose a plan to add technicians.";
+  }
+  return null;
+}
 
 const text = formText;
 
@@ -47,6 +64,11 @@ export async function createTeamUserAction(
   const existing = await prisma.user.findUnique({ where: { email } });
   if (existing) {
     return { ok: false, error: "A user with this email already exists." };
+  }
+
+  if (role === "TECH") {
+    const capacityError = await checkTechCapacity(currentUser.companyId);
+    if (capacityError) return { ok: false, error: capacityError };
   }
 
   try {
@@ -182,6 +204,11 @@ export async function inviteTeamUserAction(
   const existing = await prisma.user.findUnique({ where: { email } });
   if (existing) {
     return { ok: false, error: "A user with this email already exists." };
+  }
+
+  if (role === "TECH") {
+    const capacityError = await checkTechCapacity(currentUser.companyId);
+    if (capacityError) return { ok: false, error: capacityError };
   }
 
   try {

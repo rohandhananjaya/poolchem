@@ -60,6 +60,11 @@ export async function getCompanyTechs(
   });
 }
 
+/** Counts TECH-role users for a company — used to enforce a plan's `max_techs`. */
+export async function getCompanyTechCount(companyId: string): Promise<number> {
+  return prisma.user.count({ where: { companyId, role: "TECH" } });
+}
+
 /**
  * Updates a user's profile. When `companyId` is provided, the update is scoped
  * to that tenant. When `null` (SUPER_ADMIN), any user can be updated by id.
