@@ -244,7 +244,7 @@ export function ProfileForms({
     <div className="space-y-6">
       {/* Profile */}
       <section id="profile">
-      <Card title="Profile">
+      <Card title="Profile" description="Manage your account details and security.">
         <Tabs defaultValue="personal">
           <TabsList>
             <TabsTrigger value="personal">Personal</TabsTrigger>

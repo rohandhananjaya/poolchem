@@ -180,7 +180,7 @@ describe("ProfileForms — company logo", () => {
     expect(planButton).toHaveAttribute("href", "/account/package");
   });
 
-  it("shows the current plan and its features in the Manage plan tab", async () => {
+  it("shows the current plan and its features in the Your plan tab", async () => {
     const user = userEvent.setup();
     render(
       <ProfileForms
@@ -192,7 +192,7 @@ describe("ProfileForms — company logo", () => {
       />,
     );
 
-    await user.click(screen.getByRole("tab", { name: "Manage plan" }));
+    await user.click(screen.getByRole("tab", { name: "Your plan" }));
 
     expect(screen.getByRole("heading", { name: "Pro" })).toBeInTheDocument();
     expect(screen.getByText("API access")).toBeInTheDocument();
@@ -210,7 +210,7 @@ describe("ProfileForms — company logo", () => {
     );
 
     expect(screen.queryByRole("tab", { name: "Company data" })).not.toBeInTheDocument();
-    expect(screen.queryByRole("tab", { name: "Manage plan" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("tab", { name: "Your plan" })).not.toBeInTheDocument();
     expect(screen.getByText("Company name")).toBeInTheDocument();
   });
 });
