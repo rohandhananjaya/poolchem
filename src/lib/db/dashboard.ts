@@ -27,6 +27,8 @@ export interface DashboardVisit {
   poolName: string;
   /** Street address, or `null` when the pool has none on file. */
   address: string | null;
+  /** Homeowner phone number for dialing, or `null` when none on file. */
+  homeownerPhone: string | null;
   status: ServiceVisitStatus;
   /** The assigned tech's ID, or `null` when unassigned. */
   techId: string | null;
@@ -106,6 +108,7 @@ export async function getDashboardData(
       id: visit.id,
       poolName: visit.pool.name,
       address: visit.pool.address,
+      homeownerPhone: visit.pool.homeownerPhone ?? null,
       status: visit.status,
       techId: visit.techId,
       // Show the scheduled date when one is set (the form has no time picker);

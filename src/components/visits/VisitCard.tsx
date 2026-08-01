@@ -8,6 +8,7 @@ import {
   Clock,
   MapPin,
   Pencil,
+  Phone,
   Play,
   User,
   XCircle,
@@ -36,6 +37,7 @@ export interface VisitCardVisit {
   id: string
   poolName: string
   address: string | null
+  homeownerPhone?: string | null
   status: string
   scheduledAt?: string | null
   timeLabel?: string | null
@@ -274,17 +276,27 @@ export function VisitCard({ visit, timeLabel, currentUserId, userRole, techs }: 
                 </div>
               ) : null}
 
-              <DialogFooter className="gap-2">
+              <DialogFooter className="gap-2 sm:justify-between">
                 <Button
                   type="button"
-                  variant="outline"
-                  onClick={resetEdit}
+                  variant="destructive"
+                  onClick={() => setCancelling(true)}
                 >
-                  Cancel
+                  <XCircle className="size-4" />
+                  Cancel Visit
                 </Button>
-                <Button type="submit" size="lg" disabled={pending}>
-                  {pending ? "Saving…" : "Save"}
-                </Button>
+                <div className="flex items-center gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={resetEdit}
+                  >
+                    Back
+                  </Button>
+                  <Button type="submit" size="lg" disabled={pending}>
+                    {pending ? "Saving…" : "Save"}
+                  </Button>
+                </div>
               </DialogFooter>
             </form>
           ) : (
@@ -326,6 +338,15 @@ export function VisitCard({ visit, timeLabel, currentUserId, userRole, techs }: 
                 </p>
               ) : null}
 
+              {visit.homeownerPhone ? (
+                <Button asChild variant="outline" size="sm" className="w-fit">
+                  <a href={`tel:${visit.homeownerPhone}`}>
+                    <Phone className="size-4" />
+                    Call {visit.homeownerPhone}
+                  </a>
+                </Button>
+              ) : null}
+
               <p className="flex items-center gap-1.5 text-sm text-muted-foreground">
                 <Clock className="size-3.5 shrink-0" />
                 {displayTime}
@@ -346,14 +367,6 @@ export function VisitCard({ visit, timeLabel, currentUserId, userRole, techs }: 
               {!isOthersVisit && (isDraft || inProgress) ? (
                 <DialogFooter className="gap-2 sm:justify-between">
                   <div className="flex items-center gap-2">
-                    <Button
-                      type="button"
-                      variant="destructive"
-                      onClick={() => setCancelling(true)}
-                    >
-                      <XCircle className="size-4" />
-                      Cancel Visit
-                    </Button>
                     {canEdit && (
                       <Button
                         type="button"

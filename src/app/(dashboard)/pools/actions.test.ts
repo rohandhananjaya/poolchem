@@ -94,12 +94,22 @@ describe("createPoolAction", () => {
 
     const result = await createPoolAction(
       { ok: false },
-      formData({ name: "New Pool", volume: "10000" }),
+      formData({
+        name: "New Pool",
+        volume: "10000",
+        homeownerEmail: "homeowner@example.com",
+        homeownerPhone: "555-0100",
+      }),
     );
 
     expect(result).toEqual({ ok: true });
     expect(createPool).toHaveBeenCalledWith(
-      expect.objectContaining({ name: "New Pool", volume: 10000 }),
+      expect.objectContaining({
+        name: "New Pool",
+        volume: 10000,
+        homeownerEmail: "homeowner@example.com",
+        homeownerPhone: "555-0100",
+      }),
       "company-1",
     );
     expect(revalidatePath).toHaveBeenCalledWith("/pools");
@@ -155,13 +165,19 @@ describe("updatePoolAction", () => {
         poolId: "pool-1",
         name: "Updated",
         volume: "20000",
+        homeownerEmail: "new@example.com",
+        homeownerPhone: "",
       }),
     );
 
     expect(result).toEqual({ ok: true });
     expect(updatePool).toHaveBeenCalledWith(
       "pool-1",
-      expect.objectContaining({ name: "Updated" }),
+      expect.objectContaining({
+        name: "Updated",
+        homeownerEmail: "new@example.com",
+        homeownerPhone: null,
+      }),
       "company-1",
     );
     expect(revalidatePath).toHaveBeenCalledWith("/pools");

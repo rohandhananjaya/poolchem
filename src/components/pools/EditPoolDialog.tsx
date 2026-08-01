@@ -31,6 +31,8 @@ interface EditPoolDialogProps {
     name: string
     volume: number
     address: string | null
+    homeownerEmail: string | null
+    homeownerPhone: string | null
     notes: string | null
     isActive: boolean
   }
@@ -133,6 +135,26 @@ export function EditPoolDialog({
                 id="edit-address"
                 name="address"
                 defaultValue={pool.address ?? ""}
+                disabled={!canManage}
+              />
+            </div>
+            <div className="grid gap-1.5">
+              <Label htmlFor="edit-homeownerEmail">Email</Label>
+              <Input
+                id="edit-homeownerEmail"
+                name="homeownerEmail"
+                type="email"
+                defaultValue={pool.homeownerEmail ?? ""}
+                disabled={!canManage}
+              />
+            </div>
+            <div className="grid gap-1.5">
+              <Label htmlFor="edit-homeownerPhone">Phone no</Label>
+              <Input
+                id="edit-homeownerPhone"
+                name="homeownerPhone"
+                type="tel"
+                defaultValue={pool.homeownerPhone ?? ""}
                 disabled={!canManage}
               />
             </div>

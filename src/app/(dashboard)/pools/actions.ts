@@ -65,6 +65,8 @@ export async function createPoolAction(
         name,
         volume,
         address: formOptionalText(formData, "address"),
+        homeownerEmail: formOptionalText(formData, "homeownerEmail"),
+        homeownerPhone: formOptionalText(formData, "homeownerPhone"),
         notes: formOptionalText(formData, "notes"),
       },
       user.companyId,
@@ -105,6 +107,8 @@ export async function updatePoolAction(
       name,
       volume,
       address: formOptionalText(formData, "address"),
+      homeownerEmail: formOptionalText(formData, "homeownerEmail"),
+      homeownerPhone: formOptionalText(formData, "homeownerPhone"),
       notes: formOptionalText(formData, "notes"),
       isActive,
     }, user.companyId);

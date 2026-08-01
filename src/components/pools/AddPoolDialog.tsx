@@ -88,6 +88,14 @@ export function AddPoolDialog() {
               <Input id="address" name="address" />
             </div>
             <div className="grid gap-1.5">
+              <Label htmlFor="homeownerEmail">Email</Label>
+              <Input id="homeownerEmail" name="homeownerEmail" type="email" />
+            </div>
+            <div className="grid gap-1.5">
+              <Label htmlFor="homeownerPhone">Phone no</Label>
+              <Input id="homeownerPhone" name="homeownerPhone" type="tel" />
+            </div>
+            <div className="grid gap-1.5">
               <Label htmlFor="notes">Notes</Label>
               <Input id="notes" name="notes" />
             </div>

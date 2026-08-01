@@ -142,16 +142,22 @@ export function PoolAnalysis({ pool, scoredVisits, scoreHistory, lastReadings }:
                 {pool.volume.toLocaleString()} gal
               </span>
               {pool.homeownerEmail ? (
-                <span className="inline-flex items-center gap-1">
+                <a
+                  href={`mailto:${pool.homeownerEmail}`}
+                  className="inline-flex items-center gap-1 hover:text-brand-600 hover:underline"
+                >
                   <Home className="size-3.5" />
                   {pool.homeownerEmail}
-                </span>
+                </a>
               ) : null}
               {pool.homeownerPhone ? (
-                <span className="inline-flex items-center gap-1">
+                <a
+                  href={`tel:${pool.homeownerPhone}`}
+                  className="inline-flex items-center gap-1 hover:text-brand-600 hover:underline"
+                >
                   <Phone className="size-3.5" />
                   {pool.homeownerPhone}
-                </span>
+                </a>
               ) : null}
             </div>
           </div>

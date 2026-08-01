@@ -21,6 +21,8 @@ export interface ScheduledVisit {
   id: string;
   poolName: string;
   address: string | null;
+  /** Homeowner phone number for dialing, or `null` when none on file. */
+  homeownerPhone: string | null;
   status: "DRAFT" | "IN_PROGRESS" | "COMPLETED" | "CANCELLED";
   /** Planned time, ISO string, or `null` when the visit was created ad hoc. */
   scheduledAt: string | null;
@@ -113,7 +115,7 @@ export async function getScheduleData(
       skip,
       take: limit,
       include: {
-        pool: { select: { name: true, address: true } },
+        pool: { select: { name: true, address: true, homeownerPhone: true } },
         tech: { select: { id: true, name: true } },
         waterReadings: { orderBy: { createdAt: "desc" }, take: 1 },
       },
@@ -128,6 +130,7 @@ export async function getScheduleData(
       id: visit.id,
       poolName: visit.pool.name,
       address: visit.pool.address,
+      homeownerPhone: visit.pool.homeownerPhone ?? null,
       status: visit.status,
       scheduledAt: visit.scheduledAt ? visit.scheduledAt.toISOString() : null,
       effectiveDate: (visit.scheduledAt ?? visit.createdAt).toISOString(),

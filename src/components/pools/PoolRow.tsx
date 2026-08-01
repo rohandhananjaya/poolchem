@@ -15,6 +15,8 @@ interface PoolRowProps {
     name: string
     volume: number
     address: string | null
+    homeownerEmail: string | null
+    homeownerPhone: string | null
     notes: string | null
     isActive: boolean
     lastVisitAt: Date | string | null
