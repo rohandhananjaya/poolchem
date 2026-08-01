@@ -22,10 +22,13 @@ Feature components grouped by domain; shadcn/ui primitives in [ui/](ui/) (style 
 `ScheduleVisitCard` · `ScheduleVisitForm` (Dialog popup with pool/date/tech-search; posts to `schedule/actions.ts`)
 ## profile/
 
-`ProfileForms` (account + company forms, posts to `settings/actions.ts`) — links out to `/account/api-keys` for owners
+`ProfileForms` (account + company forms, posts to `settings/actions.ts`) — links out to `/account/api-keys` for owners · `SignOutButton` (signs out via Supabase + redirects to `/login`; rendered at the bottom of the Settings page)
 
 ## account/
 `ApiKeysManager` (list/generate/revoke API keys for the `api_access` plan feature; one-time secret reveal on generation; locked upsell hint when `canUseApiKeys` is false — same idiom as `csv_import`/`custom_branding`) · `DownloadPostmanButton` (downloads a Postman collection pre-wired to `/api/v1` via `downloadPostmanCollectionAction`; rendered in the `ApiKeysManager` header)
+
+## feedback/
+`FeedbackForm` (client; type-segmented submit form, posts to `/feedback/actions.ts` via `submitFeedbackAction`) · `FeedbackList` (server; a user's own submissions with type/status badges) · `FeedbackStatusSelect` (client; per-row triage `<select>` on `/admin/feedback`, calls `updateFeedbackStatusAction`) · `feedback-badges` (type/status label + style maps, `FeedbackTypeBadge`, `FeedbackStatusBadge`, `formatFeedbackDate`)
 
 ## homeowner/
 `share-button` (copies/shares the public pool link)

@@ -3,7 +3,7 @@
 import * as React from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { Check, CreditCard, Download, LogOut, Trash2, Upload, X } from "lucide-react"
+import { Check, CreditCard, Download, Trash2, Upload, X } from "lucide-react"
 import { toast } from "sonner"
 
 import { createClient } from "@/lib/supabase/client"
@@ -185,7 +185,6 @@ export function ProfileForms({
   companyPackage,
 }: ProfileFormsProps) {
   const router = useRouter()
-  const [signingOut, setSigningOut] = React.useState(false)
   const [exporting, startExport] = React.useTransition()
   const [deleteOpen, setDeleteOpen] = React.useState(false)
   const [deleting, startDelete] = React.useTransition()
@@ -231,14 +230,6 @@ export function ProfileForms({
   useFormFeedback(accountState, "Account updated.")
   useFormFeedback(companyState, "Company details updated.")
   useFormFeedback(passwordState, "Password updated.")
-
-  async function handleSignOut() {
-    setSigningOut(true)
-    const supabase = createClient()
-    await supabase.auth.signOut()
-    router.push("/login")
-    router.refresh()
-  }
 
   return (
     <div className="space-y-6">
@@ -511,20 +502,6 @@ export function ProfileForms({
           )}
         </Card>
       ) : null}
-
-      {/* Sign out */}
-      <div>
-        <Button
-          type="button"
-          variant="outline"
-          size="lg"
-          disabled={signingOut}
-          onClick={handleSignOut}
-        >
-          <LogOut />
-          {signingOut ? "Signing out…" : "Sign out"}
-        </Button>
-      </div>
 
       {/* Delete account confirmation dialog */}
       <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>

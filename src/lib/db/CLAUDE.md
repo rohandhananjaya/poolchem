@@ -83,11 +83,18 @@ Get the tenant with `getCompanyId()` / `requireAuth()` from [../auth.ts](../auth
 - `touchApiKeyLastUsed(keyId) → void`
 - `checkAndIncrementRateLimit(apiKeyId, limitPerMinute) → RateLimitResult` — fixed 1-minute-window counter, no external cache/queue
 
+**feedback.ts** — user-submitted support requests (bug reports / feature requests / general issues), triaged by super-admins. `companyId` is nullable (company-less SUPER_ADMIN submitters) and always comes from the authenticated session.
+- `createFeedback(data, userId, companyId) → Feedback` — tenant-scoped write; `companyId` passed from the session, never from request input
+- `getFeedbackByUser(userId, companyId) → Feedback[]` — a user's own submissions, scoped to user + tenant, newest first
+- `getAllFeedback({ page?, type?, status? }) → { feedback: FeedbackWithSubmitter[]; total }` — **unscoped**, super-admin list view with submitter/company names
+- `updateFeedbackStatus(feedbackId, status) → Feedback` — **unscoped** super-admin triage; throws if not found
+- `FEEDBACK_PAGE_SIZE`
+
 ## Tests (64+ tests across 8 files)
 
 All DB tests mock `@/lib/prisma` and require `server-only` to be stubbed (handled by the Vitest config alias). Tests are in the same directory with `.test.ts` suffix:
 - `visits.test.ts` — 17 tests · `company.test.ts` — 12 · `pools.test.ts` — 20
-- `users.test.ts` — 11 · `reports.test.ts` — 3 · `schedule.test.ts` — 2 · `dashboard.test.ts` — 2 · `api-keys.test.ts` — 13
+- `users.test.ts` — 11 · `reports.test.ts` — 3 · `schedule.test.ts` — 2 · `dashboard.test.ts` — 2 · `api-keys.test.ts` — 13 · `feedback.test.ts` — 9
 
 ## Notes
 - `VisitReadings` / `VisitChemical` types live in visits.ts; `VisitReadings` extends `WaterReadingInput` (from [../pool-chemistry.ts](../pool-chemistry.ts)) minus `temperature`.

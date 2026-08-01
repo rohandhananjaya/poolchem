@@ -26,6 +26,7 @@ This section previously listed a `(public)/` route group (blog, about-us, servic
 - `schedule/` — upcoming visits; `getScheduleData`. `actions.ts`: `scheduleVisitAction`
 - `reports/` — water-health report history; `getCompanyReportData`
 - `settings/` — account + company settings. `actions.ts`: `updateAccountAction`, `updateCompanyAction`
+- `feedback/` — user-submitted support requests (bug reports / feature requests / general issues). `page.tsx` → `getFeedbackByUser` + `<FeedbackForm>` / `<FeedbackList>`. `actions.ts`: `submitFeedbackAction` (re-auth → validate → `createFeedback` → `revalidatePath`). Reachable from a "Report a problem" link on the Settings page.
 - `account/package/` — tenant's own plan page (trial status, feature checklist, compare/pay/switch plans). `actions.ts`: `createPaymentAction`/`confirmPayPalSubscriptionAction` (first-time subscribe), `switchPackageAction`/`cancelScheduledDowngradeAction` (upgrade immediately or schedule a downgrade for period-end, once already on a paid plan), `confirmPayPalUpgradeAction` (completes an upgrade PayPal sent the subscriber off to re-approve — called from `page.tsx`'s render on the `?paypal_upgrade=1&package=` return leg, same pattern as `confirmPayPalSubscriptionAction`), `payNowAction`/`simulateSwitchAction` (dev/no-provider stand-ins, not wired to any button), `startTrialAction`, `getCurrentPackageAction`
 - `account/api-keys/` — OWNER-only API key management (`api_access` plan feature), gated the same way as `custom_branding`/`csv_import`. `page.tsx` → `getApiKeysByCompany` + `<ApiKeysManager>`. `actions.ts`: `createApiKeyAction` (re-checks `api_access`, returns the plaintext secret once), `revokeApiKeyAction`, `downloadPostmanCollectionAction` (builds a Postman collection for `/api/v1` rooted at `NEXT_PUBLIC_APP_URL`)
 
@@ -34,6 +35,7 @@ This section previously listed a `(public)/` route group (blog, about-us, servic
 - `admin/users/` — cross-tenant user management
 - `admin/diagnostics/` — server health / system log viewer
 - `admin/packages/` — plan catalog CRUD (pricing/features/sort order) + platform trial-length setting + per-company plan/status override. `actions.ts`: `createPackageAction`, `updatePackageAction`, `deletePackageAction`, `adminSetCompanyPackageAction`, `updateTrialDaysAction`
+- `admin/feedback/` — all user feedback submissions across tenants, with type/status filters + pagination and per-row triage. `page.tsx` → `getAllFeedback` + `<FeedbackStatusSelect>`. `actions.ts`: `updateFeedbackStatusAction`
 
 ## src/app/api/v1/ — REST API for the `api_access` plan feature
 Bearer-token auth (`Authorization: Bearer <key>`), NOT Supabase cookies — see `authenticateApiKey` in [../lib/api-keys/auth.ts](../lib/api-keys/auth.ts). Excluded from `proxy.ts`'s matcher entirely. Read-only (GET) in v1; each handler re-checks `api_access` live and enforces a per-key rate limit (`checkAndIncrementRateLimit`) before calling the same `db/` helpers the dashboard uses.

@@ -11,6 +11,7 @@ import {
   FileText,
   House,
   LogOut,
+  MessageSquare,
   Settings,
   Shield,
   User,
@@ -50,6 +51,7 @@ const NAV_ITEMS: NavItem[] = [
   { href: "/admin/companies", label: "Companies", icon: Building2, roles: ["SUPER_ADMIN"] },
   { href: "/admin/users", label: "Users", icon: Users, roles: ["SUPER_ADMIN"] },
   { href: "/admin/diagnostics", label: "Diagnostics", icon: Activity, roles: ["SUPER_ADMIN"] },
+  { href: "/admin/feedback", label: "Feedback", icon: MessageSquare, roles: ["SUPER_ADMIN"] },
   { href: "/settings", label: "Settings", icon: Settings },
 ]
 

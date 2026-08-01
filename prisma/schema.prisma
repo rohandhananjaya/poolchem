@@ -30,6 +30,19 @@ enum ServiceVisitStatus {
   CANCELLED
 }
 
+enum FeedbackType {
+  BUG_REPORT
+  FEATURE_REQUEST
+  ISSUE
+}
+
+enum FeedbackStatus {
+  OPEN
+  IN_PROGRESS
+  RESOLVED
+  CLOSED
+}
+
 /// A tenant. Every other record is scoped to a Company.
 model Company {
   id                   String    @id @default(cuid())
@@ -57,6 +70,7 @@ model Company {
   companyPackage CompanyPackage?
   invoices Invoice[]
   apiKeys ApiKey[]
+  feedback Feedback[]
 
   @@map("companies")
 }
@@ -79,6 +93,8 @@ model User {
 
   // Visits this user performed as the servicing tech.
   serviceVisits ServiceVisit[]
+
+  feedback Feedback[]
 
   @@index([companyId])
   @@map("users")
@@ -365,4 +381,30 @@ model ApiKeyUsage {
 
   @@unique([apiKeyId, windowStart])
   @@map("api_key_usage")
+}
+
+// ── User feedback / support ────────────────────────────────────────
+
+/// A user-submitted support request (bug report, feature request, or general
+/// issue). Submissions are tenant-scoped: `companyId` records the submitting
+/// user's company and is null only for company-less submitters (SUPER_ADMINs).
+/// Super-admins triage these in /admin/feedback.
+model Feedback {
+  id          String         @id @default(cuid())
+  type        FeedbackType
+  title       String
+  description String
+  status      FeedbackStatus @default(OPEN)
+  companyId   String?
+  userId      String
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  company Company? @relation(fields: [companyId], references: [id], onDelete: SetNull)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([companyId])
+  @@index([status, createdAt])
+  @@map("feedback")
 }

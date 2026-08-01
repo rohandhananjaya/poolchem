@@ -6,7 +6,10 @@ async function globalSetup() {
     execSync("npm run db:seed", { stdio: "inherit", cwd: process.cwd() });
     console.log("  ✓ Database seeded");
   } catch (e) {
-    console.error("  ✗ Seed failed:", e.message);
+    console.error(
+      "  ✗ Seed failed:",
+      e instanceof Error ? e.message : String(e),
+    );
     process.exit(1);
   }
 
