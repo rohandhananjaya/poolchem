@@ -1,5 +1,4 @@
 import { notFound } from "next/navigation"
-import Image from "next/image"
 import { format } from "date-fns"
 import {
   AlertTriangle,
@@ -21,6 +20,7 @@ import type {
 import { cn } from "@/lib/utils"
 import { WaterHealthSummary } from "@/components/reports/WaterHealthSummary"
 import { ScoreSparkline } from "@/components/reports/ScoreSparkline"
+import { CompanyLogo } from "@/components/shared/CompanyLogo"
 
 export const dynamic = "force-dynamic"
 
@@ -115,12 +115,11 @@ export default async function PublicReportPage({
         <header className="flex items-center justify-between gap-4 border-b border-border pb-5 print:break-inside-avoid print:break-after-avoid">
           <div className="flex items-center gap-3">
             {report.company.logo && (
-              <Image
+              <CompanyLogo
                 src={report.company.logo}
                 alt={report.company.name}
-                width={48}
-                height={48}
-                className="size-12 rounded-xl object-cover"
+                size={48}
+                className="shrink-0"
               />
             )}
             <div className="min-w-0">

@@ -7,6 +7,7 @@ import { requireAuth, requireOwner } from "@/lib/auth";
 import { updateCompany } from "@/lib/db/company";
 import { getCompanyPackage } from "@/lib/db/packages";
 import { checkFeatureAccess } from "@/lib/package-features";
+import { deleteCompanyLogoObject, uploadCompanyLogo, validateLogoFile } from "@/lib/storage";
 import {
   updateUser,
   deleteUser,
@@ -65,17 +66,34 @@ export async function updateCompanyAction(
   const canEditBranding =
     !!companyPackage && checkFeatureAccess(companyPackage, "custom_branding");
 
+  let logoUpdate: { logo?: string | null } = {};
+  if (canEditBranding) {
+    const removeLogo = formText(formData, "removeLogo") === "true";
+    const logoFile = formData.get("logo");
+    if (removeLogo) {
+      logoUpdate = { logo: null };
+    } else if (logoFile instanceof File && logoFile.size > 0) {
+      const validation = validateLogoFile(logoFile);
+      if (!validation.ok) return { ok: false, error: validation.error };
+      logoUpdate = { logo: await uploadCompanyLogo(user.companyId, logoFile) };
+    }
+    // else: no file chosen and not removing -> leave the existing logo untouched.
+  }
+
+  const previousLogo = formOptionalText(formData, "currentLogo");
+
   try {
     await updateCompany(user.companyId, {
       name,
       email,
       phone: formOptionalText(formData, "phone"),
       address: formOptionalText(formData, "address"),
-      ...(canEditBranding
-        ? { logo: formOptionalText(formData, "logo") }
-        : {}),
+      ...logoUpdate,
     });
     revalidatePath("/settings");
+    if (logoUpdate.logo !== undefined && previousLogo && previousLogo !== logoUpdate.logo) {
+      await deleteCompanyLogoObject(previousLogo);
+    }
     return { ok: true };
   } catch {
     return { ok: false, error: "Could not update company details. Please try again." };

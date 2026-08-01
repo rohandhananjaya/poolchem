@@ -10,6 +10,11 @@ vi.mock("@/lib/db/company", () => ({
 vi.mock("@/lib/db/packages", () => ({
   getCompanyPackage: vi.fn(),
 }));
+vi.mock("@/lib/storage", () => ({
+  uploadCompanyLogo: vi.fn(),
+  deleteCompanyLogoObject: vi.fn(),
+  validateLogoFile: vi.fn(),
+}));
 vi.mock("@/lib/db/users", () => ({
   updateUser: vi.fn(),
   deleteUser: vi.fn(),
@@ -33,6 +38,8 @@ vi.mock("@supabase/supabase-js", () => ({
 const { requireAuth, requireOwner } = await import("@/lib/auth");
 const { updateCompany } = await import("@/lib/db/company");
 const { getCompanyPackage } = await import("@/lib/db/packages");
+const { uploadCompanyLogo, deleteCompanyLogoObject, validateLogoFile } =
+  await import("@/lib/storage");
 const { updateUser } = await import("@/lib/db/users");
 const { createClient } = await import("@/lib/supabase/server");
 const { revalidatePath } = await import("next/cache");
@@ -52,13 +59,21 @@ const mockUser = {
   role: "TECH",
 };
 
-function formData(entries: Record<string, string>): FormData {
+function formData(entries: Record<string, string | File>): FormData {
   const fd = new FormData();
   for (const [key, value] of Object.entries(entries)) {
     fd.append(key, value);
   }
   return fd;
 }
+
+const trialPackage = {
+  package: null,
+  status: "TRIAL",
+  trialStart: new Date(),
+  trialEnd: null,
+  paidAt: null,
+} as never;
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -98,13 +113,7 @@ describe("updateAccountAction", () => {
 describe("updateCompanyAction", () => {
   it("updates company details when user is owner", async () => {
     vi.mocked(requireOwner).mockResolvedValue(mockUser as never);
-    vi.mocked(getCompanyPackage).mockResolvedValue({
-      package: null,
-      status: "TRIAL",
-      trialStart: new Date(),
-      trialEnd: null,
-      paidAt: null,
-    } as never);
+    vi.mocked(getCompanyPackage).mockResolvedValue(trialPackage);
 
     const result = await updateCompanyAction(
       { ok: false },
@@ -117,27 +126,125 @@ describe("updateCompanyAction", () => {
       email: "co@test.com",
       phone: null,
       address: null,
-      logo: null,
     });
     expect(revalidatePath).toHaveBeenCalledWith("/settings");
   });
 
-  it("saves the logo when the plan includes custom_branding", async () => {
+  it("uploads and saves a new logo when the plan includes custom_branding", async () => {
     vi.mocked(requireOwner).mockResolvedValue(mockUser as never);
-    vi.mocked(getCompanyPackage).mockResolvedValue({
-      package: null,
-      status: "TRIAL",
-      trialStart: new Date(),
-      trialEnd: null,
-      paidAt: null,
-    } as never);
+    vi.mocked(getCompanyPackage).mockResolvedValue(trialPackage);
+    vi.mocked(validateLogoFile).mockReturnValue({ ok: true });
+    vi.mocked(uploadCompanyLogo).mockResolvedValue(
+      "https://logos.poolbench.app/logos/company-1/new.png",
+    );
+
+    const logoFile = new File(["x"], "logo.png", { type: "image/png" });
+    const result = await updateCompanyAction(
+      { ok: false },
+      formData({
+        name: "Co",
+        email: "co@test.com",
+        logo: logoFile,
+        currentLogo: "https://example.com/old-logo.png",
+      }),
+    );
+
+    expect(result).toEqual({ ok: true });
+    expect(uploadCompanyLogo).toHaveBeenCalledWith("company-1", logoFile);
+    expect(updateCompany).toHaveBeenCalledWith("company-1", {
+      name: "Co",
+      email: "co@test.com",
+      phone: null,
+      address: null,
+      logo: "https://logos.poolbench.app/logos/company-1/new.png",
+    });
+    // Old logo isn't an R2 URL under the mocked keyFromPublicUrl, but delete is
+    // still attempted best-effort with whatever URL was previously stored.
+    expect(deleteCompanyLogoObject).toHaveBeenCalledWith(
+      "https://example.com/old-logo.png",
+    );
+  });
+
+  it("returns a validation error and skips the upload for an invalid file", async () => {
+    vi.mocked(requireOwner).mockResolvedValue(mockUser as never);
+    vi.mocked(getCompanyPackage).mockResolvedValue(trialPackage);
+    vi.mocked(validateLogoFile).mockReturnValue({
+      ok: false,
+      error: "Logo must be 2MB or smaller.",
+    });
+
+    const logoFile = new File(["x"], "logo.png", { type: "image/png" });
+    const result = await updateCompanyAction(
+      { ok: false },
+      formData({ name: "Co", email: "co@test.com", logo: logoFile }),
+    );
+
+    expect(result).toEqual({ ok: false, error: "Logo must be 2MB or smaller." });
+    expect(uploadCompanyLogo).not.toHaveBeenCalled();
+    expect(updateCompany).not.toHaveBeenCalled();
+  });
+
+  it("leaves the existing logo untouched when no file is picked and removal isn't requested", async () => {
+    vi.mocked(requireOwner).mockResolvedValue(mockUser as never);
+    vi.mocked(getCompanyPackage).mockResolvedValue(trialPackage);
 
     const result = await updateCompanyAction(
       { ok: false },
       formData({
         name: "Co",
         email: "co@test.com",
-        logo: "https://example.com/logo.png",
+        currentLogo: "https://example.com/old-logo.png",
+      }),
+    );
+
+    expect(result).toEqual({ ok: true });
+    expect(uploadCompanyLogo).not.toHaveBeenCalled();
+    expect(deleteCompanyLogoObject).not.toHaveBeenCalled();
+    expect(updateCompany).toHaveBeenCalledWith("company-1", {
+      name: "Co",
+      email: "co@test.com",
+      phone: null,
+      address: null,
+    });
+  });
+
+  it("leaves the existing logo untouched for an empty File from an untouched file input", async () => {
+    vi.mocked(requireOwner).mockResolvedValue(mockUser as never);
+    vi.mocked(getCompanyPackage).mockResolvedValue(trialPackage);
+
+    const emptyFile = new File([], "", { type: "" });
+    const result = await updateCompanyAction(
+      { ok: false },
+      formData({
+        name: "Co",
+        email: "co@test.com",
+        logo: emptyFile,
+        currentLogo: "https://example.com/old-logo.png",
+      }),
+    );
+
+    expect(result).toEqual({ ok: true });
+    expect(validateLogoFile).not.toHaveBeenCalled();
+    expect(uploadCompanyLogo).not.toHaveBeenCalled();
+    expect(updateCompany).toHaveBeenCalledWith("company-1", {
+      name: "Co",
+      email: "co@test.com",
+      phone: null,
+      address: null,
+    });
+  });
+
+  it("clears the logo and deletes the old object when removal is requested", async () => {
+    vi.mocked(requireOwner).mockResolvedValue(mockUser as never);
+    vi.mocked(getCompanyPackage).mockResolvedValue(trialPackage);
+
+    const result = await updateCompanyAction(
+      { ok: false },
+      formData({
+        name: "Co",
+        email: "co@test.com",
+        removeLogo: "true",
+        currentLogo: "https://example.com/old-logo.png",
       }),
     );
 
@@ -147,11 +254,14 @@ describe("updateCompanyAction", () => {
       email: "co@test.com",
       phone: null,
       address: null,
-      logo: "https://example.com/logo.png",
+      logo: null,
     });
+    expect(deleteCompanyLogoObject).toHaveBeenCalledWith(
+      "https://example.com/old-logo.png",
+    );
   });
 
-  it("ignores the logo field when the plan lacks custom_branding", async () => {
+  it("ignores the logo file and removal request when the plan lacks custom_branding", async () => {
     vi.mocked(requireOwner).mockResolvedValue(mockUser as never);
     vi.mocked(getCompanyPackage).mockResolvedValue({
       package: {
@@ -168,16 +278,22 @@ describe("updateCompanyAction", () => {
       paidAt: new Date(),
     } as never);
 
+    const logoFile = new File(["x"], "logo.png", { type: "image/png" });
     const result = await updateCompanyAction(
       { ok: false },
       formData({
         name: "Co",
         email: "co@test.com",
-        logo: "https://example.com/logo.png",
+        logo: logoFile,
+        removeLogo: "true",
+        currentLogo: "https://example.com/old-logo.png",
       }),
     );
 
     expect(result).toEqual({ ok: true });
+    expect(validateLogoFile).not.toHaveBeenCalled();
+    expect(uploadCompanyLogo).not.toHaveBeenCalled();
+    expect(deleteCompanyLogoObject).not.toHaveBeenCalled();
     expect(updateCompany).toHaveBeenCalledWith("company-1", {
       name: "Co",
       email: "co@test.com",

@@ -30,6 +30,9 @@ Feature components grouped by domain; shadcn/ui primitives in [ui/](ui/) (style 
 ## homeowner/
 `share-button` (copies/shares the public pool link)
 
+## shared/
+`CompanyLogo` (Server Component; renders a company logo, used on both dashboard and public report/homeowner pages) — R2-hosted logos (origin matches `R2_PUBLIC_URL`) go through `next/image`; anything else (e.g. a legacy externally-hosted URL from before uploads existed) falls back to a plain `<img>` so an unconfigured remote host never crashes the page
+
 ## package/
 `PackageBadge` / `PackageBadgeLink` (status pill: Trial/Active/Expired/Cancelled, colored; `package` may be `null` while on trial with no plan chosen) · `PayNowDialog` (first-time subscribe checkout dialog) · `SwitchPlanDialog` (shown instead of `PayNowDialog` once already on an active paid plan; upgrade = immediate + provider-prorated, downgrade = scheduled for period-end) · `PendingDowngradeNotice` (inline banner + cancel button shown when a downgrade is scheduled) · `TrialBanner` (dismissible-by-state urgency banner, rendered once in `(dashboard)/layout.tsx`)
 

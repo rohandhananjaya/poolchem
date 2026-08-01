@@ -2,10 +2,11 @@
 
 import * as React from "react"
 import { useRouter } from "next/navigation"
-import { Download, LogOut, Trash2 } from "lucide-react"
+import { Download, LogOut, Trash2, Upload } from "lucide-react"
 import { toast } from "sonner"
 
 import { createClient } from "@/lib/supabase/client"
+import { validateLogoFile } from "@/lib/storage/logo-validation"
 import { Button } from "@/components/ui/button"
 import { UpgradeDialog } from "@/components/upgrade-dialog"
 import {
@@ -112,6 +113,31 @@ export function ProfileForms({
     updatePasswordAction,
     INITIAL_STATE,
   )
+
+  const [logoPreview, setLogoPreview] = React.useState<string | null>(
+    company?.logo ?? null,
+  )
+  const [removeLogo, setRemoveLogo] = React.useState(false)
+  const logoInputRef = React.useRef<HTMLInputElement>(null)
+
+  function handleLogoChange(event: React.ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0]
+    if (!file) return
+    const validation = validateLogoFile(file)
+    if (!validation.ok) {
+      toast.error(validation.error)
+      event.target.value = ""
+      return
+    }
+    setRemoveLogo(false)
+    setLogoPreview(URL.createObjectURL(file))
+  }
+
+  function handleRemoveLogo() {
+    setRemoveLogo(true)
+    setLogoPreview(null)
+    if (logoInputRef.current) logoInputRef.current.value = ""
+  }
 
   useFormFeedback(accountState, "Account updated.")
   useFormFeedback(companyState, "Company details updated.")
@@ -298,16 +324,67 @@ export function ProfileForms({
 
               {canEditBranding ? (
                 <div className="grid gap-1.5">
-                  <Label htmlFor="company-logo">Logo URL</Label>
-                  <Input
+                  <Label htmlFor="company-logo">Logo</Label>
+                  <input
+                    type="hidden"
+                    name="currentLogo"
+                    value={company.logo ?? ""}
+                  />
+                  <input
+                    type="hidden"
+                    name="removeLogo"
+                    value={removeLogo ? "true" : "false"}
+                  />
+                  <div className="flex items-center gap-3">
+                    {logoPreview ? (
+                      // Local blob URL or an existing (possibly external) URL —
+                      // next/image can't reliably handle either at this size/scope.
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={logoPreview}
+                        alt=""
+                        data-testid="logo-preview"
+                        className="size-12 shrink-0 rounded-xl border border-border object-cover"
+                      />
+                    ) : (
+                      <div
+                        data-testid="logo-placeholder"
+                        className="flex size-12 shrink-0 items-center justify-center rounded-xl border border-dashed border-border bg-muted text-muted-foreground"
+                      >
+                        <Upload className="size-4" />
+                      </div>
+                    )}
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Button type="button" variant="outline" size="sm" asChild>
+                        <label htmlFor="company-logo" className="cursor-pointer">
+                          {logoPreview ? "Change logo" : "Upload logo"}
+                        </label>
+                      </Button>
+                      {logoPreview ? (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={handleRemoveLogo}
+                        >
+                          Remove
+                        </Button>
+                      ) : null}
+                    </div>
+                  </div>
+                  <input
+                    ref={logoInputRef}
                     id="company-logo"
                     name="logo"
-                    type="url"
-                    placeholder="https://example.com/logo.png"
-                    defaultValue={company.logo ?? ""}
+                    type="file"
+                    accept="image/png,image/jpeg,image/webp"
+                    onChange={handleLogoChange}
+                    data-testid="logo-file-input"
+                    className="sr-only"
                   />
                   <p className="text-xs text-muted-foreground">
-                    Shown on service reports and your homeowner pages.
+                    PNG, JPEG, or WebP, up to 2MB. Shown on service reports and your
+                    homeowner pages.
                   </p>
                 </div>
               ) : (

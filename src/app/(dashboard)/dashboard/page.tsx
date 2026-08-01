@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation"
 import Link from "next/link"
 import { format } from "date-fns"
-import { Bell, Building2, LayoutDashboard } from "lucide-react"
+import { Bell, LayoutDashboard } from "lucide-react"
 
 import { requireActivePackage } from "@/lib/auth"
 import { getCompanyById } from "@/lib/db/company"
@@ -10,6 +10,7 @@ import { getAdminDashboardData } from "@/lib/db/admin-dashboard"
 import { getServerHealthSummary } from "@/lib/db/admin-diagnostics"
 import { Shell } from "@/components/ui/shell"
 import { Card, CardContent } from "@/components/ui/card"
+import { CompanyLogo } from "@/components/shared/CompanyLogo"
 import { DashboardHeader } from "@/components/dashboard/DashboardHeader"
 import { StatsRow } from "@/components/dashboard/StatsRow"
 import { VisitCard } from "@/components/visits/VisitCard"
@@ -50,11 +51,16 @@ export default async function DashboardPage() {
     <>
       <Shell>
         <Card className="mb-6">
-          <CardContent className="flex items-center gap-3 py-1">
-            <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
-              <Building2 className="size-4" />
-            </div>
-            <p className="truncate text-sm font-semibold text-foreground">
+          <CardContent className="flex items-center gap-3 py-2">
+            {company?.logo && (
+              <CompanyLogo
+                src={company.logo}
+                alt={company.name ?? "Company"}
+                size={48}
+                className="shrink-0"
+              />
+            )}
+            <p className="truncate text-base font-semibold text-foreground">
               {company?.name ?? "—"}
             </p>
           </CardContent>

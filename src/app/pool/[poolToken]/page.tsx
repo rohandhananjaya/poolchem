@@ -18,6 +18,7 @@ import { cn } from "@/lib/utils"
 import { WaterHealthGauge } from "@/components/visits/WaterHealthGauge"
 import { ScoreSparkline } from "@/components/reports/ScoreSparkline"
 import { ShareButton } from "@/components/homeowner/share-button"
+import { CompanyLogo } from "@/components/shared/CompanyLogo"
 
 // Public dashboards are re-read on each request so a homeowner always sees the
 // latest service; nothing here is user-specific or cacheable across pools.
@@ -149,11 +150,11 @@ export default async function HomeownerDashboardPage({
         {/* Company chip */}
         <div className="mb-6 flex items-center justify-center gap-2 text-sm text-muted-foreground">
           {company.logo ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
+            <CompanyLogo
               src={company.logo}
               alt={company.name}
-              className="size-6 rounded-md object-cover"
+              size={24}
+              className="shrink-0"
             />
           ) : (
             <Droplets className="size-4 text-brand-600" />
@@ -284,11 +285,11 @@ export default async function HomeownerDashboardPage({
         <footer className="mt-10 flex flex-col items-center gap-3 border-t border-border pt-6 text-center">
           <div className="flex items-center gap-2">
             {company.logo && (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
+              <CompanyLogo
                 src={company.logo}
                 alt={company.name}
-                className="size-8 rounded-lg object-cover"
+                size={32}
+                className="shrink-0"
               />
             )}
             <p className="text-sm font-semibold text-foreground">
