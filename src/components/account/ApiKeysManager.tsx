@@ -8,6 +8,7 @@ import { toast } from "sonner"
 
 import { Button } from "@/components/ui/button"
 import { UpgradeDialog } from "@/components/upgrade-dialog"
+import { DownloadPostmanButton } from "@/components/account/DownloadPostmanButton"
 import {
   Dialog,
   DialogContent,
@@ -107,97 +108,100 @@ export function ApiKeysManager({
           Keys authenticate server-to-server requests to the Poolbench API —
           never embed one in browser-side code.
         </p>
-        <Dialog
-          open={open}
-          onOpenChange={(next) => {
-            setOpen(next)
-            if (!next) reset()
-          }}
-        >
-          <DialogTrigger asChild>
-            <Button type="button" size="lg" className="shrink-0">
-              <Key />
-              New key
-            </Button>
-          </DialogTrigger>
-          <DialogContent>
-            {revealedSecret ? (
-              <>
-                <DialogHeader>
-                  <DialogTitle>Copy your new API key</DialogTitle>
-                  <DialogDescription>
-                    This is the only time you&apos;ll see the full key — store
-                    it somewhere safe. You&apos;ll need to generate a new one
-                    if you lose it.
-                  </DialogDescription>
-                </DialogHeader>
-                <div className="flex items-center gap-2 rounded-lg border border-border bg-muted/50 p-3">
-                  <code className="min-w-0 flex-1 truncate font-mono text-sm text-foreground">
-                    {revealedSecret}
-                  </code>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="icon-sm"
-                    className="shrink-0"
-                    onClick={handleCopy}
-                  >
-                    {copied ? <Check /> : <Copy />}
-                  </Button>
-                </div>
-                <DialogFooter>
-                  <Button
-                    type="button"
-                    onClick={() => {
-                      setOpen(false)
-                      reset()
-                    }}
-                  >
-                    Done
-                  </Button>
-                </DialogFooter>
-              </>
-            ) : (
-              <>
-                <DialogHeader>
-                  <DialogTitle>New API key</DialogTitle>
-                  <DialogDescription>
-                    Give it a name so you can tell it apart later (e.g.
-                    &quot;Zapier integration&quot;).
-                  </DialogDescription>
-                </DialogHeader>
-                <div className="space-y-1.5">
-                  <Label htmlFor="api-key-name">Name</Label>
-                  <Input
-                    id="api-key-name"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    placeholder="Zapier integration"
-                    disabled={pending}
-                    maxLength={MAX_NAME_LENGTH}
-                  />
-                </div>
-                <DialogFooter>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => setOpen(false)}
-                    disabled={pending}
-                  >
-                    Cancel
-                  </Button>
-                  <Button
-                    type="button"
-                    onClick={handleCreate}
-                    disabled={pending || !name.trim()}
-                  >
-                    {pending ? "Generating…" : "Generate key"}
-                  </Button>
-                </DialogFooter>
-              </>
-            )}
-          </DialogContent>
-        </Dialog>
+        <div className="flex items-center gap-2">
+          <DownloadPostmanButton />
+          <Dialog
+            open={open}
+            onOpenChange={(next) => {
+              setOpen(next)
+              if (!next) reset()
+            }}
+          >
+            <DialogTrigger asChild>
+              <Button type="button" size="lg" className="shrink-0">
+                <Key />
+                New key
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-lg">
+              {revealedSecret ? (
+                <>
+                  <DialogHeader>
+                    <DialogTitle>Copy your new API key</DialogTitle>
+                    <DialogDescription>
+                      This is the only time you&apos;ll see the full key — store
+                      it somewhere safe. You&apos;ll need to generate a new one
+                      if you lose it.
+                    </DialogDescription>
+                  </DialogHeader>
+                  <div className="flex items-center gap-2 rounded-lg border border-border bg-muted/50 p-3">
+                    <code className="min-w-0 flex-1 truncate font-mono text-sm text-foreground">
+                      {revealedSecret}
+                    </code>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon-sm"
+                      className="shrink-0"
+                      onClick={handleCopy}
+                    >
+                      {copied ? <Check /> : <Copy />}
+                    </Button>
+                  </div>
+                  <DialogFooter>
+                    <Button
+                      type="button"
+                      onClick={() => {
+                        setOpen(false)
+                        reset()
+                      }}
+                    >
+                      Done
+                    </Button>
+                  </DialogFooter>
+                </>
+              ) : (
+                <>
+                  <DialogHeader>
+                    <DialogTitle>New API key</DialogTitle>
+                    <DialogDescription>
+                      Give it a name so you can tell it apart later (e.g.
+                      &quot;Zapier integration&quot;).
+                    </DialogDescription>
+                  </DialogHeader>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="api-key-name">Name</Label>
+                    <Input
+                      id="api-key-name"
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                      placeholder="Zapier integration"
+                      disabled={pending}
+                      maxLength={MAX_NAME_LENGTH}
+                    />
+                  </div>
+                  <DialogFooter>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => setOpen(false)}
+                      disabled={pending}
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      type="button"
+                      onClick={handleCreate}
+                      disabled={pending || !name.trim()}
+                    >
+                      {pending ? "Generating…" : "Generate key"}
+                    </Button>
+                  </DialogFooter>
+                </>
+              )}
+            </DialogContent>
+          </Dialog>
+        </div>
       </div>
 
       {keys.length === 0 ? (

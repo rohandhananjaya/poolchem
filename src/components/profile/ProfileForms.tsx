@@ -1,14 +1,22 @@
 "use client"
 
 import * as React from "react"
+import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { Download, LogOut, Trash2, Upload } from "lucide-react"
+import { Check, CreditCard, Download, LogOut, Trash2, Upload, X } from "lucide-react"
 import { toast } from "sonner"
 
 import { createClient } from "@/lib/supabase/client"
 import { validateLogoFile } from "@/lib/storage/logo-validation"
 import { Button } from "@/components/ui/button"
 import { UpgradeDialog } from "@/components/upgrade-dialog"
+import { PackageBadge } from "@/components/package/package-badge"
+import {
+  FEATURE_LABELS,
+  formatFeatureValue,
+  isTrialExpired,
+  type CompanyPackageInfo,
+} from "@/lib/package-features"
 import {
   Dialog,
   DialogContent,
@@ -74,6 +82,84 @@ function ReadOnlyField({ label, value }: { label: string; value: string }) {
   )
 }
 
+/** Current plan summary + link to the plans page, shown in the Manage plan tab. */
+function CompanyPlanTab({
+  companyPackage,
+}: {
+  companyPackage?: CompanyPackageInfo | null
+}) {
+  if (!companyPackage) {
+    return (
+      <p className="text-sm text-muted-foreground">
+        No plan information available.
+      </p>
+    )
+  }
+
+  const expired = isTrialExpired(companyPackage)
+  const onTrial = companyPackage.status === "TRIAL" && !expired
+  const planName = onTrial
+    ? "Free Trial"
+    : (companyPackage.package?.name ?? "Free Trial")
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center gap-3">
+        <h3 className="text-lg font-semibold text-foreground">{planName}</h3>
+        <PackageBadge companyPackage={companyPackage} />
+      </div>
+
+      {companyPackage.status === "TRIAL" && companyPackage.trialEnd && (
+        <p className="text-sm text-muted-foreground">
+          {expired
+            ? "Your trial has ended."
+            : `Trial ends ${companyPackage.trialEnd.toLocaleDateString()}`}
+        </p>
+      )}
+
+      {onTrial ? (
+        <p className="text-sm text-muted-foreground">
+          All features are unlocked during your trial. Choose a plan to continue
+          after it ends.
+        </p>
+      ) : companyPackage.package ? (
+        <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          {FEATURE_LABELS.map(({ key, label }) => {
+            const rawValue = companyPackage.package!.features[key]
+            const displayValue = formatFeatureValue(rawValue)
+            return (
+              <li key={key} className="flex items-center gap-2 text-sm">
+                {rawValue !== false && rawValue !== 0 ? (
+                  <Check className="size-4 shrink-0 text-emerald-500" />
+                ) : (
+                  <X className="size-4 shrink-0 text-muted-foreground" />
+                )}
+                <span className="text-foreground">
+                  {label}
+                  {typeof displayValue === "string" && (
+                    <span className="ml-1 text-muted-foreground">
+                      {displayValue}
+                    </span>
+                  )}
+                </span>
+              </li>
+            )
+          })}
+        </ul>
+      ) : null}
+
+      <div>
+        <Button asChild>
+          <Link href="/account/package">
+            <CreditCard />
+            Manage plan
+          </Link>
+        </Button>
+      </div>
+    </div>
+  )
+}
+
 export interface ProfileFormsProps {
   account: { name: string; email: string; role: string }
   company: {
@@ -87,6 +173,8 @@ export interface ProfileFormsProps {
   canEditCompany: boolean
   /** Whether the company's plan includes the custom_branding feature. */
   canEditBranding: boolean
+  /** The company's current plan/trial state, shown in the Manage plan tab. */
+  companyPackage?: CompanyPackageInfo | null
 }
 
 export function ProfileForms({
@@ -94,6 +182,7 @@ export function ProfileForms({
   company,
   canEditCompany,
   canEditBranding,
+  companyPackage,
 }: ProfileFormsProps) {
   const router = useRouter()
   const [signingOut, setSigningOut] = React.useState(false)
@@ -277,130 +366,141 @@ export function ProfileForms({
           title="Company"
           description={
             canEditCompany
-              ? "Details shown on service reports."
+              ? "Manage your company details and plan."
               : "Only company owners can edit these details."
           }
         >
           {canEditCompany ? (
-            <form action={companyAction} className="grid gap-4">
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div className="grid gap-1.5">
-                  <Label htmlFor="company-name">Company name</Label>
-                  <Input
-                    id="company-name"
-                    name="name"
-                    defaultValue={company.name}
-                    required
-                  />
-                </div>
-                <div className="grid gap-1.5">
-                  <Label htmlFor="company-email">Email</Label>
-                  <Input
-                    id="company-email"
-                    name="email"
-                    type="email"
-                    defaultValue={company.email}
-                    required
-                  />
-                </div>
-                <div className="grid gap-1.5">
-                  <Label htmlFor="company-phone">Phone</Label>
-                  <Input
-                    id="company-phone"
-                    name="phone"
-                    type="tel"
-                    defaultValue={company.phone ?? ""}
-                  />
-                </div>
-                <div className="grid gap-1.5">
-                  <Label htmlFor="company-address">Address</Label>
-                  <Input
-                    id="company-address"
-                    name="address"
-                    defaultValue={company.address ?? ""}
-                  />
-                </div>
-              </div>
-
-              {canEditBranding ? (
-                <div className="grid gap-1.5">
-                  <Label htmlFor="company-logo">Logo</Label>
-                  <input
-                    type="hidden"
-                    name="currentLogo"
-                    value={company.logo ?? ""}
-                  />
-                  <input
-                    type="hidden"
-                    name="removeLogo"
-                    value={removeLogo ? "true" : "false"}
-                  />
-                  <div className="flex items-center gap-3">
-                    {logoPreview ? (
-                      // Local blob URL or an existing (possibly external) URL —
-                      // next/image can't reliably handle either at this size/scope.
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        src={logoPreview}
-                        alt=""
-                        data-testid="logo-preview"
-                        className="size-12 shrink-0 rounded-xl border border-border object-cover"
+            <Tabs defaultValue="details">
+              <TabsList>
+                <TabsTrigger value="details">Company data</TabsTrigger>
+                <TabsTrigger value="plan">Your plan</TabsTrigger>
+              </TabsList>
+              <TabsContent value="details">
+                <form action={companyAction} className="grid gap-4">
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <div className="grid gap-1.5">
+                      <Label htmlFor="company-name">Company name</Label>
+                      <Input
+                        id="company-name"
+                        name="name"
+                        defaultValue={company.name}
+                        required
                       />
-                    ) : (
-                      <div
-                        data-testid="logo-placeholder"
-                        className="flex size-12 shrink-0 items-center justify-center rounded-xl border border-dashed border-border bg-muted text-muted-foreground"
-                      >
-                        <Upload className="size-4" />
-                      </div>
-                    )}
-                    <div className="flex flex-wrap items-center gap-2">
-                      <Button type="button" variant="outline" size="sm" asChild>
-                        <label htmlFor="company-logo" className="cursor-pointer">
-                          {logoPreview ? "Change logo" : "Upload logo"}
-                        </label>
-                      </Button>
-                      {logoPreview ? (
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="sm"
-                          onClick={handleRemoveLogo}
-                        >
-                          Remove
-                        </Button>
-                      ) : null}
+                    </div>
+                    <div className="grid gap-1.5">
+                      <Label htmlFor="company-email">Email</Label>
+                      <Input
+                        id="company-email"
+                        name="email"
+                        type="email"
+                        defaultValue={company.email}
+                        required
+                      />
+                    </div>
+                    <div className="grid gap-1.5">
+                      <Label htmlFor="company-phone">Phone</Label>
+                      <Input
+                        id="company-phone"
+                        name="phone"
+                        type="tel"
+                        defaultValue={company.phone ?? ""}
+                      />
+                    </div>
+                    <div className="grid gap-1.5">
+                      <Label htmlFor="company-address">Address</Label>
+                      <Input
+                        id="company-address"
+                        name="address"
+                        defaultValue={company.address ?? ""}
+                      />
                     </div>
                   </div>
-                  <input
-                    ref={logoInputRef}
-                    id="company-logo"
-                    name="logo"
-                    type="file"
-                    accept="image/png,image/jpeg,image/webp"
-                    onChange={handleLogoChange}
-                    data-testid="logo-file-input"
-                    className="sr-only"
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    PNG, JPEG, or WebP, up to 2MB. Shown on service reports and your
-                    homeowner pages.
-                  </p>
-                </div>
-              ) : (
-                <UpgradeDialog featureName="Custom branding" buttonLabel="Logo" />
-              )}
 
-              <div className="flex flex-wrap items-center gap-4">
-                <SaveButton pending={companyPending} />
-                <a
-                  href="/account/api-keys"
-                  className="text-sm font-medium text-foreground underline underline-offset-2 hover:text-muted-foreground"
-                >
-                  Manage API keys
-                </a>
-              </div>
-            </form>
+                  {canEditBranding ? (
+                    <div className="grid gap-1.5">
+                      <Label htmlFor="company-logo">Logo</Label>
+                      <input
+                        type="hidden"
+                        name="currentLogo"
+                        value={company.logo ?? ""}
+                      />
+                      <input
+                        type="hidden"
+                        name="removeLogo"
+                        value={removeLogo ? "true" : "false"}
+                      />
+                      <div className="flex items-center gap-3">
+                        {logoPreview ? (
+                          // Local blob URL or an existing (possibly external) URL —
+                          // next/image can't reliably handle either at this size/scope.
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={logoPreview}
+                            alt=""
+                            data-testid="logo-preview"
+                            className="size-12 shrink-0 rounded-xl border border-border object-cover"
+                          />
+                        ) : (
+                          <div
+                            data-testid="logo-placeholder"
+                            className="flex size-12 shrink-0 items-center justify-center rounded-xl border border-dashed border-border bg-muted text-muted-foreground"
+                          >
+                            <Upload className="size-4" />
+                          </div>
+                        )}
+                        <div className="flex flex-wrap items-center gap-2">
+                          <Button type="button" variant="outline" size="sm" asChild>
+                            <label htmlFor="company-logo" className="cursor-pointer">
+                              {logoPreview ? "Change logo" : "Upload logo"}
+                            </label>
+                          </Button>
+                          {logoPreview ? (
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              onClick={handleRemoveLogo}
+                            >
+                              Remove
+                            </Button>
+                          ) : null}
+                        </div>
+                      </div>
+                      <input
+                        ref={logoInputRef}
+                        id="company-logo"
+                        name="logo"
+                        type="file"
+                        accept="image/png,image/jpeg,image/webp"
+                        onChange={handleLogoChange}
+                        data-testid="logo-file-input"
+                        className="sr-only"
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        PNG, JPEG, or WebP, up to 2MB. Shown on service reports and your
+                        homeowner pages.
+                      </p>
+                    </div>
+                  ) : (
+                    <UpgradeDialog featureName="Custom branding" buttonLabel="Logo" />
+                  )}
+
+                  <div className="flex flex-wrap items-center gap-4">
+                    <SaveButton pending={companyPending} />
+                    <a
+                      href="/account/api-keys"
+                      className="text-sm font-medium text-foreground underline underline-offset-2 hover:text-muted-foreground"
+                    >
+                      Manage API keys
+                    </a>
+                  </div>
+                </form>
+              </TabsContent>
+              <TabsContent value="plan">
+                <CompanyPlanTab companyPackage={companyPackage} />
+              </TabsContent>
+            </Tabs>
           ) : (
             <div className="grid gap-4 sm:grid-cols-2">
               <ReadOnlyField label="Company name" value={company.name} />

@@ -24,6 +24,7 @@ vi.mock("@/lib/storage/logo-validation", () => ({
 
 import { ProfileForms } from "./ProfileForms";
 import { validateLogoFile } from "@/lib/storage/logo-validation";
+import type { CompanyPackageInfo } from "@/lib/package-features";
 
 const account = { name: "Jane Tech", email: "jane@test.com", role: "TECH" };
 
@@ -36,6 +37,35 @@ function companyWithLogo(logo: string | null) {
     logo,
   };
 }
+
+const companyPackage: CompanyPackageInfo = {
+  package: {
+    id: "pkg_pro",
+    slug: "pro",
+    name: "Pro",
+    price: 9900,
+    features: {
+      max_pools: -1,
+      health_scoring: "advanced+lsi",
+      chemical_recs: true,
+      service_reports: true,
+      qr_code: true,
+      scheduling: true,
+      max_techs: 5,
+      priority_support: true,
+      custom_branding: true,
+      api_access: true,
+      csv_import: true,
+    },
+    sortOrder: 1,
+  },
+  status: "ACTIVE",
+  trialStart: null,
+  trialEnd: null,
+  paidAt: null,
+  pendingPackage: null,
+  pendingEffectiveAt: null,
+};
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -130,5 +160,57 @@ describe("ProfileForms — company logo", () => {
 
     expect(mockToast.error).toHaveBeenCalledWith("Logo must be 2MB or smaller.");
     expect(screen.getByTestId("logo-placeholder")).toBeInTheDocument();
+  });
+
+  it("links owners to the plan page from the Manage plan tab", async () => {
+    const user = userEvent.setup();
+    render(
+      <ProfileForms
+        account={{ ...account, role: "OWNER" }}
+        company={companyWithLogo(null)}
+        canEditCompany
+        canEditBranding
+        companyPackage={companyPackage}
+      />,
+    );
+
+    await user.click(screen.getByRole("tab", { name: "Your plan" }));
+
+    const planButton = screen.getByRole("link", { name: "Manage plan" });
+    expect(planButton).toHaveAttribute("href", "/account/package");
+  });
+
+  it("shows the current plan and its features in the Manage plan tab", async () => {
+    const user = userEvent.setup();
+    render(
+      <ProfileForms
+        account={{ ...account, role: "OWNER" }}
+        company={companyWithLogo(null)}
+        canEditCompany
+        canEditBranding
+        companyPackage={companyPackage}
+      />,
+    );
+
+    await user.click(screen.getByRole("tab", { name: "Manage plan" }));
+
+    expect(screen.getByRole("heading", { name: "Pro" })).toBeInTheDocument();
+    expect(screen.getByText("API access")).toBeInTheDocument();
+    expect(screen.getByText("Unlimited")).toBeInTheDocument();
+  });
+
+  it("does not render plan tabs for technicians", () => {
+    render(
+      <ProfileForms
+        account={account}
+        company={companyWithLogo(null)}
+        canEditCompany={false}
+        canEditBranding={false}
+      />,
+    );
+
+    expect(screen.queryByRole("tab", { name: "Company data" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("tab", { name: "Manage plan" })).not.toBeInTheDocument();
+    expect(screen.getByText("Company name")).toBeInTheDocument();
   });
 });

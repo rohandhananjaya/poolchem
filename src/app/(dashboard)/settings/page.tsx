@@ -39,6 +39,7 @@ export default async function ProfilePage() {
         } : null}
         canEditCompany={canEditCompany}
         canEditBranding={canEditBranding}
+        companyPackage={companyPackage}
       />
     </Shell>
   )

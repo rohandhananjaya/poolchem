@@ -16,13 +16,21 @@ vi.mock("@/lib/audit", () => ({
 vi.mock("next/cache", () => ({
   revalidatePath: vi.fn(),
 }));
+vi.mock("@/lib/api-keys/postman-collection", () => ({
+  buildPostmanCollection: vi.fn(),
+}));
 
 const { requireOwner } = await import("@/lib/auth");
 const { createApiKey, revokeApiKey } = await import("@/lib/db/api-keys");
 const { getCompanyPackage } = await import("@/lib/db/packages");
 const { audit } = await import("@/lib/audit");
 const { revalidatePath } = await import("next/cache");
-const { createApiKeyAction, revokeApiKeyAction } = await import("./actions");
+const { buildPostmanCollection } = await import("@/lib/api-keys/postman-collection");
+const {
+  createApiKeyAction,
+  revokeApiKeyAction,
+  downloadPostmanCollectionAction,
+} = await import("./actions");
 
 const mockUser = { id: "user-1", companyId: "company-1", role: "OWNER" };
 
@@ -130,5 +138,53 @@ describe("revokeApiKeyAction", () => {
       ok: false,
       error: "Could not revoke the API key. Please try again.",
     });
+  });
+});
+
+describe("downloadPostmanCollectionAction", () => {
+  it("builds a collection rooted at the configured app URL", async () => {
+    vi.mocked(requireOwner).mockResolvedValue(mockUser as never);
+    vi.mocked(getCompanyPackage).mockResolvedValue(activeCompanyPackage as never);
+    vi.mocked(buildPostmanCollection).mockReturnValue("{}");
+    process.env.NEXT_PUBLIC_APP_URL = "https://poolbench.app";
+
+    const result = await downloadPostmanCollectionAction();
+
+    expect(result).toEqual({ ok: true, collection: "{}" });
+    expect(buildPostmanCollection).toHaveBeenCalledWith("https://poolbench.app");
+  });
+
+  it("falls back to the local origin when NEXT_PUBLIC_APP_URL is unset", async () => {
+    vi.mocked(requireOwner).mockResolvedValue(mockUser as never);
+    vi.mocked(getCompanyPackage).mockResolvedValue(activeCompanyPackage as never);
+    vi.mocked(buildPostmanCollection).mockReturnValue("{}");
+    delete process.env.NEXT_PUBLIC_APP_URL;
+
+    const result = await downloadPostmanCollectionAction();
+
+    expect(result.ok).toBe(true);
+    expect(buildPostmanCollection).toHaveBeenCalledWith("https://localhost:3000");
+  });
+
+  it("blocks download when the plan lacks api_access", async () => {
+    vi.mocked(requireOwner).mockResolvedValue(mockUser as never);
+    vi.mocked(getCompanyPackage).mockResolvedValue(noAccessCompanyPackage as never);
+
+    const result = await downloadPostmanCollectionAction();
+
+    expect(result).toEqual({
+      ok: false,
+      error: "API access is not available on your plan.",
+    });
+    expect(buildPostmanCollection).not.toHaveBeenCalled();
+  });
+
+  it("returns an error when the user has no company", async () => {
+    vi.mocked(requireOwner).mockResolvedValue({ ...mockUser, companyId: null } as never);
+
+    const result = await downloadPostmanCollectionAction();
+
+    expect(result).toEqual({ ok: false, error: "No company affiliation." });
+    expect(buildPostmanCollection).not.toHaveBeenCalled();
   });
 });

@@ -25,7 +25,7 @@ Feature components grouped by domain; shadcn/ui primitives in [ui/](ui/) (style 
 `ProfileForms` (account + company forms, posts to `settings/actions.ts`) — links out to `/account/api-keys` for owners
 
 ## account/
-`ApiKeysManager` (list/generate/revoke API keys for the `api_access` plan feature; one-time secret reveal on generation; locked upsell hint when `canUseApiKeys` is false — same idiom as `csv_import`/`custom_branding`)
+`ApiKeysManager` (list/generate/revoke API keys for the `api_access` plan feature; one-time secret reveal on generation; locked upsell hint when `canUseApiKeys` is false — same idiom as `csv_import`/`custom_branding`) · `DownloadPostmanButton` (downloads a Postman collection pre-wired to `/api/v1` via `downloadPostmanCollectionAction`; rendered in the `ApiKeysManager` header)
 
 ## homeowner/
 `share-button` (copies/shares the public pool link)

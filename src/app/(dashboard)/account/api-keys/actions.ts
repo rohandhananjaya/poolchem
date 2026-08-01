@@ -7,6 +7,7 @@ import { createApiKey, revokeApiKey, type ApiKeySummary } from "@/lib/db/api-key
 import { getCompanyPackage } from "@/lib/db/packages"
 import { checkFeatureAccess } from "@/lib/package-features"
 import { audit } from "@/lib/audit"
+import { buildPostmanCollection } from "@/lib/api-keys/postman-collection"
 
 const MAX_NAME_LENGTH = 60
 
@@ -71,4 +72,31 @@ export async function revokeApiKeyAction(keyId: string): Promise<RevokeApiKeyRes
   } catch {
     return { ok: false, error: "Could not revoke the API key. Please try again." }
   }
+}
+
+export interface DownloadPostmanCollectionResult {
+  ok: boolean
+  error?: string
+  /** Serialized Postman Collection v2.1 JSON. */
+  collection?: string
+}
+
+/**
+ * Builds a Postman collection for the `/api/v1` API, rooted at the app's public
+ * base URL. Re-checks `api_access` like the other actions in this file — the
+ * download is an artifact of the same gated feature, not a standalone route.
+ */
+export async function downloadPostmanCollectionAction(): Promise<DownloadPostmanCollectionResult> {
+  const user = await requireOwner()
+  if (!user.companyId) {
+    return { ok: false, error: "No company affiliation." }
+  }
+
+  const companyPackage = await getCompanyPackage(user.companyId)
+  if (!companyPackage || !checkFeatureAccess(companyPackage, "api_access")) {
+    return { ok: false, error: "API access is not available on your plan." }
+  }
+
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://localhost:3000"
+  return { ok: true, collection: buildPostmanCollection(baseUrl) }
 }
