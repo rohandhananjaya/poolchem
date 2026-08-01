@@ -148,20 +148,22 @@ export default async function HomeownerDashboardPage({
     <main className="min-h-full bg-gradient-to-b from-brand-50 via-brand-200/40 to-background dark:from-slate-950 dark:via-slate-950 dark:to-background">
       <div className="mx-auto w-full max-w-2xl px-4 py-8 sm:py-12">
         {/* Company chip */}
-        <div className="mb-6 flex items-center justify-center gap-2 text-sm text-muted-foreground">
-          {company.logo ? (
-            <CompanyLogo
-              src={company.logo}
-              alt={company.name}
-              size={24}
-              className="shrink-0"
-            />
-          ) : (
-            <Droplets className="size-4 text-brand-600" />
-          )}
-          <span>
-            Managed by{" "}
-            <span className="font-medium text-foreground">{company.name}</span>
+        <div className="mb-6 flex flex-col items-center gap-1.5 text-center text-xs text-muted-foreground">
+          <span>Managed by</span>
+          <span className="flex items-center gap-2.5">
+            {company.logo ? (
+              <CompanyLogo
+                src={company.logo}
+                alt={company.name}
+                size={36}
+                className="shrink-0"
+              />
+            ) : (
+              <Droplets className="size-5 text-brand-600" />
+            )}
+            <span className="text-lg font-semibold text-foreground">
+              {company.name}
+            </span>
           </span>
         </div>
 
@@ -283,19 +285,6 @@ export default async function HomeownerDashboardPage({
 
         {/* Footer */}
         <footer className="mt-10 flex flex-col items-center gap-3 border-t border-border pt-6 text-center">
-          <div className="flex items-center gap-2">
-            {company.logo && (
-              <CompanyLogo
-                src={company.logo}
-                alt={company.name}
-                size={32}
-                className="shrink-0"
-              />
-            )}
-            <p className="text-sm font-semibold text-foreground">
-              Managed by {company.name}
-            </p>
-          </div>
           <p className="text-xs text-muted-foreground">
             {[company.phone, company.address]
               .filter(Boolean)
