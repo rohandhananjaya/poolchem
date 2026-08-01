@@ -6,7 +6,6 @@ import {
   Droplets,
   MapPin,
   Sparkles,
-  Waves,
 } from "lucide-react"
 
 import {
@@ -168,20 +167,7 @@ export default async function HomeownerDashboardPage({
         </div>
 
         {/* Hero card */}
-        <section className="overflow-hidden rounded-3xl border border-border bg-card shadow-sm">
-          {pool.image ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={pool.image}
-              alt={pool.name}
-              className="h-44 w-full object-cover sm:h-56"
-            />
-          ) : (
-            <div className="flex h-32 w-full items-center justify-center bg-gradient-to-br from-brand-600 to-brand-500 sm:h-40">
-              <Waves className="size-12 text-white/80" />
-            </div>
-          )}
-
+        <section className="rounded-3xl border border-border bg-card shadow-sm">
           <div className="p-6 sm:p-8">
             <h1 className="text-center text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
               {pool.name}
