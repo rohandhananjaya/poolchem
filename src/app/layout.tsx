@@ -6,6 +6,7 @@ import { Toaster } from "@/components/ui/sonner";
 import { CookieConsentBanner } from "@/components/cookie-consent-banner";
 import { PwaProvider } from "@/components/pwa-provider";
 import { AppVersion } from "@/components/shared/app-version";
+import { PageTransitionOverlay } from "@/components/shared/page-transition-overlay";
 
 // Inter drives all headings, UI labels, and body text — clean and highly
 // legible on phones in bright outdoor light. Variable font, so every weight
@@ -69,6 +70,7 @@ export default function RootLayout({
         <Toaster />
         <CookieConsentBanner />
         <AppVersion />
+        <PageTransitionOverlay />
       </body>
     </html>
   );
