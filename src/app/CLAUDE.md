@@ -31,7 +31,8 @@ This section previously listed a `(public)/` route group (blog, about-us, servic
 - `visits/[visitId]/` — the visit form. `page.tsx` → `visit-form.tsx` (client), `status-dropdown.tsx`.
   `actions.ts`: `saveDraftAction`, `completeVisitAction`, `startVisitAction`, `updateVisitStatusAction`
   - `report/` — generated service report. `page.tsx` uses `generateServiceReport`; `report-actions.tsx` (mailto send + external QR — both MVP placeholders, see [../../to-do.md](../../to-do.md))
-- `schedule/` — upcoming visits; `getScheduleData`. `actions.ts`: `scheduleVisitAction`
+- `schedule/` — upcoming visits; `getScheduleData`. `actions.ts`: `scheduleVisitAction` — also fires `notifyVisitAssigned` (native push) after creating/updating a visit
+- `push/` — no page; `actions.ts`: `registerPushDeviceAction` / `unregisterPushDeviceAction` — called from the native app's `<PushRegistration>` (via `@capacitor/push-notifications`) to persist/clear the platform token
 - `reports/` — water-health report history; `getCompanyReportData`
 - `settings/` — account + company settings. `actions.ts`: `updateAccountAction`, `updateCompanyAction`
 - `feedback/` — user-submitted support requests (bug reports / feature requests / general issues). `page.tsx` → `getFeedbackByUser` + `<FeedbackForm>` / `<FeedbackList>`. `actions.ts`: `submitFeedbackAction` (re-auth → validate → `createFeedback` → `revalidatePath`). Reachable from a "Report a problem" link on the Settings page.

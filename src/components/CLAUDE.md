@@ -22,7 +22,7 @@ Feature components grouped by domain; shadcn/ui primitives in [ui/](ui/) (style 
 `ScheduleVisitForm` (Dialog popup with pool/date/tech-search; posts to `schedule/actions.ts`) · `ScheduleFilters` (pool filter bar)
 ## profile/
 
-`ProfileForms` (account + company forms, posts to `settings/actions.ts`) — links out to `/account/api-keys` for owners · `SignOutButton` (signs out via Supabase + redirects to `/login`; rendered at the bottom of the Settings page)
+`ProfileForms` (account + company forms, posts to `settings/actions.ts`) — links out to `/account/api-keys` for owners · `SignOutButton` (signs out via Supabase + redirects to `/login`; on native only, unregisters the device push token first via `unregisterPushDeviceAction`)
 
 ## account/
 `ApiKeysManager` (list/generate/revoke API keys for the `api_access` plan feature; one-time secret reveal on generation; locked upsell hint when `canUseApiKeys` is false — same idiom as `csv_import`/`custom_branding`) · `DownloadPostmanButton` (downloads a Postman collection pre-wired to `/api/v1` via `downloadPostmanCollectionAction`; rendered in the `ApiKeysManager` header)
@@ -44,7 +44,7 @@ Feature components grouped by domain; shadcn/ui primitives in [ui/](ui/) (style 
 `DiagnosticsTabs` (tab shell for `admin/diagnostics`, composes the rest of this list) · `LiveServerCharts` (live CPU/memory line chart, client-polled) · `ServerHealthSummary` (compact stat tiles for the admin overview) · `ServerHealthDetails` (full server/CPU/memory/uptime stat tiles) · `LogSummaryCards` (error/warning/info count tiles) · `SystemLogViewer` (unscoped recent `SystemLog` list) · `TenantLogViewer` (per-company audit log list, `AuditLogWithUser`).
 
 ## notifications/
-`NotificationProvider` (wraps the dashboard shell; drives `useRealtimeVisits(userId)`, exposes `NotificationContext` for unread count / mark-all-read, shows a dismissible new-visit alert toast)
+`NotificationProvider` (wraps the dashboard shell; drives `useRealtimeVisits(userId)`, exposes `NotificationContext` for unread count / mark-all-read, shows a dismissible new-visit alert toast) · `PushRegistration` (native-only: registers the device with `@capacitor/push-notifications`, persists the token to `localStorage["poolbench:pushToken"]`, posts it via `registerPushDeviceAction`, and routes push taps to `/visits/{id}`; mounted in `(dashboard)/layout.tsx`, no-ops in the browser)
 
 ## navigation/
 `main-nav` (sidebar + mobile bottom-nav shell)

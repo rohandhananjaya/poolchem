@@ -52,7 +52,7 @@ Get the tenant with `getCompanyId()` / `requireAuth()` from [../auth.ts](../auth
 - `assertVisitAccess(visitId, companyId, userId) → ServiceVisitStatus` — throws unless the acting user may modify the visit (IN_PROGRESS visits require being the assigned tech)
 - `updateVisitStatus(visitId, companyId, status) → ServiceVisit | null` — changes visit status
 - `cancelVisit(visitId, companyId, reason) → ServiceVisit | null` — sets `CANCELLED` + stores `cancellationReason`
-- `updateVisit(visitId, companyId, data: { scheduledAt?, techId? }) → ServiceVisit | null` — reschedule/reassign; only DRAFT/IN_PROGRESS visits; throws on CANCELLED/COMPLETED or an out-of-company `techId`
+- `updateVisit(visitId, companyId, data: { scheduledAt?, techId? }) → { visit: ServiceVisit; previousTechId: string | null } | null` — reschedule/reassign; only DRAFT/IN_PROGRESS visits; throws on CANCELLED/COMPLETED or an out-of-company `techId`. Returns `previousTechId` so callers can notify the tech who lost the visit
 - `completeVisit(visitId, readings: VisitReadings, chemicals: VisitChemical[], notes?, nextServiceDate?) → CompletedVisit`
 - `saveDraftVisit(visitId, readings, chemicals, notes?, nextServiceDate?)`
 - `getVisitByPublicToken(publicToken) → ServiceVisit | null` — **public, unscoped**; COMPLETED visits only, backs `report/[reportToken]`
@@ -91,6 +91,11 @@ Get the tenant with `getCompanyId()` / `requireAuth()` from [../auth.ts](../auth
 
 **platform-settings.ts** — single-row platform config.
 - `getPlatformSettings() → { trialDays }` · `updateTrialDays(days) → { trialDays }`
+
+**push-devices.ts** — registered native app tokens (FCM/APNs) for visit-assignment push. Every token is tenant + user scoped; a token can only be registered/unregistered against the authenticated user's own `companyId`/`userId`.
+- `registerPushDevice({ companyId, userId, token, platform }) → PushDevice` — upsert by `token` (re-registering the same token updates owner/platform), `platform: "ANDROID" | "IOS"`
+- `unregisterPushDevice({ companyId, userId, token }) → number` — deleteMany scoped to user+token; returns deleted count
+- `getPushDevicesForUser(companyId, userId) → PushDevice[]`
 
 **api-keys.ts** — credentials for the `/api/v1` REST API (`api_access` plan feature) and their rate-limit counters.
 - `getApiKeysByCompany(companyId) → ApiKeySummary[]` — never includes `keyHash`
@@ -135,7 +140,7 @@ Get the tenant with `getCompanyId()` / `requireAuth()` from [../auth.ts](../auth
 
 All DB tests mock `@/lib/prisma` and require `server-only` to be stubbed (handled by the Vitest config alias). Tests are in the same directory with `.test.ts` suffix:
 - `visits.test.ts` — 38 tests · `company.test.ts` — 12 · `pools.test.ts` — 20 · `packages.test.ts` — 27
-- `users.test.ts` — 14 · `reports.test.ts` — 3 · `schedule.test.ts` — 8 · `dashboard.test.ts` — 2 · `api-keys.test.ts` — 12 · `feedback.test.ts` — 9
+- `users.test.ts` — 14 · `reports.test.ts` — 3 · `schedule.test.ts` — 8 · `dashboard.test.ts` — 2 · `api-keys.test.ts` — 12 · `feedback.test.ts` — 9 · `push-devices.test.ts` — 5
 
 No tests yet for `admin-dashboard.ts`, `admin-audit.ts`, `admin-diagnostics.ts`, `payment-settings.ts`, or `invitations.ts` — a real coverage gap, not just a doc omission.
 

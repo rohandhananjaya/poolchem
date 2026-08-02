@@ -16,7 +16,11 @@ import {
   type WaterReadingInput,
 } from "@/lib/pool-chemistry";
 import { prisma } from "@/lib/prisma";
-import { Prisma, ServiceVisitStatus } from "@/generated/prisma/client";
+import {
+  Prisma,
+  ServiceVisit,
+  ServiceVisitStatus,
+} from "@/generated/prisma/client";
 
 /** A full set of water-test readings recorded during a visit. */
 export interface VisitReadings extends Omit<WaterReadingInput, "temperature"> {
@@ -413,7 +417,8 @@ export async function cancelVisit(
  * Only visits that are DRAFT or IN_PROGRESS can be updated. CANCELLED and
  * COMPLETED visits are rejected.
  *
- * @returns The updated visit, or `null` if the visit was not found.
+ * @returns The updated visit plus the tech assigned before this update (so a
+ *   caller can detect reassignment), or `null` if the visit was not found.
  * @throws {Error} If the visit is CANCELLED or COMPLETED.
  * @throws {Error} If the given `techId` does not belong to the company.
  */
@@ -421,7 +426,7 @@ export async function updateVisit(
   visitId: string,
   companyId: string,
   data: { scheduledAt?: Date | null; techId?: string | null },
-) {
+): Promise<{ visit: ServiceVisit; previousTechId: string | null } | null> {
   const visit = await prisma.serviceVisit.findFirst({
     where: { id: visitId, pool: { companyId } },
     include: { pool: true },
@@ -444,13 +449,15 @@ export async function updateVisit(
     }
   }
 
-  return prisma.serviceVisit.update({
+  const updated = await prisma.serviceVisit.update({
     where: { id: visitId },
     data: {
       scheduledAt: data.scheduledAt !== undefined ? data.scheduledAt : undefined,
       techId: data.techId !== undefined ? data.techId : undefined,
     },
   });
+
+  return { visit: updated, previousTechId: visit.techId };
 }
 
 /**

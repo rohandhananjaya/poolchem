@@ -6,6 +6,7 @@ import { getOrCreateCompanyPackage } from "@/lib/db/packages"
 import { createClient } from "@/lib/supabase/server"
 import { MainNav } from "@/components/navigation/main-nav"
 import { NotificationProvider } from "@/components/notifications/NotificationProvider"
+import { PushRegistration } from "@/components/notifications/PushRegistration"
 import { TrialBanner } from "@/components/package/trial-banner"
 import type { UserRole } from "@/generated/prisma/client"
 import type { CompanyPackageInfo } from "@/lib/package-features"
@@ -47,6 +48,7 @@ export default async function DashboardLayout({
         <NotificationProvider userId={user.id}>
           {children}
         </NotificationProvider>
+        <PushRegistration />
       </main>
     </div>
   )

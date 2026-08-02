@@ -11,6 +11,8 @@ This version has breaking changes — APIs, conventions, and file structure may 
 - **Proxy** (NOT `middleware.ts`): `src/proxy.ts`, guards `/dashboard/*` `/admin/*`.
 - **`cookies()` is async** — `createClient()` in `src/lib/supabase/server.ts` must be awaited.
 - **Prisma 7:** no `url` in schema; client at `@/generated/prisma/client`.
+- **Capacitor shell:** `capacitor.config.ts` + `android/` + `ios/`. The native apps load the deployed Next.js app remotely (`server.url`, from `POOLBENCH_NATIVE_URL`); baked at `cap sync` time. Never run `@capacitor/assets` with `--pwa` (clobbers `src/app/manifest.ts`).
+- **Native push:** `src/lib/push/*` (FCM + APNs, env-gated no-op providers) + `src/lib/db/push-devices.ts` + `src/app/(dashboard)/push/actions.ts`. Fires from `schedule/actions.ts` via `notifyVisitAssigned`. `updateVisit` returns `{ visit, previousTechId } | null` to detect reassignment.
 
 ## Skills (load with `skill` tool)
 

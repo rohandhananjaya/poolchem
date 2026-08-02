@@ -685,6 +685,7 @@ describe("updateVisit", () => {
     prismaMock.serviceVisit.findFirst.mockResolvedValue({
       id: visitId,
       pool: { companyId },
+      techId: null,
     });
     prismaMock.user.findFirst.mockResolvedValue({ id: techId, companyId });
     prismaMock.serviceVisit.update.mockResolvedValue({
@@ -702,7 +703,8 @@ describe("updateVisit", () => {
       where: { id: visitId },
       data: { scheduledAt: newDate, techId },
     });
-    expect(result?.techId).toBe(techId);
+    expect(result?.visit.techId).toBe(techId);
+    expect(result?.previousTechId).toBeNull();
   });
 
   it("unassigns tech when techId is null", async () => {
@@ -768,7 +770,8 @@ describe("updateVisit", () => {
 
     const result = await updateVisit(visitId, companyId, { scheduledAt: newDate });
 
-    expect(result?.id).toBe(visitId);
+    expect(result?.visit.id).toBe(visitId);
+    expect(result?.previousTechId).toBeUndefined();
   });
 
   it("throws when techId does not belong to the company", async () => {

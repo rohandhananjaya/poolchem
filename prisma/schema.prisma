@@ -43,6 +43,11 @@ enum FeedbackStatus {
   CLOSED
 }
 
+enum PushPlatform {
+  ANDROID
+  IOS
+}
+
 /// A tenant. Every other record is scoped to a Company.
 model Company {
   id                   String    @id @default(cuid())
@@ -71,6 +76,7 @@ model Company {
   invoices Invoice[]
   apiKeys ApiKey[]
   feedback Feedback[]
+  pushDevices PushDevice[]
 
   @@map("companies")
 }
@@ -95,6 +101,8 @@ model User {
   serviceVisits ServiceVisit[]
 
   feedback Feedback[]
+
+  pushDevices PushDevice[]
 
   @@index([companyId])
   @@map("users")
@@ -407,4 +415,27 @@ model Feedback {
   @@index([companyId])
   @@index([status, createdAt])
   @@map("feedback")
+}
+
+// ── Native push notifications (Capacitor) ─────────────────────────
+
+/// A native device (Android/iOS) registered to receive push notifications for a
+/// user. Tenant-scoped: `companyId` mirrors the owning user's company. Tokens
+/// are provider-generated (FCM for Android, APNs for iOS) and rotate, so rows
+/// are upserted on registration and deleted on sign-out/error.
+model PushDevice {
+  id        String       @id @default(cuid())
+  userId    String
+  companyId String
+  platform  PushPlatform
+  token     String       @unique
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@index([companyId])
+  @@index([userId])
+  @@map("push_devices")
 }

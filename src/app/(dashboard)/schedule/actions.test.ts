@@ -9,12 +9,16 @@ vi.mock("@/lib/db/visits", () => ({
   updateVisit: vi.fn(),
   assertVisitAccess: vi.fn(),
 }));
+vi.mock("@/lib/push/notify", () => ({
+  notifyVisitAssigned: vi.fn(),
+}));
 vi.mock("next/cache", () => ({
   revalidatePath: vi.fn(),
 }));
 
 const { requireTech } = await import("@/lib/auth");
 const { createVisit, cancelVisit, updateVisit, assertVisitAccess } = await import("@/lib/db/visits");
+const { notifyVisitAssigned } = await import("@/lib/push/notify");
 const { revalidatePath } = await import("next/cache");
 const { scheduleVisitAction, cancelVisitAction, updateVisitAction } = await import("./actions");
 
@@ -35,6 +39,10 @@ beforeEach(() => {
 describe("scheduleVisitAction", () => {
   it("schedules a visit with parsed date and returns ok", async () => {
     vi.mocked(requireTech).mockResolvedValue(mockUser as never);
+    vi.mocked(createVisit).mockResolvedValue({
+      id: "visit-1",
+      techId: "user-1",
+    } as never);
 
     const result = await scheduleVisitAction(
       { ok: false },
@@ -48,7 +56,27 @@ describe("scheduleVisitAction", () => {
       "company-1",
       expect.any(Date),
     );
+    expect(notifyVisitAssigned).toHaveBeenCalledWith({
+      companyId: "company-1",
+      visitId: "visit-1",
+      techId: "user-1",
+    });
     expect(revalidatePath).toHaveBeenCalledWith("/schedule");
+  });
+
+  it("does not push when the visit is unassigned", async () => {
+    vi.mocked(requireTech).mockResolvedValue(mockUser as never);
+    vi.mocked(createVisit).mockResolvedValue({
+      id: "visit-1",
+      techId: null,
+    } as never);
+
+    await scheduleVisitAction(
+      { ok: false },
+      formData({ poolId: "pool-1", date: "2026-07-15" }),
+    );
+
+    expect(notifyVisitAssigned).not.toHaveBeenCalled();
   });
 
   it("returns error when poolId is missing", async () => {
@@ -150,7 +178,10 @@ describe("cancelVisitAction", () => {
 describe("updateVisitAction", () => {
   it("updates visit date and revalidates", async () => {
     vi.mocked(requireTech).mockResolvedValue(mockUser as never);
-    vi.mocked(updateVisit).mockResolvedValue({ id: "visit-1" } as never);
+    vi.mocked(updateVisit).mockResolvedValue({
+      visit: { id: "visit-1", techId: "user-1" },
+      previousTechId: null,
+    } as never);
 
     const result = await updateVisitAction(
       { ok: false },
@@ -162,7 +193,33 @@ describe("updateVisitAction", () => {
       scheduledAt: expect.any(Date),
       techId: "user-1",
     });
+    expect(notifyVisitAssigned).toHaveBeenCalledWith({
+      companyId: "company-1",
+      visitId: "visit-1",
+      techId: "user-1",
+      previousTechId: null,
+    });
     expect(revalidatePath).toHaveBeenCalledWith("/schedule");
+  });
+
+  it("notifies the newly assigned tech on reassignment", async () => {
+    vi.mocked(requireTech).mockResolvedValue(mockUser as never);
+    vi.mocked(updateVisit).mockResolvedValue({
+      visit: { id: "visit-1", techId: "user-2" },
+      previousTechId: "user-1",
+    } as never);
+
+    await updateVisitAction(
+      { ok: false },
+      formData({ visitId: "visit-1", techId: "user-2" }),
+    );
+
+    expect(notifyVisitAssigned).toHaveBeenCalledWith({
+      companyId: "company-1",
+      visitId: "visit-1",
+      techId: "user-2",
+      previousTechId: "user-1",
+    });
   });
 
   it("returns error when visitId is missing", async () => {
