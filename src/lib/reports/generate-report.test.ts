@@ -9,12 +9,16 @@ vi.mock("@/lib/db/visits", () => ({
 vi.mock("@/lib/db/company", () => ({
   getCompanyById: vi.fn(),
 }));
+vi.mock("@/lib/db/packages", () => ({
+  getCompanyPackage: vi.fn(),
+}));
 vi.mock("next/headers", () => ({
   headers: vi.fn(),
 }));
 
 const { getVisitById, getVisitHistory, getPoolNextScheduledVisit } = await import("@/lib/db/visits");
 const { getCompanyById } = await import("@/lib/db/company");
+const { getCompanyPackage } = await import("@/lib/db/packages");
 const { headers } = await import("next/headers");
 const { generateServiceReport } = await import("./generate-report");
 
@@ -72,8 +76,40 @@ const mockVisit = {
   nextServiceDate: null,
 };
 
+const mockCompanyPackage = (healthScoring: "basic" | "advanced+lsi") => ({
+  package: {
+    id: "pkg-1",
+    slug: "basic",
+    name: "Basic",
+    price: 2900,
+    features: {
+      max_pools: 25,
+      health_scoring: healthScoring,
+      chemical_recs: true,
+      service_reports: true,
+      qr_code: true,
+      scheduling: true,
+      max_techs: 1,
+      priority_support: false,
+      custom_branding: false,
+      api_access: false,
+      csv_import: false,
+    },
+    sortOrder: 1,
+  },
+  status: "ACTIVE",
+  trialStart: null,
+  trialEnd: null,
+  paidAt: new Date(),
+  pendingPackage: null,
+  pendingEffectiveAt: null,
+});
+
 beforeEach(() => {
   vi.clearAllMocks();
+  vi.mocked(getCompanyPackage).mockResolvedValue(
+    mockCompanyPackage("advanced+lsi") as never,
+  );
 });
 
 describe("generateServiceReport", () => {
@@ -138,6 +174,25 @@ describe("generateServiceReport", () => {
     expect(result!.waterHealth).toBeNull();
     expect(result!.lsi).toBeNull();
     expect(result!.parameters).toEqual([]);
+  });
+
+  it("returns lsi null on a basic health-scoring plan even with readings", async () => {
+    vi.mocked(getVisitById).mockResolvedValue(mockVisit);
+    vi.mocked(getCompanyById).mockResolvedValue(mockCompany);
+    vi.mocked(getCompanyPackage).mockResolvedValue(
+      mockCompanyPackage("basic") as never,
+    );
+    vi.mocked(getVisitHistory).mockResolvedValue([]);
+    vi.mocked(getPoolNextScheduledVisit).mockResolvedValue(null);
+    vi.mocked(headers).mockResolvedValue(
+      new Map([["host", "example.com"]]) as never,
+    );
+
+    const result = await generateServiceReport(visitId, companyId);
+
+    expect(result).not.toBeNull();
+    expect(result!.waterHealth).not.toBeNull();
+    expect(result!.lsi).toBeNull();
   });
 
   it("builds score history from newest to oldest (reversed)", async () => {

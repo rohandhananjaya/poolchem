@@ -5,6 +5,8 @@ import { ArrowLeft, FileText, FlaskConical } from "lucide-react"
 
 import { requireActivePackage } from "@/lib/auth"
 import { getVisitById, getLastVisitReadings } from "@/lib/db/visits"
+import { getCompanyPackage } from "@/lib/db/packages"
+import { getHealthScoringLevel } from "@/lib/package-features"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { VisitForm } from "./visit-form"
@@ -25,6 +27,9 @@ export default async function VisitPage({
   if (!visit) notFound()
 
   const lastReadings = await getLastVisitReadings(visit.poolId)
+  const canUseLSI =
+    getHealthScoringLevel(await getCompanyPackage(user.companyId)) ===
+    "advanced+lsi"
   const completed = visit.status === "COMPLETED"
   const inProgress = visit.status === "IN_PROGRESS"
   const { from } = await searchParams
@@ -123,6 +128,7 @@ export default async function VisitPage({
         lastReadings={lastReadings ? JSON.parse(JSON.stringify(lastReadings)) : null}
         currentUser={{ id: user.id, name: user.name }}
         techId={visit.techId}
+        canUseLSI={canUseLSI}
       />
     </div>
   )

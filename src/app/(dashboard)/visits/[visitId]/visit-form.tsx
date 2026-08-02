@@ -71,6 +71,7 @@ interface VisitFormProps {
   lastReadings: VisitReadings | null
   currentUser: { id: string; name: string }
   techId: string | null
+  canUseLSI: boolean
 }
 
 export function VisitForm({
@@ -78,6 +79,7 @@ export function VisitForm({
   lastReadings,
   currentUser,
   techId,
+  canUseLSI,
 }: VisitFormProps) {
   const router = useRouter()
   const completed = visit.status === "COMPLETED"
@@ -218,7 +220,7 @@ export function VisitForm({
   }, [readings, hasCoreReadings])
 
   const lsi = useMemo(() => {
-    if (!hasCoreReadings) return null
+    if (!canUseLSI || !hasCoreReadings) return null
     const r = readings as unknown as WaterReading
     if (!r.temperature) return null
     return calculateLSI(
@@ -227,7 +229,7 @@ export function VisitForm({
       r.calciumHardness,
       r.totalAlkalinity,
     )
-  }, [readings, hasCoreReadings])
+  }, [readings, hasCoreReadings, canUseLSI])
 
   const recommendations: ChemicalRecommendation[] = useMemo(() => {
     if (!hasCoreReadings) return []
@@ -550,7 +552,7 @@ export function VisitForm({
                     ) : (
                       <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
                         <Minus className="size-3.5" />
-                        Needed for LSI
+                        {canUseLSI ? "Needed for LSI" : "Optional"}
                       </span>
                     )}
                   </td>

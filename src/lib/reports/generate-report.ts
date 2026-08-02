@@ -15,6 +15,8 @@ import "server-only";
 import { headers } from "next/headers";
 
 import { getCompanyById } from "@/lib/db/company";
+import { getCompanyPackage } from "@/lib/db/packages";
+import { getHealthScoringLevel } from "@/lib/package-features";
 import {
   getVisitById,
   getVisitHistory,
@@ -177,9 +179,10 @@ export async function generateServiceReport(
   visitId: string,
   companyId: string,
 ): Promise<ServiceReport | null> {
-  const [visit, company] = await Promise.all([
+  const [visit, company, companyPackage] = await Promise.all([
     getVisitById(visitId, companyId),
     getCompanyById(companyId),
+    getCompanyPackage(companyId),
   ]);
 
   if (!visit) return null;
@@ -187,14 +190,16 @@ export async function generateServiceReport(
   const reading = visit.waterReadings[0] ?? null;
 
   const waterHealth = reading ? getWaterHealthScore(reading) : null;
-  const lsi = reading
-    ? calculateLSI(
-        reading.ph,
-        reading.temperature,
-        reading.calciumHardness,
-        reading.totalAlkalinity,
-      )
-    : null;
+  const lsi =
+    reading &&
+    getHealthScoringLevel(companyPackage) === "advanced+lsi"
+      ? calculateLSI(
+          reading.ph,
+          reading.temperature,
+          reading.calciumHardness,
+          reading.totalAlkalinity,
+        )
+      : null;
   const parameters = reading ? buildParameters(reading) : [];
 
   const history = await getVisitHistory(visit.poolId, TREND_VISIT_COUNT);

@@ -6,6 +6,8 @@ import {
   getVisitByPublicToken,
   getPoolNextScheduledVisit,
 } from "@/lib/db/visits";
+import { getCompanyPackage } from "@/lib/db/packages";
+import { getHealthScoringLevel } from "@/lib/package-features";
 import {
   calculateLSI,
   getIdealRange,
@@ -87,16 +89,18 @@ export async function getPublicReport(
   if (!visit) return null;
 
   const reading = visit.waterReadings[0] ?? null;
+  const companyPackage = await getCompanyPackage(visit.pool.company.id);
 
   const waterHealth = reading ? getWaterHealthScore(reading) : null;
-  const lsi = reading
-    ? calculateLSI(
-        reading.ph,
-        reading.temperature,
-        reading.calciumHardness,
-        reading.totalAlkalinity,
-      )
-    : null;
+  const lsi =
+    reading && getHealthScoringLevel(companyPackage) === "advanced+lsi"
+      ? calculateLSI(
+          reading.ph,
+          reading.temperature,
+          reading.calciumHardness,
+          reading.totalAlkalinity,
+        )
+      : null;
   const parameters = reading ? buildParameters(reading) : [];
 
   const origin = await getOrigin();

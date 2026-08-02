@@ -67,6 +67,26 @@ export function checkFeatureAccess(
 }
 
 /**
+ * The water-health scoring tier a company is entitled to: `"basic"` (the 0–100
+ * health score only) or `"advanced+lsi"` (score + Langelier Saturation Index).
+ *
+ * An active trial unlocks the advanced tier for everyone, mirroring
+ * {@link checkFeatureAccess}; otherwise access follows the chosen plan's
+ * `health_scoring` feature. A null/expired/cancelled company falls back to
+ * basic.
+ */
+export function getHealthScoringLevel(
+  companyPackage: CompanyPackageInfo | null,
+): "basic" | "advanced+lsi" {
+  if (!companyPackage) return "basic";
+  if (companyPackage.status === "TRIAL" && !isTrialExpired(companyPackage)) {
+    return "advanced+lsi";
+  }
+  if (companyPackage.status !== "ACTIVE") return "basic";
+  return companyPackage.package?.features.health_scoring ?? "basic";
+}
+
+/**
  * Whether a company can add one more pool, given how many it already has.
  * Full access during an active trial; otherwise checked against the chosen
  * plan's `max_pools` (`-1` = unlimited).
