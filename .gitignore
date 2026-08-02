@@ -51,3 +51,5 @@ next-env.d.ts
 dev.db
 dev.db-journal
 *.db
+# derived from schema.prisma at build time — see scripts/prepare-postgres-schema.mjs
+/prisma/schema.postgres.prisma

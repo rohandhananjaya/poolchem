@@ -4,6 +4,7 @@
  * Run with:  npm run db:seed
  */
 import { PrismaBetterSqlite3 } from "@prisma/adapter-better-sqlite3";
+import { PrismaPg } from "@prisma/adapter-pg";
 import { createClient } from "@supabase/supabase-js";
 
 import { PrismaClient } from "../src/generated/prisma/client";
@@ -17,8 +18,11 @@ try {
 const ADMIN_EMAIL = "admin@poolbench.com";
 const ADMIN_PASSWORD = "admin-password-456";
 
+const databaseUrl = process.env.DATABASE_URL!;
 const prisma = new PrismaClient({
-  adapter: new PrismaBetterSqlite3({ url: process.env.DATABASE_URL! }),
+  adapter: databaseUrl.startsWith("postgres")
+    ? new PrismaPg({ connectionString: databaseUrl })
+    : new PrismaBetterSqlite3({ url: databaseUrl }),
 });
 
 async function provisionAuthUser(
