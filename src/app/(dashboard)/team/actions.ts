@@ -8,6 +8,7 @@ import { createAdminClient, deleteAuthUserByEmail } from "@/lib/supabase/admin";
 import { createUser, deleteUser, updateUserAdmin, getCompanyTechCount } from "@/lib/db/users";
 import { createInvitation, getPendingTechInvitationCount } from "@/lib/db/invitations";
 import { getCompanyPackage } from "@/lib/db/packages";
+import { notifyInvitation } from "@/lib/email/notify";
 import { hasTechCapacity } from "@/lib/package-features";
 import type { UserRole } from "@/generated/prisma/client";
 import { formText } from "@/lib/utils";
@@ -221,6 +222,14 @@ export async function inviteTeamUserAction(
 
     const origin = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
     const inviteUrl = `${origin}/invite/${invitation.token}`;
+
+    // Best-effort: the invitation is already saved, so a failed email must not
+    // fail the action — the owner still gets the link to share.
+    await notifyInvitation({
+      companyId: currentUser.companyId,
+      to: email,
+      inviteUrl,
+    });
 
     revalidatePath("/team");
     return { ok: true, inviteUrl };

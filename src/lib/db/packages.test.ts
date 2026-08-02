@@ -11,6 +11,12 @@ vi.mock("@/lib/log", () => ({ logger: mockLogger }));
 const mockGetProvider = vi.fn();
 vi.mock("@/lib/payment", () => ({ getProvider: mockGetProvider }));
 
+const mockNotify = {
+  notifyTrialExpired: vi.fn(),
+  notifyTrialExpiring: vi.fn(),
+};
+vi.mock("@/lib/email/notify", () => mockNotify);
+
 const {
   upgradeCompanyPackage,
   scheduleDowngrade,
@@ -22,6 +28,8 @@ const {
   getCheckoutPlanRef,
   confirmPendingUpgrade,
   handlePlanRevisionConfirmed,
+  expireTrial,
+  checkAndExpireTrials,
 } = await import("@/lib/db/packages");
 
 const now = new Date("2026-01-15T00:00:00Z");
@@ -633,6 +641,82 @@ describe("handleSubscriptionCancelled", () => {
       include: { package: true, pendingPackage: true },
     });
     expect(result.status).toBe("CANCELLED");
+  });
+});
+
+describe("expireTrial", () => {
+  it("expires the trial and emails the company", async () => {
+    prismaMock.companyPackage.update.mockResolvedValue(
+      makeCompanyPackage({ status: "EXPIRED", trialEnd: past }),
+    );
+    prismaMock.company.findUnique.mockResolvedValue(makeCompany());
+
+    const result = await expireTrial("company-1");
+
+    expect(prismaMock.companyPackage.update).toHaveBeenCalledWith({
+      where: { companyId: "company-1" },
+      data: { status: "EXPIRED" },
+      include: { package: true, pendingPackage: true },
+    });
+    expect(mockNotify.notifyTrialExpired).toHaveBeenCalledWith({
+      to: "test@co.com",
+      companyName: "Test Co",
+    });
+    expect(result.status).toBe("EXPIRED");
+  });
+
+  it("still expires without emailing when the company can't be found", async () => {
+    prismaMock.companyPackage.update.mockResolvedValue(
+      makeCompanyPackage({ status: "EXPIRED" }),
+    );
+    prismaMock.company.findUnique.mockResolvedValue(null);
+
+    await expireTrial("company-1");
+
+    expect(mockNotify.notifyTrialExpired).not.toHaveBeenCalled();
+  });
+});
+
+describe("checkAndExpireTrials", () => {
+  it("expires overdue trials and emails both expired and expiring companies", async () => {
+    const inThreeDays = new Date(now.getTime() + 2 * 24 * 60 * 60 * 1000);
+    prismaMock.companyPackage.findMany
+      .mockResolvedValueOnce([{ companyId: "company-1" }])
+      .mockResolvedValueOnce([{ companyId: "company-2", trialEnd: inThreeDays }]);
+    prismaMock.companyPackage.updateMany.mockResolvedValue({ count: 1 });
+    prismaMock.company.findUnique
+      .mockResolvedValueOnce(makeCompany())
+      .mockResolvedValueOnce(makeCompany({ id: "company-2" }));
+
+    const count = await checkAndExpireTrials();
+
+    expect(count).toBe(1);
+    expect(prismaMock.companyPackage.updateMany).toHaveBeenCalledWith({
+      where: { status: "TRIAL", trialEnd: { lte: expect.any(Date) } },
+      data: { status: "EXPIRED" },
+    });
+    expect(mockNotify.notifyTrialExpired).toHaveBeenCalledWith({
+      to: "test@co.com",
+      companyName: "Test Co",
+    });
+    expect(mockNotify.notifyTrialExpiring).toHaveBeenCalledWith({
+      to: "test@co.com",
+      companyName: "Test Co",
+      trialEnd: inThreeDays,
+    });
+  });
+
+  it("returns 0 and sends nothing when no trials are due or expiring", async () => {
+    prismaMock.companyPackage.findMany
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([]);
+
+    const count = await checkAndExpireTrials();
+
+    expect(count).toBe(0);
+    expect(prismaMock.companyPackage.updateMany).not.toHaveBeenCalled();
+    expect(mockNotify.notifyTrialExpired).not.toHaveBeenCalled();
+    expect(mockNotify.notifyTrialExpiring).not.toHaveBeenCalled();
   });
 });
 

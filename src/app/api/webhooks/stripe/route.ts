@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server"
 import { stripeProvider } from "@/lib/payment/stripe"
-import { handlePaymentSuccess, handleSubscriptionCancelled } from "@/lib/db/packages"
+import { handlePaymentSuccess, handleSubscriptionCancelled, getPackageBySlug } from "@/lib/db/packages"
 import { getPaymentSettings } from "@/lib/db/payment-settings"
-import { getCompanyBySubscriptionId } from "@/lib/db/company"
+import { getCompanyById, getCompanyBySubscriptionId } from "@/lib/db/company"
+import { notifyPaymentSuccess, notifySubscriptionCancelled } from "@/lib/email/notify"
 
 export async function POST(request: Request) {
   const rawBody = await request.text()
@@ -21,6 +22,7 @@ export async function POST(request: Request) {
         event.providerSubscriptionId,
         event.providerCustomerId,
       )
+      await notifyPaymentSuccessForCompany(event.companyId, event.packageSlug)
     }
 
     if (event.event === "subscription_cancelled") {
@@ -29,7 +31,12 @@ export async function POST(request: Request) {
       // own cross-provider switch, which already cleared this id — ignore it.
       const company = await getCompanyBySubscriptionId("stripe", event.providerSubscriptionId)
       if (company) {
-        await handleSubscriptionCancelled(company.id)
+        const cp = await handleSubscriptionCancelled(company.id)
+        await notifySubscriptionCancelled({
+          to: company.email,
+          companyName: company.name,
+          packageName: cp.package?.name ?? null,
+        })
       }
     }
 
@@ -38,4 +45,22 @@ export async function POST(request: Request) {
     const message = error instanceof Error ? error.message : "Webhook error"
     return NextResponse.json({ error: message }, { status: 400 })
   }
+}
+
+/** Sends a payment-receipt email for a company+package after a successful payment. */
+async function notifyPaymentSuccessForCompany(
+  companyId: string,
+  packageSlug: string,
+): Promise<void> {
+  const [company, pkg] = await Promise.all([
+    getCompanyById(companyId),
+    getPackageBySlug(packageSlug),
+  ])
+  if (!company || !pkg) return
+  await notifyPaymentSuccess({
+    to: company.email,
+    companyName: company.name,
+    packageName: pkg.name,
+    amount: pkg.price,
+  })
 }

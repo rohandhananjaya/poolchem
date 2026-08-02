@@ -23,6 +23,13 @@ vi.mock("@/lib/payment", () => ({
 vi.mock("@/lib/db/payment-settings", () => ({
   getPaymentSettings: vi.fn(),
 }));
+vi.mock("@/lib/db/company", () => ({
+  getCompanyById: vi.fn(),
+}));
+vi.mock("@/lib/email/notify", () => ({
+  notifyPaymentSuccess: vi.fn(),
+  notifyDowngradeScheduled: vi.fn(),
+}));
 vi.mock("next/cache", () => ({
   revalidatePath: vi.fn(),
 }));
@@ -37,6 +44,8 @@ const {
   getCheckoutPlanRef,
   confirmPendingUpgrade,
 } = await import("@/lib/db/packages");
+const { getCompanyById } = await import("@/lib/db/company");
+const { notifyPaymentSuccess, notifyDowngradeScheduled } = await import("@/lib/email/notify");
 const { getActiveProviders } = await import("@/lib/payment");
 const { getPaymentSettings } = await import("@/lib/db/payment-settings");
 const { revalidatePath } = await import("next/cache");
@@ -81,6 +90,7 @@ describe("switchPackageAction", () => {
   it("calls upgradeCompanyPackage when the target plan is more expensive", async () => {
     vi.mocked(getCompanyPackage).mockResolvedValue(activeCompanyPackage(basicPkg));
     vi.mocked(getPackageBySlug).mockResolvedValue(proPkg);
+    vi.mocked(getCompanyById).mockResolvedValue({ name: "Pool Co", email: "owner@example.com" } as never);
     vi.mocked(upgradeCompanyPackage).mockResolvedValue({
       status: "applied",
       companyPackage: activeCompanyPackage(proPkg),
@@ -98,6 +108,12 @@ describe("switchPackageAction", () => {
       }),
     );
     expect(scheduleDowngrade).not.toHaveBeenCalled();
+    expect(notifyPaymentSuccess).toHaveBeenCalledWith({
+      to: "owner@example.com",
+      companyName: "Pool Co",
+      packageName: "Pro",
+      amount: 2900,
+    });
     expect(result).toEqual({
       ok: true,
       companyPackage: activeCompanyPackage(proPkg),
@@ -124,9 +140,14 @@ describe("switchPackageAction", () => {
   it("calls scheduleDowngrade when the target plan is cheaper", async () => {
     vi.mocked(getCompanyPackage).mockResolvedValue(activeCompanyPackage(proPkg));
     vi.mocked(getPackageBySlug).mockResolvedValue(basicPkg);
+    vi.mocked(getCompanyById).mockResolvedValue({ name: "Pool Co", email: "owner@example.com" } as never);
     const effectiveAt = new Date("2026-02-01T00:00:00Z");
     vi.mocked(scheduleDowngrade).mockResolvedValue({
-      companyPackage: activeCompanyPackage(proPkg),
+      companyPackage: {
+        ...activeCompanyPackage(proPkg),
+        pendingPackage: basicPkg,
+        pendingEffectiveAt: effectiveAt,
+      },
       effectiveAt,
     });
 
@@ -134,9 +155,20 @@ describe("switchPackageAction", () => {
 
     expect(scheduleDowngrade).toHaveBeenCalledWith("company-1", "basic");
     expect(upgradeCompanyPackage).not.toHaveBeenCalled();
+    expect(notifyDowngradeScheduled).toHaveBeenCalledWith({
+      to: "owner@example.com",
+      companyName: "Pool Co",
+      currentPackageName: "Pro",
+      targetPackageName: "Basic",
+      effectiveAt,
+    });
     expect(result).toEqual({
       ok: true,
-      companyPackage: activeCompanyPackage(proPkg),
+      companyPackage: {
+        ...activeCompanyPackage(proPkg),
+        pendingPackage: basicPkg,
+        pendingEffectiveAt: effectiveAt,
+      },
       kind: "downgrade_scheduled",
       effectiveAt: effectiveAt.toISOString(),
     });
@@ -196,10 +228,17 @@ describe("switchPackageAction", () => {
 describe("confirmPayPalUpgradeAction", () => {
   it("confirms the pending upgrade for the current company", async () => {
     vi.mocked(confirmPendingUpgrade).mockResolvedValue(activeCompanyPackage(proPkg));
+    vi.mocked(getCompanyById).mockResolvedValue({ name: "Pool Co", email: "owner@example.com" } as never);
 
     const result = await confirmPayPalUpgradeAction("pro");
 
     expect(confirmPendingUpgrade).toHaveBeenCalledWith("company-1", "pro");
+    expect(notifyPaymentSuccess).toHaveBeenCalledWith({
+      to: "owner@example.com",
+      companyName: "Pool Co",
+      packageName: "Pro",
+      amount: 2900,
+    });
     expect(result).toEqual({ ok: true, companyPackage: activeCompanyPackage(proPkg), kind: "upgraded" });
   });
 

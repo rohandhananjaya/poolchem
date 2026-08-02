@@ -6,6 +6,7 @@ import { createCompany } from "@/lib/db/company"
 import { createUser } from "@/lib/db/users"
 import { formText } from "@/lib/utils"
 import { startTrial } from "@/lib/db/packages"
+import { notifyWelcome } from "@/lib/email/notify"
 
 export interface SignupFormState {
   ok: boolean
@@ -63,6 +64,8 @@ export async function signupAction(
     })
 
     await startTrial(company.id)
+
+    await notifyWelcome({ to: email, name, companyName })
 
     return { ok: true }
   } catch {

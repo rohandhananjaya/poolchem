@@ -13,6 +13,7 @@ import {
   type PackageInfo,
   type CompanyPackageInfo,
 } from "@/lib/package-features"
+import { notifyTrialExpired, notifyTrialExpiring } from "@/lib/email/notify"
 
 export type { PackageInfo, CompanyPackageInfo }
 
@@ -740,19 +741,64 @@ export async function expireTrial(companyId: string): Promise<CompanyPackageInfo
     data: { status: "EXPIRED" },
     include: { package: true, pendingPackage: true },
   })
+
+  const company = await getCompanyById(companyId)
+  if (company) {
+    await notifyTrialExpired({ to: company.email, companyName: company.name })
+  }
+
   return toCompanyPackageInfo(cp)
 }
 
+/** How many days before trial end a reminder email is sent. */
+const TRIAL_REMINDER_WINDOW_MS = 3 * 24 * 60 * 60 * 1000
+
+/**
+ * Expires overdue trials (returning how many) and sends expiring/expired
+ * reminders. Intended to be run on a schedule; without a cron it also fires
+ * on demand. Expiring-reminder dedup isn't tracked, so prefer running this
+ * once daily.
+ */
 export async function checkAndExpireTrials(): Promise<number> {
   const now = new Date()
-  const result = await prisma.companyPackage.updateMany({
+
+  const due = await prisma.companyPackage.findMany({
+    where: { status: "TRIAL", trialEnd: { lte: now } },
+    select: { companyId: true },
+  })
+
+  if (due.length > 0) {
+    await prisma.companyPackage.updateMany({
+      where: { status: "TRIAL", trialEnd: { lte: now } },
+      data: { status: "EXPIRED" },
+    })
+    for (const cp of due) {
+      const company = await getCompanyById(cp.companyId)
+      if (company) {
+        await notifyTrialExpired({ to: company.email, companyName: company.name })
+      }
+    }
+  }
+
+  const expiring = await prisma.companyPackage.findMany({
     where: {
       status: "TRIAL",
-      trialEnd: { lte: now },
+      trialEnd: { gte: now, lte: new Date(now.getTime() + TRIAL_REMINDER_WINDOW_MS) },
     },
-    data: { status: "EXPIRED" },
+    select: { companyId: true, trialEnd: true },
   })
-  return result.count
+  for (const cp of expiring) {
+    const company = await getCompanyById(cp.companyId)
+    if (company && cp.trialEnd) {
+      await notifyTrialExpiring({
+        to: company.email,
+        companyName: company.name,
+        trialEnd: cp.trialEnd,
+      })
+    }
+  }
+
+  return due.length
 }
 
 export async function getCompanyInvoices(companyId: string): Promise<Invoice[]> {

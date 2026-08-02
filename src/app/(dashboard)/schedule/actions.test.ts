@@ -12,6 +12,10 @@ vi.mock("@/lib/db/visits", () => ({
 vi.mock("@/lib/push/notify", () => ({
   notifyVisitAssigned: vi.fn(),
 }));
+vi.mock("@/lib/email/notify", () => ({
+  notifyVisitAssigned: vi.fn(),
+  notifyVisitCancelled: vi.fn(),
+}));
 vi.mock("next/cache", () => ({
   revalidatePath: vi.fn(),
 }));
@@ -19,6 +23,7 @@ vi.mock("next/cache", () => ({
 const { requireTech } = await import("@/lib/auth");
 const { createVisit, cancelVisit, updateVisit, assertVisitAccess } = await import("@/lib/db/visits");
 const { notifyVisitAssigned } = await import("@/lib/push/notify");
+const emailNotify = await import("@/lib/email/notify");
 const { revalidatePath } = await import("next/cache");
 const { scheduleVisitAction, cancelVisitAction, updateVisitAction } = await import("./actions");
 
@@ -61,6 +66,11 @@ describe("scheduleVisitAction", () => {
       visitId: "visit-1",
       techId: "user-1",
     });
+    expect(emailNotify.notifyVisitAssigned).toHaveBeenCalledWith({
+      companyId: "company-1",
+      visitId: "visit-1",
+      techId: "user-1",
+    });
     expect(revalidatePath).toHaveBeenCalledWith("/schedule");
   });
 
@@ -77,6 +87,7 @@ describe("scheduleVisitAction", () => {
     );
 
     expect(notifyVisitAssigned).not.toHaveBeenCalled();
+    expect(emailNotify.notifyVisitAssigned).not.toHaveBeenCalled();
   });
 
   it("returns error when poolId is missing", async () => {
@@ -136,6 +147,11 @@ describe("cancelVisitAction", () => {
     expect(result).toEqual({ ok: true });
     expect(assertVisitAccess).toHaveBeenCalledWith("visit-1", "company-1", "user-1");
     expect(cancelVisit).toHaveBeenCalledWith("visit-1", "company-1", "Client cancelled");
+    expect(emailNotify.notifyVisitCancelled).toHaveBeenCalledWith({
+      companyId: "company-1",
+      visitId: "visit-1",
+      reason: "Client cancelled",
+    });
     expect(revalidatePath).toHaveBeenCalledWith("/schedule");
   });
 
@@ -199,6 +215,12 @@ describe("updateVisitAction", () => {
       techId: "user-1",
       previousTechId: null,
     });
+    expect(emailNotify.notifyVisitAssigned).toHaveBeenCalledWith({
+      companyId: "company-1",
+      visitId: "visit-1",
+      techId: "user-1",
+      previousTechId: null,
+    });
     expect(revalidatePath).toHaveBeenCalledWith("/schedule");
   });
 
@@ -215,6 +237,12 @@ describe("updateVisitAction", () => {
     );
 
     expect(notifyVisitAssigned).toHaveBeenCalledWith({
+      companyId: "company-1",
+      visitId: "visit-1",
+      techId: "user-2",
+      previousTechId: "user-1",
+    });
+    expect(emailNotify.notifyVisitAssigned).toHaveBeenCalledWith({
       companyId: "company-1",
       visitId: "visit-1",
       techId: "user-2",

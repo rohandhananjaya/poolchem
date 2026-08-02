@@ -91,6 +91,7 @@ export const prismaMock = {
     count: vi.fn(),
   },
   companyPackage: {
+    findMany: vi.fn(),
     findUnique: vi.fn(),
     update: vi.fn(),
     updateMany: vi.fn(),

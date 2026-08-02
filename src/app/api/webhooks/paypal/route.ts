@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server"
 import { paypalProvider } from "@/lib/payment/paypal"
-import { handlePaymentSuccess, handleSubscriptionCancelled, handlePlanRevisionConfirmed } from "@/lib/db/packages"
+import { handlePaymentSuccess, handleSubscriptionCancelled, handlePlanRevisionConfirmed, getPackageBySlug } from "@/lib/db/packages"
 import { getPaymentSettings } from "@/lib/db/payment-settings"
-import { getCompanyBySubscriptionId } from "@/lib/db/company"
+import { getCompanyById, getCompanyBySubscriptionId } from "@/lib/db/company"
+import { notifyPaymentSuccess, notifySubscriptionCancelled } from "@/lib/email/notify"
 
 export async function POST(request: Request) {
   const rawBody = await request.text()
@@ -25,10 +26,20 @@ export async function POST(request: Request) {
         event.providerSubscriptionId,
         event.providerCustomerId,
       )
+      await notifyPaymentSuccessForCompany(event.companyId, event.packageSlug)
     }
 
     if (event.event === "subscription_plan_changed" && event.companyId && event.providerPlanId) {
-      await handlePlanRevisionConfirmed(event.companyId, event.providerPlanId)
+      const cp = await handlePlanRevisionConfirmed(event.companyId, event.providerPlanId)
+      const company = await getCompanyById(event.companyId)
+      if (company && cp.package) {
+        await notifyPaymentSuccess({
+          to: company.email,
+          companyName: company.name,
+          packageName: cp.package.name,
+          amount: cp.package.price,
+        })
+      }
     }
 
     if (event.event === "subscription_cancelled") {
@@ -37,7 +48,12 @@ export async function POST(request: Request) {
       // own cross-provider switch, which already cleared this id — ignore it.
       const company = await getCompanyBySubscriptionId("paypal", event.providerSubscriptionId)
       if (company) {
-        await handleSubscriptionCancelled(company.id)
+        const cp = await handleSubscriptionCancelled(company.id)
+        await notifySubscriptionCancelled({
+          to: company.email,
+          companyName: company.name,
+          packageName: cp.package?.name ?? null,
+        })
       }
     }
 
@@ -46,4 +62,22 @@ export async function POST(request: Request) {
     const message = error instanceof Error ? error.message : "Webhook error"
     return NextResponse.json({ error: message }, { status: 400 })
   }
+}
+
+/** Sends a payment-receipt email for a company+package after a successful payment. */
+async function notifyPaymentSuccessForCompany(
+  companyId: string,
+  packageSlug: string,
+): Promise<void> {
+  const [company, pkg] = await Promise.all([
+    getCompanyById(companyId),
+    getPackageBySlug(packageSlug),
+  ])
+  if (!company || !pkg) return
+  await notifyPaymentSuccess({
+    to: company.email,
+    companyName: company.name,
+    packageName: pkg.name,
+    amount: pkg.price,
+  })
 }

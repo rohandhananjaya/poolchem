@@ -15,6 +15,7 @@ import {
 } from "@/lib/db/visits";
 import { readingsSchema } from "@/lib/validation/visit-readings";
 import { ServiceVisitStatus } from "@/generated/prisma/client";
+import * as emailNotify from "@/lib/email/notify";
 
 export interface VisitFormValues {
   readings: VisitReadings;
@@ -52,13 +53,24 @@ export async function completeVisitAction(
   readingsSchema.parse(data.readings);
 
   await assertVisitAccess(visitId, user.companyId, user.id);
-  await completeVisit(
+  const completed = await completeVisit(
     visitId,
     data.readings,
     data.chemicals,
     data.notes || null,
     data.nextServiceDate ? new Date(`${data.nextServiceDate}T12:00:00`) : null,
   );
+
+  // Auto-send the shareable report to the pool's homeowner when one is set.
+  const homeownerEmail = completed.visit?.pool.homeownerEmail;
+  if (homeownerEmail) {
+    await emailNotify.notifyReportAvailable({
+      companyId: user.companyId,
+      visitId,
+      to: homeownerEmail,
+    });
+  }
+
   revalidatePath(`/visits/${visitId}`);
   revalidatePath("/schedule");
 }
@@ -100,5 +112,10 @@ export async function cancelVisitAction(visitId: string, reason: string) {
   await assertVisitAccess(visitId, user.companyId, user.id);
   const result = await cancelVisit(visitId, user.companyId, reason);
   if (!result) throw new Error("Visit not found.");
+  await emailNotify.notifyVisitCancelled({
+    companyId: user.companyId,
+    visitId,
+    reason,
+  });
   revalidatePath(`/visits/${visitId}`);
 }

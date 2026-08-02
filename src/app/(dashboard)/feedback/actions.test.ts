@@ -6,16 +6,28 @@ vi.mock("@/lib/auth", () => ({
 vi.mock("@/lib/db/feedback", () => ({
   createFeedback: vi.fn(),
 }));
+vi.mock("@/lib/db/users", () => ({
+  getAllUsers: vi.fn(),
+}));
+vi.mock("@/lib/db/company", () => ({
+  getCompanyById: vi.fn(),
+}));
+vi.mock("@/lib/email/notify", () => ({
+  notifyFeedbackAlert: vi.fn(),
+}));
 vi.mock("next/cache", () => ({
   revalidatePath: vi.fn(),
 }));
 
 const { requireAuth } = await import("@/lib/auth");
 const { createFeedback } = await import("@/lib/db/feedback");
+const { getAllUsers } = await import("@/lib/db/users");
+const { getCompanyById } = await import("@/lib/db/company");
+const { notifyFeedbackAlert } = await import("@/lib/email/notify");
 const { revalidatePath } = await import("next/cache");
 const { submitFeedbackAction } = await import("./actions");
 
-const mockUser = { id: "user-1", companyId: "company-1", role: "TECH" };
+const mockUser = { id: "user-1", companyId: "company-1", role: "TECH", name: "Tess Tech", email: "tess@example.com" };
 
 function formData(entries: Record<string, string>): FormData {
   const fd = new FormData();
@@ -39,6 +51,10 @@ describe("submitFeedbackAction", () => {
   it("submits feedback scoped to the user and company", async () => {
     vi.mocked(requireAuth).mockResolvedValue(mockUser as never);
     vi.mocked(createFeedback).mockResolvedValue({ id: "feedback-1" } as never);
+    vi.mocked(getAllUsers).mockResolvedValue([
+      { id: "admin-1", email: "admin@poolbench.com", role: "SUPER_ADMIN" },
+    ] as never);
+    vi.mocked(getCompanyById).mockResolvedValue({ name: "Pool Co" } as never);
 
     const result = await submitFeedbackAction({ ok: false }, formData(VALID));
 
@@ -48,6 +64,15 @@ describe("submitFeedbackAction", () => {
       "user-1",
       "company-1",
     );
+    expect(notifyFeedbackAlert).toHaveBeenCalledWith({
+      to: "admin@poolbench.com",
+      type: "Bug report",
+      title: VALID.title,
+      description: VALID.description,
+      submitterName: "Tess Tech",
+      submitterEmail: "tess@example.com",
+      companyName: "Pool Co",
+    });
     expect(revalidatePath).toHaveBeenCalledWith("/feedback");
   });
 
@@ -57,6 +82,7 @@ describe("submitFeedbackAction", () => {
       companyId: null,
     } as never);
     vi.mocked(createFeedback).mockResolvedValue({ id: "feedback-1" } as never);
+    vi.mocked(getAllUsers).mockResolvedValue([] as never);
 
     const result = await submitFeedbackAction(
       { ok: false },
@@ -68,6 +94,7 @@ describe("submitFeedbackAction", () => {
       "user-1",
       null,
     );
+    expect(notifyFeedbackAlert).not.toHaveBeenCalled();
     expect(result).toEqual({ ok: true });
   });
 

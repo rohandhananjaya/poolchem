@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { requireTech } from "@/lib/auth";
 import { assertVisitAccess, cancelVisit, createVisit, updateVisit } from "@/lib/db/visits";
 import { notifyVisitAssigned } from "@/lib/push/notify";
+import * as emailNotify from "@/lib/email/notify";
 
 /** Result returned to `useActionState` on the client. */
 export interface ScheduleFormState {
@@ -65,6 +66,11 @@ export async function scheduleVisitAction(
         visitId: visit.id,
         techId: visit.techId,
       });
+      await emailNotify.notifyVisitAssigned({
+        companyId: user.companyId,
+        visitId: visit.id,
+        techId: visit.techId,
+      });
     }
     revalidatePath("/schedule");
     return { ok: true };
@@ -103,6 +109,11 @@ export async function cancelVisitAction(
     if (!result) {
       return { ok: false, error: "Visit not found." };
     }
+    await emailNotify.notifyVisitCancelled({
+      companyId: user.companyId,
+      visitId,
+      reason: reason.trim(),
+    });
     revalidatePath("/schedule");
     return { ok: true };
   } catch (e) {
@@ -158,6 +169,12 @@ export async function updateVisitAction(
       return { ok: false, error: "Visit not found." };
     }
     await notifyVisitAssigned({
+      companyId: user.companyId,
+      visitId,
+      techId: result.visit.techId,
+      previousTechId: result.previousTechId,
+    });
+    await emailNotify.notifyVisitAssigned({
       companyId: user.companyId,
       visitId,
       techId: result.visit.techId,

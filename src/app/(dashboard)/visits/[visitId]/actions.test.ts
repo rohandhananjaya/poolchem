@@ -11,11 +11,16 @@ vi.mock("@/lib/db/visits", () => ({
   updateVisitStatus: vi.fn(),
   cancelVisit: vi.fn(),
 }));
+vi.mock("@/lib/email/notify", () => ({
+  notifyVisitCancelled: vi.fn(),
+  notifyReportAvailable: vi.fn(),
+}));
 vi.mock("next/cache", () => ({
   revalidatePath: vi.fn(),
 }));
 const { saveDraftVisit, completeVisit, startVisit, updateVisitStatus, cancelVisit, assertVisitAccess } = await import("@/lib/db/visits");
 const { requireTech } = await import("@/lib/auth");
+const emailNotify = await import("@/lib/email/notify");
 const { revalidatePath } = await import("next/cache");
 const { saveDraftAction, completeVisitAction, startVisitAction, updateVisitStatusAction, cancelVisitAction } = await import("./actions");
 
@@ -65,6 +70,9 @@ describe("saveDraftAction", () => {
 describe("completeVisitAction", () => {
   it("calls completeVisit and revalidates", async () => {
     vi.mocked(requireTech).mockResolvedValue(mockUser as never);
+    vi.mocked(completeVisit).mockResolvedValue({
+      visit: { pool: { homeownerEmail: null } },
+    } as never);
 
     await completeVisitAction(visitId, {
       readings: {
@@ -86,7 +94,34 @@ describe("completeVisitAction", () => {
       null,
       null,
     );
+    expect(emailNotify.notifyReportAvailable).not.toHaveBeenCalled();
     expect(revalidatePath).toHaveBeenCalledWith(`/visits/${visitId}`);
+  });
+
+  it("auto-sends the report to the pool's homeowner when one is set", async () => {
+    vi.mocked(requireTech).mockResolvedValue(mockUser as never);
+    vi.mocked(completeVisit).mockResolvedValue({
+      visit: { pool: { homeownerEmail: "owner@example.com" } },
+    } as never);
+
+    await completeVisitAction(visitId, {
+      readings: {
+        ph: 7.5,
+        freeChlorine: 2,
+        totalAlkalinity: 100,
+        calciumHardness: 300,
+        cyanuricAcid: 40,
+        temperature: 80,
+      },
+      chemicals: [],
+      notes: "",
+    });
+
+    expect(emailNotify.notifyReportAvailable).toHaveBeenCalledWith({
+      companyId: "company-1",
+      visitId,
+      to: "owner@example.com",
+    });
   });
 
   it("throws when unauthenticated", async () => {
@@ -151,6 +186,11 @@ describe("cancelVisitAction", () => {
 
     expect(assertVisitAccess).toHaveBeenCalledWith(visitId, "company-1", "user-1");
     expect(cancelVisit).toHaveBeenCalledWith(visitId, "company-1", "Client request");
+    expect(emailNotify.notifyVisitCancelled).toHaveBeenCalledWith({
+      companyId: "company-1",
+      visitId,
+      reason: "Client request",
+    });
     expect(revalidatePath).toHaveBeenCalledWith(`/visits/${visitId}`);
   });
 

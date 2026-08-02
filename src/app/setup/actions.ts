@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { createUser, hasSuperAdmin } from "@/lib/db/users"
 import { formText } from "@/lib/utils"
+import { notifyWelcome } from "@/lib/email/notify"
 
 export interface SetupFormState {
   ok: boolean
@@ -64,6 +65,8 @@ export async function setupAction(
       companyId: null,
       supabaseId,
     })
+
+    await notifyWelcome({ to: email, name })
 
     return { ok: true }
   } catch {

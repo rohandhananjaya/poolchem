@@ -18,6 +18,8 @@ import {
 import { getPackageBySlug } from "@/lib/db/packages"
 import { getActiveProviders, getProvider } from "@/lib/payment"
 import { getPaymentSettings } from "@/lib/db/payment-settings"
+import { getCompanyById } from "@/lib/db/company"
+import { notifyPaymentSuccess, notifyDowngradeScheduled } from "@/lib/email/notify"
 import type { CompanyPackageInfo } from "@/lib/package-features"
 import type { PaymentProviderName } from "@/lib/payment/types"
 
@@ -177,6 +179,7 @@ export async function confirmPayPalSubscriptionAction(
       subscriptionId,
       subscription.providerCustomerId,
     )
+    await notifyPaymentSuccessForCompany(companyId, companyPackage)
     // No revalidatePath here: this action runs directly during page.tsx's
     // render (not as a form-bound action), and Next.js disallows calling
     // revalidatePath during render. page.tsx is `force-dynamic` and
@@ -201,11 +204,46 @@ export async function confirmPayPalUpgradeAction(packageSlug: string): Promise<S
     if (!companyId) return { ok: false, error: "No company found." }
 
     const companyPackage = await confirmPendingUpgrade(companyId, packageSlug)
+    await notifyPaymentSuccessForCompany(companyId, companyPackage)
     return { ok: true, companyPackage, kind: "upgraded" }
   } catch (error) {
     console.error(`Failed to confirm PayPal upgrade to "${packageSlug}":`, error)
     return { ok: false, error: error instanceof Error ? error.message : "Could not confirm the upgrade." }
   }
+}
+
+/** Sends a payment-receipt email for a company whose package just activated. */
+async function notifyPaymentSuccessForCompany(
+  companyId: string,
+  companyPackage: CompanyPackageInfo,
+): Promise<void> {
+  if (!companyPackage.package) return
+  const company = await getCompanyById(companyId)
+  if (!company) return
+  await notifyPaymentSuccess({
+    to: company.email,
+    companyName: company.name,
+    packageName: companyPackage.package.name,
+    amount: companyPackage.package.price,
+  })
+}
+
+/** Sends a confirmation when a downgrade is scheduled. */
+async function notifyDowngradeScheduledForCompany(
+  companyId: string,
+  companyPackage: CompanyPackageInfo,
+  effectiveAt: Date,
+): Promise<void> {
+  if (!companyPackage.package || !companyPackage.pendingPackage) return
+  const company = await getCompanyById(companyId)
+  if (!company) return
+  await notifyDowngradeScheduled({
+    to: company.email,
+    companyName: company.name,
+    currentPackageName: companyPackage.package.name,
+    targetPackageName: companyPackage.pendingPackage.name,
+    effectiveAt,
+  })
 }
 
 export async function payNowAction(
@@ -305,6 +343,7 @@ export async function switchPackageAction(
         return { ok: true, redirectUrl: outcome.approvalUrl }
       }
 
+      await notifyPaymentSuccessForCompany(companyId, outcome.companyPackage)
       revalidatePath("/account/package")
       return {
         ok: true,
@@ -315,6 +354,7 @@ export async function switchPackageAction(
     }
 
     const { companyPackage, effectiveAt } = await scheduleDowngrade(companyId, targetSlug)
+    await notifyDowngradeScheduledForCompany(companyId, companyPackage, effectiveAt)
     revalidatePath("/account/package")
     return {
       ok: true,
