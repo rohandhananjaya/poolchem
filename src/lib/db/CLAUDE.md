@@ -10,13 +10,25 @@ Get the tenant with `getCompanyId()` / `requireAuth()` from [../auth.ts](../auth
 - `getCompanyById(companyId) → Company | null`
 - `getCompanyBySubscriptionId(provider, subscriptionId) → Company | null` — finds the company whose *currently-recorded* subscription id matches; used by the payment webhook routes to disambiguate a stale/superseded cancellation
 - `updateCompany(companyId, data: UpdateCompanyData) → Company`
+- `createCompany(data: CreateCompanyData) → Company`
+- `deleteCompany(companyId) → void` — cascades to users, pools, visits, etc.; throws if not found
 - `getCompanyStats(companyId) → CompanyStats`
+- `COMPANIES_PAGE_SIZE`
 - `getCompaniesPaginated(page?) → { companies: CompanyWithCounts[]; total: number }` — **unscoped**, super-admin list view
+- `getCompanyFromEmail(company) → string` — derives a display/contact email for a company record
 
-**users.ts**
-- `updateUser(userId, companyId, data: UpdateUserData)`
+**users.ts** — writes never allow editing `email` (the Supabase Auth ↔ Prisma link); `companyId: null` on scoped helpers means SUPER_ADMIN context (unscoped).
+- `getUsersByCompany(companyId) → User[]`
 - `getCompanyTechs(companyId) → Pick<User, id\|name\|email>[]` — TECH-role users for a company
+- `getCompanyTechCount(companyId) → number` — enforces a plan's `max_techs`
+- `updateUser(userId, companyId, data: UpdateUserData)`
+- `updateUserRole(userId, companyId\|null, role) → User` — throws if not found for scope
+- `getUserExportData(userId, companyId\|null) → UserExportData` — full GDPR data-portability export (Art. 20): profile, company, pools, visits with readings/chemicals
+- `getAllUsers() → User[]` — **unscoped**, SUPER_ADMIN only, includes `company`
+- `updateUserAdmin(userId, companyId\|null, data: UpdateUserAdminData) → User` — name/role/phone
+- `createUser(data: CreateUserData) → User`
 - `hasSuperAdmin() → boolean` — whether a SUPER_ADMIN exists yet; gates the `/setup` bootstrap wizard
+- `deleteUser(userId, companyId\|null) → void`
 
 **pools.ts**
 - `getPoolCount(companyId) → number`
@@ -36,10 +48,14 @@ Get the tenant with `getCompanyId()` / `requireAuth()` from [../auth.ts](../auth
 - `getTodayVisits(companyId)`
 - `getVisitById(visitId, companyId)`
 - `createVisit(poolId, techId\|null, companyId, scheduledAt?)`
-- `startVisit(visitId, companyId) → ServiceVisit | null` — marks a DRAFT visit as `IN_PROGRESS`
+- `startVisit(visitId, companyId, techId?) → ServiceVisit | null` — marks a DRAFT visit as `IN_PROGRESS`; the starting tech becomes assigned
+- `assertVisitAccess(visitId, companyId, userId) → ServiceVisitStatus` — throws unless the acting user may modify the visit (IN_PROGRESS visits require being the assigned tech)
 - `updateVisitStatus(visitId, companyId, status) → ServiceVisit | null` — changes visit status
+- `cancelVisit(visitId, companyId, reason) → ServiceVisit | null` — sets `CANCELLED` + stores `cancellationReason`
+- `updateVisit(visitId, companyId, data: { scheduledAt?, techId? }) → ServiceVisit | null` — reschedule/reassign; only DRAFT/IN_PROGRESS visits; throws on CANCELLED/COMPLETED or an out-of-company `techId`
 - `completeVisit(visitId, readings: VisitReadings, chemicals: VisitChemical[], notes?, nextServiceDate?) → CompletedVisit`
 - `saveDraftVisit(visitId, readings, chemicals, notes?, nextServiceDate?)`
+- `getVisitByPublicToken(publicToken) → ServiceVisit | null` — **public, unscoped**; COMPLETED visits only, backs `report/[reportToken]`
 - `getVisitHistory(poolId, limit)`
 - `getLastVisitReadings(poolId) → VisitReadings | null`
 - `getPoolNextScheduledVisit(poolId) → Date | null` — latest future scheduled non-cancelled visit date for a pool
@@ -54,6 +70,7 @@ Get the tenant with `getCompanyId()` / `requireAuth()` from [../auth.ts](../auth
 - `getScheduleData(companyId) → ScheduledVisit[]`
 
 **packages.ts** — subscription/trial system. `Package` (plan definitions, platform-wide, not tenant-scoped) vs `CompanyPackage` (one per company; `packageId` is `null` while on trial with no plan chosen yet).
+- `toCompanyPackageInfo(cp: CompanyPackageWithRelations) → CompanyPackageInfo` — internal shaping helper, exported for reuse by callers that fetch their own `CompanyPackage` rows
 - `getAllPackages() → PackageInfo[]` · `getPackageBySlug(slug)` · `getPackageById(id)`
 - `getCheckoutPlanRef(packageSlug, providerName, devMode) → string | undefined` — PayPal only; resolves (and caches) the plan a first-time checkout must reuse so it lands on the same plan/product later upgrade/downgrade revises target. Returns `undefined` for Stripe (its checkout prices inline, no shared-product constraint)
 - `getCompanyPackage(companyId) → CompanyPackageInfo | null` — lazily flips an overdue `TRIAL` to `EXPIRED`, and applies a due scheduled downgrade (see `scheduleDowngrade`), on read
@@ -90,11 +107,37 @@ Get the tenant with `getCompanyId()` / `requireAuth()` from [../auth.ts](../auth
 - `updateFeedbackStatus(feedbackId, status) → Feedback` — **unscoped** super-admin triage; throws if not found
 - `FEEDBACK_PAGE_SIZE`
 
-## Tests (64+ tests across 8 files)
+**invitations.ts** — pending invites for a tech to join a company by setting their own password.
+- `createInvitation(data: CreateInvitationData) → Invitation` — 7-day expiry
+- `getValidInvitation(token) → Invitation | null` — not accepted, not expired; includes `company`
+- `acceptInvitation(token) → Invitation`
+- `getInvitationsByCompany(companyId) → Invitation[]` — pending, non-expired only
+- `getPendingTechInvitationCount(companyId) → number` — enforces a plan's `max_techs` alongside actual TECH users
+- `deleteInvitation(id, companyId) → void` — throws if not found in company
+
+**admin-dashboard.ts** — SUPER_ADMIN platform overview.
+- `getAdminDashboardData() → AdminDashboardData` — **unscoped**; totals, today's counts, 14-day registration/visit trends, 10 most recent users, subscription-status breakdown
+
+**admin-audit.ts** — `AuditLog` reads (writes happen inline wherever an audited action occurs, not centralized here).
+- `getCompanyAuditLogs(companyId, limit=50) → AuditLogWithUser[]`
+- `getAllAuditLogs(limit=50) → AuditLogWithUser[]` — **unscoped**
+- `getAuditSummary(companyId?) → AuditSummary` — total + grouped by-action counts; unscoped when `companyId` omitted
+
+**admin-diagnostics.ts** — SUPER_ADMIN server/DB health, backed by `os`/`process` plus `SystemLog`/`AuditLog`.
+- `getServerDiagnostics() → DiagnosticsData` — full page: server info, DB connectivity + row counts, log summary, 50 recent logs, company list, audit logs
+- `getServerHealthSummary() → { server; logSummary }` — lightweight subset for the admin dashboard overview
+
+**payment-settings.ts** — single-row (`platformSettings`, id `"singleton"`) platform-wide payment toggles.
+- `getPaymentSettings() → PaymentSettings` — `{ stripeEnabled, paypalEnabled, paymentDevMode }`; upserts the row if missing
+- `updatePaymentSettings(data: Partial<PaymentSettings>) → PaymentSettings`
+
+## Tests (145+ tests across 10 files)
 
 All DB tests mock `@/lib/prisma` and require `server-only` to be stubbed (handled by the Vitest config alias). Tests are in the same directory with `.test.ts` suffix:
-- `visits.test.ts` — 17 tests · `company.test.ts` — 12 · `pools.test.ts` — 20
-- `users.test.ts` — 11 · `reports.test.ts` — 3 · `schedule.test.ts` — 2 · `dashboard.test.ts` — 2 · `api-keys.test.ts` — 13 · `feedback.test.ts` — 9
+- `visits.test.ts` — 38 tests · `company.test.ts` — 12 · `pools.test.ts` — 20 · `packages.test.ts` — 27
+- `users.test.ts` — 14 · `reports.test.ts` — 3 · `schedule.test.ts` — 8 · `dashboard.test.ts` — 2 · `api-keys.test.ts` — 12 · `feedback.test.ts` — 9
+
+No tests yet for `admin-dashboard.ts`, `admin-audit.ts`, `admin-diagnostics.ts`, `payment-settings.ts`, or `invitations.ts` — a real coverage gap, not just a doc omission.
 
 ## Notes
 - `VisitReadings` / `VisitChemical` types live in visits.ts; `VisitReadings` extends `WaterReadingInput` (from [../pool-chemistry.ts](../pool-chemistry.ts)) minus `temperature`.

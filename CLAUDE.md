@@ -21,6 +21,11 @@ npm run build        # production build (runs prisma generate then next build)
 npm run lint         # eslint
 npm test             # vitest run (one-shot)
 npm run test:watch   # vitest watch mode
+npm start            # start production server (after build)
+npm run test:e2e     # Playwright e2e tests
+npm run test:e2e:ui  # Playwright e2e tests, headed
+npm run db:migrate   # prisma migrate deploy (production migrations)
+npm run db:seed      # tsx scripts/seed.ts
 npx vitest run -t "reports a balanced pool"   # single test by name
 npx prisma generate  # regenerate client into src/generated/prisma
 npx prisma migrate dev --name <x>  # create + apply a migration
@@ -41,7 +46,7 @@ Keep in sync when adding/removing an exported helper, route, or component.
 
 Poolbench is a **multi-tenant SaaS** for pool-service companies. Techs record water-test readings during service visits; the app scores water health and recommends chemical doses.
 
-**Data flow:** Server Components / Server Actions → `db/` helpers → Prisma. No REST/GraphQL API layer — all mutations are Server Actions that re-check auth, call a `db/` helper, then `revalidatePath`.
+**Data flow:** Server Components / Server Actions → `db/` helpers → Prisma. All mutations are Server Actions that re-check auth, call a `db/` helper, then `revalidatePath` — no internal REST/GraphQL layer for the dashboard itself. A separate read-only `api/v1` REST API (bearer-token auth) exists for external integrations gated behind the `api_access` plan feature; see `src/app/CLAUDE.md`.
 
 **Multi-tenancy:** Every record belongs to a `Company`. Nothing is queried without `companyId`. `ServiceVisit` has no `companyId` of its own — scoped via `visit.pool.companyId`.
 
