@@ -11,7 +11,7 @@
     "test:e2e": "playwright test --config=playwright.config.ts",
     "test:e2e:ui": "playwright test --config=playwright.config.ts --headed",
     "test:watch": "vitest",
-    "postinstall": "prisma generate",
+    "postinstall": "node scripts/prepare-postgres-schema.mjs && prisma generate",
     "db:migrate": "prisma migrate deploy",
     "db:push:postgres": "node scripts/prepare-postgres-schema.mjs && prisma db push",
     "db:seed": "tsx scripts/seed.ts",
