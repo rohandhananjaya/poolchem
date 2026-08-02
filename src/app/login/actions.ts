@@ -17,6 +17,7 @@ export async function loginAction(
 ): Promise<LoginFormState> {
   const email = formText(formData, "email")
   const password = formText(formData, "password")
+  const code = formText(formData, "code")
 
   if (!email || !password) {
     return { ok: false, error: "Email and password are required." }
@@ -30,5 +31,7 @@ export async function loginAction(
   }
 
   revalidatePath("/", "layout")
-  redirect("/dashboard")
+  // A `code` means the user arrived via a scanned pool QR — send them straight
+  // into the scan flow so the visit can start.
+  redirect(code ? `/scan?code=${encodeURIComponent(code)}` : "/dashboard")
 }

@@ -3,7 +3,7 @@
 Next.js 16 App Router. Pattern: **Server Component page → `db/` helper → render**; mutations are **Server Actions** (`actions.ts`) that re-check auth, call a `db/` helper, then `revalidatePath`. No REST/GraphQL layer. Each route folder also has `loading.tsx` / `error.tsx` where present (Suspense + error boundaries) — omitted below.
 
 ## Auth boundary
-[../proxy.ts](../proxy.ts) (NOT `middleware.ts`) refreshes the Supabase session and guards `/dashboard/*`. OAuth lands at `auth/callback/route.ts`.
+[../proxy.ts](../proxy.ts) (NOT `middleware.ts`) refreshes the Supabase session and guards `/dashboard/*`, `/admin/*`, and `/scan` (carrying query params like `?code=` to `/login` so a scanned-QR deep link survives sign-in). OAuth lands at `auth/callback/route.ts`.
 
 ## Public routes
 - `page.tsx` — marketing/landing
@@ -17,7 +17,7 @@ Next.js 16 App Router. Pattern: **Server Component page → `db/` helper → ren
 - `not-found.tsx`, `error.tsx`, `layout.tsx` (root)
 - `sw.ts` — **PWA service worker** (Serwist via `@serwist/turbopack`); compiled and served through `serwist/[path]/route.ts` (`createSerwistRoute`) at `/serwist/sw.js`
 - `manifest.ts` — **PWA web manifest** served at `/manifest.webmanifest` (name, standalone display, theme/background color, 192/512 icons in `public/icons/`)
-- `serwist/[path]/route.ts` — Route Handler backing the service worker; wired in [../next.config.ts](../next.config.ts) via `withSerwist` from `@serwist/turbopack` and registered client-side by `<SerwistProvider>` in `layout.tsx`
+- `serwist/[path]/route.ts` — Route Handler backing the service worker; wired in [../next.config.ts](../next.config.ts) via `withSerwist` from `@serwist/turbopack` and registered client-side by `<PwaProvider>` (wraps `<SerwistProvider>`) in `layout.tsx` — gated so it only registers on localhost (dev) or production, never a LAN-IP dev origin
 - `icon.tsx` — 32×32 favicon (the PWA/Apple icons are static PNGs in `public/icons/`: `icon-192.png`, `icon-512.png`, `apple-touch-icon.png`)
 
 ### (public)/ — **stale**: these routes don't exist yet
@@ -25,9 +25,9 @@ This section previously listed a `(public)/` route group (blog, about-us, servic
 
 ## (dashboard)/ — auth-required route group, shared `layout.tsx` (nav shell)
 - `dashboard/` — home; `getDashboardData(companyId)`. For SUPER_ADMIN (no `companyId`), renders a platform-overview dashboard instead via `getAdminDashboardData()` + `getServerHealthSummary()` (`<PlatformKPIs>`, `<ServerHealthSummary>`, `<LiveServerCharts>`, etc.)
-- `pools/`, `pools/[poolId]/` — pool list (`getPoolsPaginated`, CSV import/export, filters) + `PoolAnalysis` detail/trend page (`requireTech`; `getPoolById` + `getVisitHistory` + `getWaterHealthScore`). `actions.ts`: `createPoolAction`, `updatePoolAction`, `deletePoolAction`, `importPoolsAction`, `exportPoolsAction`
+- `pools/`, `pools/[poolId]/` — pool list (`getPoolsPaginated`, CSV import/export, filters) + `PoolAnalysis` detail/trend page (`requireTech`; `getPoolById` + `getVisitHistory` + `getWaterHealthScore`; shows the pool's tech-scan QR inline in the pool info card with a copy-link button). `actions.ts`: `createPoolAction`, `updatePoolAction`, `deletePoolAction`, `importPoolsAction`, `exportPoolsAction`
 - `team/` — OWNER-only per-company user + invitation management (`requireOwner`; `getUsersByCompany` + `getInvitationsByCompany`) — distinct from `admin/users`, which is cross-tenant/SUPER_ADMIN. `actions.ts`: `createTeamUserAction`, `updateTeamUserAction`, `deleteTeamUserAction`, `inviteTeamUserAction`
-- `scan/` — QR scan entry. `actions.ts`: `startVisitFromScan`
+- `scan/` — QR scan entry (auth-gated via proxy). Deep link `/scan?code=<qrCode>` (what a pool QR encodes) auto-resolves without the camera. Flow: scan/deep-link → `lookupPoolFromScan` validates (no visit created) → confirm dialog → `startVisitFromScan` creates the visit. `actions.ts`: `lookupPoolFromScan`, `startVisitFromScan`. Both normalize input via `src/lib/scan-code.ts` (accepts raw `POOL-…`, pool id, or deep-link URL).
 - `visits/[visitId]/` — the visit form. `page.tsx` → `visit-form.tsx` (client), `status-dropdown.tsx`.
   `actions.ts`: `saveDraftAction`, `completeVisitAction`, `startVisitAction`, `updateVisitStatusAction`
   - `report/` — generated service report. `page.tsx` uses `generateServiceReport`; `report-actions.tsx` (mailto send + external QR — both MVP placeholders, see [../../to-do.md](../../to-do.md))

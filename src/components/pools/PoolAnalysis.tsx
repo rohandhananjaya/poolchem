@@ -5,6 +5,8 @@ import Link from "next/link"
 import { format } from "date-fns"
 import {
   Calendar,
+  Check,
+  Copy,
   FlaskConical,
   Home,
   MapPin,
@@ -69,6 +71,7 @@ interface ScoredVisit {
 interface PoolAnalysisProps {
   pool: {
     id: string
+    publicToken: string
     name: string
     address: string | null
     volume: number
@@ -86,6 +89,10 @@ interface PoolAnalysisProps {
     cyanuricAcid: number
     temperature: number
   } | null
+  /** The `/scan?code=…` deep link this pool's QR encodes. */
+  scanUrl: string
+  /** Self-hosted QR image (SVG data URL) generated server-side. */
+  qrSrc: string
 }
 
 /* ── parameter display helpers ──────────────────────────────────── */
@@ -102,7 +109,44 @@ function paramColor(status: string): string {
 }
 
 /* ── component ──────────────────────────────────────────────────── */
-export function PoolAnalysis({ pool, scoredVisits, scoreHistory, lastReadings }: PoolAnalysisProps) {
+export function PoolAnalysis({ pool, scoredVisits, scoreHistory, lastReadings, scanUrl, qrSrc }: PoolAnalysisProps) {
+  const [copied, setCopied] = React.useState(false)
+
+  /** Copies the QR as a PNG image to the clipboard, falling back to the link. */
+  async function copyQrImage() {
+    try {
+      const img = new Image()
+      img.src = qrSrc
+      await img.decode()
+      const canvas = document.createElement("canvas")
+      canvas.width = 512
+      canvas.height = 512
+      const ctx = canvas.getContext("2d")
+      if (!ctx) throw new Error("no 2d context")
+      ctx.fillStyle = "#ffffff"
+      ctx.fillRect(0, 0, canvas.width, canvas.height)
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
+      const blob = await new Promise<Blob>((resolve, reject) =>
+        canvas.toBlob(
+          (b) => (b ? resolve(b) : reject(new Error("toBlob failed"))),
+          "image/png",
+        ),
+      )
+      await navigator.clipboard.write([
+        new ClipboardItem({ "image/png": blob }),
+      ])
+      setCopied(true)
+    } catch {
+      try {
+        await navigator.clipboard.writeText(scanUrl)
+      } catch {
+        window.prompt("Copy the pool scan link:", scanUrl)
+      }
+      setCopied(true)
+    }
+    window.setTimeout(() => setCopied(false), 2000)
+  }
+
   /* flatten the last 10 visits into chart data points */
   const chartData = scoredVisits
     .slice(0, 10)
@@ -160,11 +204,37 @@ export function PoolAnalysis({ pool, scoredVisits, scoreHistory, lastReadings }:
                 </a>
               ) : null}
             </div>
+
+            <Button asChild variant="outline" size="sm" className="mt-2">
+              <Link href={`/pool/${pool.publicToken}`}>Homeowner Dashboard</Link>
+            </Button>
           </div>
 
-          <Button asChild variant="outline" size="sm">
-            <Link href={`/pool/${pool.id}`}>Homeowner Dashboard</Link>
-          </Button>
+          <div className="flex shrink-0 flex-col items-center gap-3">
+            <div className="group relative">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={qrSrc}
+                alt={`QR code to start a visit for ${pool.name}`}
+                width={128}
+                height={128}
+                className="size-32 rounded-lg border border-border bg-white p-2"
+              />
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon-xs"
+                aria-label={copied ? "QR copied" : "Copy QR image"}
+                className={cn(
+                  "absolute right-1 top-1 text-muted-foreground opacity-0 transition-opacity hover:bg-card hover:text-foreground focus-visible:opacity-100 group-hover:opacity-100",
+                  copied && "opacity-100",
+                )}
+                onClick={copyQrImage}
+              >
+                {copied ? <Check className="text-emerald-500" /> : <Copy />}
+              </Button>
+            </div>
+          </div>
         </div>
       </div>
 

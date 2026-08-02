@@ -206,7 +206,12 @@ export default async function HomeownerDashboardPage({
 
         {/* Service dates */}
         {(lastServicedDate || nextServiceDate) && (
-          <div className="mt-4 grid gap-4 sm:grid-cols-2">
+          <div
+            className={cn(
+              "mt-4 grid gap-4",
+              lastServicedDate && nextServiceDate && "sm:grid-cols-2",
+            )}
+          >
             {lastServicedDate && (
               <DateTile
                 icon={<CalendarCheck className="size-5" />}

@@ -42,7 +42,7 @@ Get the tenant with `getCompanyId()` / `requireAuth()` from [../auth.ts](../auth
 - `deletePool(poolId, companyId) → void`
 - `getPoolByQR(qrCode) → Pool | null`
 - `getPoolByPublicToken(publicToken, visitLimit)` — **public, unscoped**; homeowner share link
-- `generateQRCode(poolId) → string`
+- `generateQRCode(poolId) → string` — reissues a scan code; **unscoped**
 
 **visits.ts** — a `ServiceVisit` has no `companyId`; it is scoped via `pool: { companyId }`.
 - `getTodayVisits(companyId)`

@@ -1,10 +1,10 @@
 import type { Metadata, Viewport } from "next";
 import { Inter, JetBrains_Mono } from "next/font/google";
 import Script from "next/script";
-import { SerwistProvider } from "@serwist/turbopack/react";
 import "./globals.css";
 import { Toaster } from "@/components/ui/sonner";
 import { CookieConsentBanner } from "@/components/cookie-consent-banner";
+import { PwaProvider } from "@/components/pwa-provider";
 
 // Inter drives all headings, UI labels, and body text — clean and highly
 // legible on phones in bright outdoor light. Variable font, so every weight
@@ -64,7 +64,7 @@ export default function RootLayout({
             __html: `new MutationObserver((m,s)=>{for(const r of m)for(const n of r.addedNodes)if(n.nodeType===1){const e=n;e.hasAttribute?.("bis_skin_checked")&&e.removeAttribute("bis_skin_checked");e.querySelectorAll?.("[bis_skin_checked]").forEach(t=>t.removeAttribute("bis_skin_checked"))}}).observe(document.documentElement,{childList:!0,subtree:!0})`,
           }}
         />
-        <SerwistProvider swUrl="/serwist/sw.js">{children}</SerwistProvider>
+        <PwaProvider>{children}</PwaProvider>
         <Toaster />
         <CookieConsentBanner />
       </body>

@@ -12,7 +12,13 @@ import { loginAction, type LoginFormState } from "./actions"
 
 const INITIAL_STATE: LoginFormState = { ok: false }
 
-export function LoginForm({ successMessage }: { successMessage?: string }) {
+export function LoginForm({
+  successMessage,
+  code,
+}: {
+  successMessage?: string
+  code?: string
+}) {
   const [state, action, pending] = React.useActionState(loginAction, INITIAL_STATE)
 
   const error = state.error
@@ -58,6 +64,9 @@ export function LoginForm({ successMessage }: { successMessage?: string }) {
         )}
 
         <form action={action} className="mt-6 space-y-4">
+          {/* Carry a scanned-QR deep link through login so the user lands back
+              on /scan?code=… and the visit starts automatically. */}
+          {code ? <input type="hidden" name="code" value={code} /> : null}
           <div className="space-y-2">
             <Label htmlFor="email">Email</Label>
             <Input

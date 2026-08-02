@@ -1,5 +1,6 @@
 import * as fs from "fs";
 import * as path from "path";
+import { execFileSync } from "child_process";
 import { test, expect } from "@playwright/test";
 import { signup, login, dismissCookieConsent } from "./fixtures";
 
@@ -15,6 +16,20 @@ const SCREENSHOT_DIR = path.join(
 
 function shotPath(name: string) {
   return path.join(SCREENSHOT_DIR, name);
+}
+
+// Backfills nine weekly historical COMPLETED visits (trending up to the score
+// of `latestVisitId`) so the pool-analysis screenshot shows a real
+// score/parameter trend instead of a single data point. Shelled out to a
+// separate tsx script (rather than importing PrismaClient here) because
+// Playwright's own TS loader can't load the generated Prisma client's ESM
+// output — see scripts/seed-screenshot-trend.ts.
+function seedHistoricalVisits(latestVisitId: string) {
+  execFileSync(
+    "npx",
+    ["tsx", "scripts/seed-screenshot-trend.ts", latestVisitId],
+    { stdio: "inherit", cwd: path.join(__dirname, ".."), shell: true },
+  );
 }
 
 test.describe("Marketing screenshots", () => {
@@ -52,6 +67,10 @@ test.describe("Marketing screenshots", () => {
     await page.getByLabel("Volume (gallons)").fill("18000");
     await page.getByLabel("Address (optional)").fill("48 Ocean Breeze Drive");
     await page.getByRole("button", { name: "Add pool" }).click();
+    // Wait for the create-pool Server Action to actually resolve before
+    // navigating away — otherwise the in-flight request can be cancelled by
+    // the goto below, leaving no pool created (flaky "No pools yet" on /pools).
+    await expect(page.getByText("Pool created!")).toBeVisible({ timeout: 10000 });
 
     await page.goto("/dashboard", { waitUntil: "networkidle" });
     await dismissCookieConsent(page);
@@ -139,9 +158,17 @@ test.describe("Marketing screenshots", () => {
     const reportToken = reportUrl?.split("/report/")[1];
     if (!reportToken) throw new Error("Could not extract public report token");
 
+    // Backfill nine weekly historical visits (trending up to the just-completed
+    // one) so the pool-analysis screenshot shows a real score/parameter trend
+    // instead of a single data point.
+    seedHistoricalVisits(visitId);
+
     // Pool analysis reflects the just-completed visit's score/trend.
     await page.goto(`/pools/${poolId}`, { waitUntil: "networkidle" });
-    await page.waitForTimeout(500);
+    // Recharts animates each Line's draw-in over ~1.5s on mount; wait for it
+    // to finish or the parameter-trend lines get screenshotted mid-animation
+    // (cut off partway across the chart).
+    await page.waitForTimeout(2000);
     await page.screenshot({ path: shotPath("pool-analysis.png"), fullPage: true });
 
     // Owner's dashboard now shows real activity (completed visit, active pool).

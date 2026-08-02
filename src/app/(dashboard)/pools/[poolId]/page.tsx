@@ -6,6 +6,8 @@ import { requireTech } from "@/lib/auth"
 import { getPoolById } from "@/lib/db/pools"
 import { getVisitHistory } from "@/lib/db/visits"
 import { getWaterHealthScore } from "@/lib/pool-chemistry"
+import { buildScanUrl } from "@/lib/scan-code"
+import { generateQRDataUrl } from "@/lib/reports/qr"
 import type { WaterReading } from "@/generated/prisma/client"
 import { Shell } from "@/components/ui/shell"
 import { PoolAnalysis } from "@/components/pools/PoolAnalysis"
@@ -63,6 +65,9 @@ export default async function PoolAnalysisPage({
   const lastVisit = scoredVisits[0] ?? null
   const lastReadings = lastVisit?.readings[0] ?? null
 
+  const scanUrl = buildScanUrl(pool.qrCode)
+  const qrSrc = await generateQRDataUrl(scanUrl)
+
   return (
     <Shell title={`${pool.name} — Analysis`} backHref="/pools" backLabel="Pools">
       <div className="space-y-6">
@@ -76,6 +81,7 @@ export default async function PoolAnalysisPage({
           <PoolAnalysis
             pool={{
               id: pool.id,
+              publicToken: pool.publicToken,
               name: pool.name,
               address: pool.address,
               volume: pool.volume,
@@ -85,6 +91,8 @@ export default async function PoolAnalysisPage({
             }}
             scoredVisits={scoredVisits}
             scoreHistory={scoreHistory}
+            scanUrl={scanUrl}
+            qrSrc={qrSrc}
             lastReadings={
               lastReadings
                 ? {

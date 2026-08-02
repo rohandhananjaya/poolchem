@@ -20,9 +20,9 @@ export const metadata: Metadata = {
 export default async function LoginPage({
   searchParams,
 }: {
-  searchParams: Promise<{ signup?: string; setup?: string }>
+  searchParams: Promise<{ signup?: string; setup?: string; code?: string }>
 }) {
-  const { signup, setup } = await searchParams
+  const { signup, setup, code } = await searchParams
 
   if (!(await hasSuperAdmin())) {
     redirect("/setup")
@@ -41,7 +41,7 @@ export default async function LoginPage({
         <div className="absolute -top-40 -right-40 size-[30rem] rounded-full bg-brand-200/60 blur-3xl" />
         <div className="absolute -bottom-40 -left-40 size-[30rem] rounded-full bg-brand-50/60 blur-3xl" />
       </div>
-      <LoginForm successMessage={successMessage} />
+      <LoginForm successMessage={successMessage} code={code} />
     </div>
   )
 }

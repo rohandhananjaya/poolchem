@@ -43,10 +43,14 @@ export async function proxy(request: NextRequest) {
 
   const { pathname } = request.nextUrl;
 
-  // Protect /dashboard/* and /admin/* — send unauthenticated users to /login.
+  // Protect /dashboard/*, /admin/* and /scan — send unauthenticated users to
+  // /login. Query params (e.g. ?code= from a scanned QR deep link) are carried
+  // over so the login flow can route straight back into the visit.
   if (
     !user &&
-    (pathname.startsWith("/dashboard") || pathname.startsWith("/admin"))
+    (pathname.startsWith("/dashboard") ||
+      pathname.startsWith("/admin") ||
+      pathname.startsWith("/scan"))
   ) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
