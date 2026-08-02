@@ -146,12 +146,12 @@ describe("downloadPostmanCollectionAction", () => {
     vi.mocked(requireOwner).mockResolvedValue(mockUser as never);
     vi.mocked(getCompanyPackage).mockResolvedValue(activeCompanyPackage as never);
     vi.mocked(buildPostmanCollection).mockReturnValue("{}");
-    process.env.NEXT_PUBLIC_APP_URL = "https://poolbench.app";
+    process.env.NEXT_PUBLIC_APP_URL = "https://poolbench.com";
 
     const result = await downloadPostmanCollectionAction();
 
     expect(result).toEqual({ ok: true, collection: "{}" });
-    expect(buildPostmanCollection).toHaveBeenCalledWith("https://poolbench.app");
+    expect(buildPostmanCollection).toHaveBeenCalledWith("https://poolbench.com");
   });
 
   it("falls back to the local origin when NEXT_PUBLIC_APP_URL is unset", async () => {

@@ -135,7 +135,7 @@ describe("updateCompanyAction", () => {
     vi.mocked(getCompanyPackage).mockResolvedValue(trialPackage);
     vi.mocked(validateLogoFile).mockReturnValue({ ok: true });
     vi.mocked(uploadCompanyLogo).mockResolvedValue(
-      "https://logos.poolbench.app/logos/company-1/new.png",
+      "https://logos.poolbench.com/logos/company-1/new.png",
     );
 
     const logoFile = new File(["x"], "logo.png", { type: "image/png" });
@@ -156,7 +156,7 @@ describe("updateCompanyAction", () => {
       email: "co@test.com",
       phone: null,
       address: null,
-      logo: "https://logos.poolbench.app/logos/company-1/new.png",
+      logo: "https://logos.poolbench.com/logos/company-1/new.png",
     });
     // Old logo isn't an R2 URL under the mocked keyFromPublicUrl, but delete is
     // still attempted best-effort with whatever URL was previously stored.

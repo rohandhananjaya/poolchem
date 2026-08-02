@@ -28,17 +28,17 @@ describe("buildReportShareEmail", () => {
   it("returns an email payload with correct fields", () => {
     const email = buildReportShareEmail({
       to: "homeowner@example.com",
-      from: "noreply@poolbench.app",
+      from: "noreply@poolbench.com",
       companyName: "PoolCo",
       poolName: "Backyard Pool",
-      reportUrl: "https://poolbench.app/report/abc123",
+      reportUrl: "https://poolbench.com/report/abc123",
     });
 
     expect(email.to).toBe("homeowner@example.com");
-    expect(email.from).toBe("noreply@poolbench.app");
+    expect(email.from).toBe("noreply@poolbench.com");
     expect(email.subject).toContain("Backyard Pool");
     expect(email.html).toContain("PoolCo");
-    expect(email.html).toContain("https://poolbench.app/report/abc123");
+    expect(email.html).toContain("https://poolbench.com/report/abc123");
   });
 });
 
@@ -46,22 +46,22 @@ describe("buildInvitationEmail", () => {
   it("returns an email payload with correct fields", () => {
     const email = buildInvitationEmail({
       to: "tech@example.com",
-      from: "noreply@poolbench.app",
+      from: "noreply@poolbench.com",
       companyName: "PoolCo",
-      inviteUrl: "https://poolbench.app/invite/token123",
+      inviteUrl: "https://poolbench.com/invite/token123",
     });
 
     expect(email.to).toBe("tech@example.com");
-    expect(email.from).toBe("noreply@poolbench.app");
+    expect(email.from).toBe("noreply@poolbench.com");
     expect(email.subject).toContain("PoolCo");
-    expect(email.html).toContain("https://poolbench.app/invite/token123");
+    expect(email.html).toContain("https://poolbench.com/invite/token123");
   });
 });
 
 describe("sendEmail", () => {
   const validInput = {
     to: "test@example.com",
-    from: "noreply@poolbench.app",
+    from: "noreply@poolbench.com",
     subject: "Test",
     html: "<p>Test</p>",
   };

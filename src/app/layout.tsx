@@ -1,6 +1,7 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Inter, JetBrains_Mono } from "next/font/google";
 import Script from "next/script";
+import { SerwistProvider } from "@serwist/turbopack/react";
 import "./globals.css";
 import { Toaster } from "@/components/ui/sonner";
 import { CookieConsentBanner } from "@/components/cookie-consent-banner";
@@ -27,6 +28,21 @@ export const metadata: Metadata = {
   title: "Poolbench — Water chemistry, handled",
   description:
     "Poolbench turns a quick water test into a health score, the exact chemical doses to fix it, and a shareable report. Built for pool-service companies.",
+  manifest: "/manifest.webmanifest",
+  applicationName: "Poolbench",
+  appleWebApp: {
+    capable: true,
+    title: "Poolbench",
+    statusBarStyle: "default",
+  },
+  icons: {
+    icon: "/icons/icon-192.png",
+    apple: "/icons/apple-touch-icon.png",
+  },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#0284c7",
 };
 
 export default function RootLayout({
@@ -48,7 +64,7 @@ export default function RootLayout({
             __html: `new MutationObserver((m,s)=>{for(const r of m)for(const n of r.addedNodes)if(n.nodeType===1){const e=n;e.hasAttribute?.("bis_skin_checked")&&e.removeAttribute("bis_skin_checked");e.querySelectorAll?.("[bis_skin_checked]").forEach(t=>t.removeAttribute("bis_skin_checked"))}}).observe(document.documentElement,{childList:!0,subtree:!0})`,
           }}
         />
-        {children}
+        <SerwistProvider swUrl="/serwist/sw.js">{children}</SerwistProvider>
         <Toaster />
         <CookieConsentBanner />
       </body>

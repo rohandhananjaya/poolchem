@@ -15,6 +15,10 @@ Next.js 16 App Router. Pattern: **Server Component page → `db/` helper → ren
 - `onboarding/page.tsx` — post-signup setup wizard (needs a session but sits outside `(dashboard)`); prompts to fill in company phone/address and add a first pool if either is missing. `actions.ts`: `updateCompanyDetailsAction`, `createFirstPoolAction`
 - `invite/[token]/page.tsx` — accept-invitation page; 404s via `getValidInvitation` if the token is invalid/expired/already accepted. `actions.ts`: `acceptInvitationAction`
 - `not-found.tsx`, `error.tsx`, `layout.tsx` (root)
+- `sw.ts` — **PWA service worker** (Serwist via `@serwist/turbopack`); compiled and served through `serwist/[path]/route.ts` (`createSerwistRoute`) at `/serwist/sw.js`
+- `manifest.ts` — **PWA web manifest** served at `/manifest.webmanifest` (name, standalone display, theme/background color, 192/512 icons in `public/icons/`)
+- `serwist/[path]/route.ts` — Route Handler backing the service worker; wired in [../next.config.ts](../next.config.ts) via `withSerwist` from `@serwist/turbopack` and registered client-side by `<SerwistProvider>` in `layout.tsx`
+- `icon.tsx` — 32×32 favicon (the PWA/Apple icons are static PNGs in `public/icons/`: `icon-192.png`, `icon-512.png`, `apple-touch-icon.png`)
 
 ### (public)/ — **stale**: these routes don't exist yet
 This section previously listed a `(public)/` route group (blog, about-us, services, contact-us, features, pricing, documentation) — none of it exists in the repo (confirmed via glob). Don't assume any of these pages are there; build them if/when actually needed.

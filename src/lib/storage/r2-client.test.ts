@@ -44,16 +44,16 @@ describe("getR2BucketName", () => {
 
 describe("buildPublicUrl / keyFromPublicUrl", () => {
   it("round-trips a key through the public URL", () => {
-    vi.stubEnv("R2_PUBLIC_URL", "https://logos.poolbench.app");
+    vi.stubEnv("R2_PUBLIC_URL", "https://logos.poolbench.com");
 
     const url = buildPublicUrl("logos/company-1/abc.png");
 
-    expect(url).toBe("https://logos.poolbench.app/logos/company-1/abc.png");
+    expect(url).toBe("https://logos.poolbench.com/logos/company-1/abc.png");
     expect(keyFromPublicUrl(url)).toBe("logos/company-1/abc.png");
   });
 
   it("returns null for a URL not hosted under R2_PUBLIC_URL", () => {
-    vi.stubEnv("R2_PUBLIC_URL", "https://logos.poolbench.app");
+    vi.stubEnv("R2_PUBLIC_URL", "https://logos.poolbench.com");
 
     expect(keyFromPublicUrl("https://example.com/logo.png")).toBeNull();
   });

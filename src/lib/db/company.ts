@@ -216,5 +216,5 @@ export function getCompanyFromEmail(company: {
   fromEmail: string | null;
 }): string {
   if (company.fromEmail) return company.fromEmail;
-  return process.env.EMAIL_FROM ?? "noreply@poolbench.app";
+  return process.env.EMAIL_FROM ?? "noreply@poolbench.com";
 }

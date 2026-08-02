@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const sendMock = vi.fn();
-const PUBLIC_BASE = "https://logos.poolbench.app/";
+const PUBLIC_BASE = "https://logos.poolbench.com/";
 
 vi.mock("./r2-client", () => ({
   getR2Client: vi.fn(() => ({ send: sendMock })),

@@ -1,4 +1,5 @@
 import type { NextConfig } from "next";
+import { withSerwist } from "@serwist/turbopack";
 
 const allowedDevOrigins = process.env.ALLOWED_DEV_ORIGINS
   ? process.env.ALLOWED_DEV_ORIGINS.split(',').map((s) => s.trim())
@@ -20,5 +21,5 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default nextConfig;
+export default withSerwist(nextConfig);
 
