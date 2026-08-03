@@ -18,12 +18,12 @@ export function NotificationProvider({
   userId: string
   children: React.ReactNode
 }) {
-  const { newVisitAlert, unreadCount, dismissAlert, markAllRead } =
+  const { newVisitAlert, notifications, unreadCount, dismissAlert, markAllRead, markRead } =
     useRealtimeVisits(userId)
 
   const ctx = React.useMemo(
-    () => ({ unreadCount, markAllRead }),
-    [unreadCount, markAllRead],
+    () => ({ notifications, unreadCount, markAllRead, markRead }),
+    [notifications, unreadCount, markAllRead, markRead],
   )
 
   return (

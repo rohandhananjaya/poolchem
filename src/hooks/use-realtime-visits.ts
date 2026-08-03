@@ -33,13 +33,17 @@ interface VisitRow {
  * Context for sharing notification state across the dashboard layout.
  */
 export interface NotificationContextValue {
+  notifications: VisitNotification[]
   unreadCount: number
   markAllRead: () => void
+  markRead: (id: string) => void
 }
 
 export const NotificationContext = React.createContext<NotificationContextValue>({
+  notifications: [],
   unreadCount: 0,
   markAllRead: () => {},
+  markRead: () => {},
 })
 
 export function useRealtimeVisits(techId: string) {
@@ -167,10 +171,23 @@ export function useRealtimeVisits(techId: string) {
     setNotifications((prev) => prev.map((n) => ({ ...n, read: true })))
   }, [])
 
+  const markRead = React.useCallback((id: string) => {
+    setNotifications((prev) =>
+      prev.map((n) => (n.id === id ? { ...n, read: true } : n)),
+    )
+  }, [])
+
   const unreadCount = React.useMemo(
     () => notifications.filter((n) => !n.read).length,
     [notifications],
   )
 
-  return { newVisitAlert, notifications, unreadCount, dismissAlert, markAllRead } as const
+  return {
+    newVisitAlert,
+    notifications,
+    unreadCount,
+    dismissAlert,
+    markAllRead,
+    markRead,
+  } as const
 }
