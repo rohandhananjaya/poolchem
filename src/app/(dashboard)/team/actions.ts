@@ -6,9 +6,13 @@ import { prisma } from "@/lib/prisma";
 import { requireOwner } from "@/lib/auth";
 import { createAdminClient, deleteAuthUserByEmail } from "@/lib/supabase/admin";
 import { createUser, deleteUser, updateUserAdmin, getCompanyTechCount } from "@/lib/db/users";
-import { createInvitation, getPendingTechInvitationCount } from "@/lib/db/invitations";
+import {
+  createInvitation,
+  deleteInvitation,
+  getPendingTechInvitationCount,
+} from "@/lib/db/invitations";
 import { getCompanyPackage } from "@/lib/db/packages";
-import { notifyInvitation } from "@/lib/email/notify";
+import { getOrigin, notifyInvitation } from "@/lib/email/notify";
 import { hasTechCapacity } from "@/lib/package-features";
 import type { UserRole } from "@/generated/prisma/client";
 import { formText } from "@/lib/utils";
@@ -183,6 +187,27 @@ export async function deleteTeamUserAction(
   }
 }
 
+export async function cancelInvitationAction(
+  _prev: FormState,
+  formData: FormData,
+): Promise<FormState> {
+  const currentUser = await requireOwner();
+  if (!currentUser.companyId) {
+    return { ok: false, error: "You must belong to a company to manage invitations." };
+  }
+
+  const invitationId = formText(formData, "invitationId");
+  if (!invitationId) return { ok: false, error: "Invitation ID is required." };
+
+  try {
+    await deleteInvitation(invitationId, currentUser.companyId);
+    revalidatePath("/team");
+    return { ok: true };
+  } catch {
+    return { ok: false, error: "Could not cancel invitation. Please try again." };
+  }
+}
+
 export async function inviteTeamUserAction(
   _prev: FormState,
   formData: FormData,
@@ -220,8 +245,7 @@ export async function inviteTeamUserAction(
       companyId: currentUser.companyId,
     });
 
-    const origin = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
-    const inviteUrl = `${origin}/invite/${invitation.token}`;
+    const inviteUrl = `${getOrigin()}/invite/${invitation.token}`;
 
     // Best-effort: the invitation is already saved, so a failed email must not
     // fail the action — the owner still gets the link to share.

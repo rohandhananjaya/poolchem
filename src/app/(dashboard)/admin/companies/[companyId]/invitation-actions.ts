@@ -7,6 +7,7 @@ import { requireSuperAdmin } from "@/lib/auth";
 import { getCompanyById, getCompanyFromEmail } from "@/lib/db/company";
 import { sendEmail } from "@/lib/email";
 import { buildInvitationEmail } from "@/lib/email/templates";
+import { getOrigin } from "@/lib/email/notify";
 import { logger } from "@/lib/log";
 
 export interface InvitationState {
@@ -52,8 +53,7 @@ export async function sendInvitationAction(
       },
     });
 
-    const origin = process.env.NEXT_PUBLIC_APP_URL ?? "https://localhost:3000";
-    const inviteUrl = `${origin}/invite/${invitation.token}`;
+    const inviteUrl = `${getOrigin()}/invite/${invitation.token}`;
     const from = getCompanyFromEmail(company);
 
     const emailPayload = buildInvitationEmail({

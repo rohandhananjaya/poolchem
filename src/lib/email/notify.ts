@@ -30,7 +30,7 @@ import {
 } from "./templates";
 
 /** Absolute app origin used to build email links. */
-function getOrigin(): string {
+export function getOrigin(): string {
   return process.env.NEXT_PUBLIC_APP_URL ?? "https://localhost:3000";
 }
 

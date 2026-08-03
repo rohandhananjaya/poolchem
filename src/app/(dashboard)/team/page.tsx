@@ -11,6 +11,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { CreateUserDialog } from "./create-user-dialog"
 import { InviteUserDialog } from "./invite-user-dialog"
 import { UserListClient } from "./user-list-client"
+import { InvitationRowActions } from "./invitation-row-actions"
 
 export const dynamic = "force-dynamic"
 
@@ -51,7 +52,7 @@ export default async function TeamPage() {
               Pending invitations ({invitations.length})
             </h2>
             <div className="space-y-2">
-              {invitations.map((inv: { id: string; name: string; email: string; role: string }) => (
+              {invitations.map((inv: Invitation) => (
                 <div
                   key={inv.id}
                   className="flex items-center gap-3 rounded-xl border border-dashed border-border bg-card/50 px-4 py-3"
@@ -68,6 +69,9 @@ export default async function TeamPage() {
                   <span className="shrink-0 text-[10px] uppercase tracking-wider text-muted-foreground">
                     {ROLE_LABELS[inv.role] ?? inv.role}
                   </span>
+                  <InvitationRowActions
+                    invitation={{ id: inv.id, name: inv.name, email: inv.email }}
+                  />
                 </div>
               ))}
             </div>
