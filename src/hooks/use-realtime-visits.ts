@@ -105,25 +105,51 @@ export function useRealtimeVisits(techId: string) {
       })
     }
 
-    const channel = supabase
-      .channel("visits")
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "service_visits",
-        },
-        handlePayload,
-      )
-      .subscribe((status, err) => {
-        if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
-          console.error("useRealtimeVisits: subscription failed", status, err)
-        }
-      })
+    let channel: ReturnType<typeof supabase.channel> | null = null
+    let cancelled = false
+
+    // RLS-gated postgres_changes checks are authorized using the token handed
+    // to Realtime via setAuth() — being signed in isn't enough on its own, and
+    // subscribing before this resolves silently evaluates RLS as unauthorized
+    // (surfaced as "Error 401: Unauthorized" per-event, join itself still "ok").
+    async function subscribe() {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (session) {
+        supabase.realtime.setAuth(session.access_token)
+      }
+      if (cancelled) return
+
+      channel = supabase
+        .channel("visits")
+        .on(
+          "postgres_changes",
+          {
+            event: "*",
+            schema: "public",
+            table: "service_visits",
+          },
+          handlePayload,
+        )
+        .subscribe((status, err) => {
+          if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
+            console.error("useRealtimeVisits: subscription failed", status, err)
+          }
+        })
+    }
+
+    subscribe()
+
+    // Keep Realtime's RLS-check token current across a long-lived tab.
+    const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session) {
+        supabase.realtime.setAuth(session.access_token)
+      }
+    })
 
     return () => {
-      supabase.removeChannel(channel)
+      cancelled = true
+      authListener.subscription.unsubscribe()
+      if (channel) supabase.removeChannel(channel)
     }
   }, [techId])
 
