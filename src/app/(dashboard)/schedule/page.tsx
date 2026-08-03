@@ -12,6 +12,7 @@ import {
 import { getPoolsByCompany } from "@/lib/db/pools"
 import { getCompanyTechs } from "@/lib/db/users"
 import { Shell } from "@/components/ui/shell"
+import { RealtimeVisitsRefresh } from "@/components/shared/RealtimeVisitsRefresh"
 import { ScheduleVisitForm } from "@/components/schedule/ScheduleVisitForm"
 import { VisitCard } from "@/components/visits/VisitCard"
 import { ScheduleFilters as ScheduleFiltersComponent } from "@/components/schedule/ScheduleFilters"
@@ -147,6 +148,7 @@ export default async function SchedulePage({
 
   return (
     <Shell title="Schedule">
+      <RealtimeVisitsRefresh />
       <div className="space-y-3">
         <div className="flex items-center justify-end">
           <ScheduleVisitForm

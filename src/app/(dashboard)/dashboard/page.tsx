@@ -11,6 +11,7 @@ import { getServerHealthSummary } from "@/lib/db/admin-diagnostics"
 import { Shell } from "@/components/ui/shell"
 import { Card, CardContent } from "@/components/ui/card"
 import { CompanyLogo } from "@/components/shared/CompanyLogo"
+import { RealtimeVisitsRefresh } from "@/components/shared/RealtimeVisitsRefresh"
 import { DashboardHeader } from "@/components/dashboard/DashboardHeader"
 import { StatsRow } from "@/components/dashboard/StatsRow"
 import { VisitCard } from "@/components/visits/VisitCard"
@@ -96,6 +97,7 @@ export default async function DashboardPage() {
         </section>
       </Shell>
 
+      <RealtimeVisitsRefresh />
       <ScanFab />
     </>
   )
