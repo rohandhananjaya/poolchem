@@ -54,21 +54,28 @@ export function useRealtimeVisits(techId: string) {
     async function handlePayload(
       payload: RealtimePostgresChangesPayload<VisitRow>,
     ) {
+      const visit = payload.new as VisitRow
+
+      // Filtered here (not via the subscription's `filter` option) because that
+      // option builds a server-side string filter against the raw column name —
+      // fragile against Postgres's case-preserved, quoted "techId" column.
+      if (visit.techId !== techId) return
+
       // For UPDATE events, only notify when techId actually changed to this user
       if (payload.eventType === "UPDATE") {
         const oldTechId = (payload.old as VisitRow | null)?.techId ?? null
-        const newTechId = (payload.new as VisitRow).techId
-        if (oldTechId === newTechId) return
+        if (oldTechId === visit.techId) return
       }
 
-      const visit = payload.new as VisitRow
-
-      const { data: pool } = await supabase
+      const { data: pool, error } = await supabase
         .from("pools")
         .select("name, address")
         .eq("id", visit.poolId)
         .single()
 
+      if (error) {
+        console.error("useRealtimeVisits: failed to load pool for notification", error)
+      }
       if (!pool) return
 
       setNotifications((prev) => {
@@ -106,11 +113,14 @@ export function useRealtimeVisits(techId: string) {
           event: "*",
           schema: "public",
           table: "service_visits",
-          filter: `techId=eq.${techId}`,
         },
         handlePayload,
       )
-      .subscribe()
+      .subscribe((status, err) => {
+        if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
+          console.error("useRealtimeVisits: subscription failed", status, err)
+        }
+      })
 
     return () => {
       supabase.removeChannel(channel)
