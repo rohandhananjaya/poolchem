@@ -19,6 +19,7 @@ import {
   buildReportShareEmail,
   buildInvitationEmail,
   buildWelcomeEmail,
+  buildConfirmSignupEmail,
   buildPasswordResetEmail,
   buildPaymentReceiptEmail,
   buildSubscriptionCancelledEmail,
@@ -76,6 +77,21 @@ export async function notifyWelcome(input: {
     dashboardUrl: `${getOrigin()}/dashboard`,
   });
   await safeSend("welcome", email);
+}
+
+/** Sends a signup confirmation link to a newly created (unconfirmed) account. */
+export async function notifyConfirmSignup(input: {
+  to: string;
+  name: string;
+  confirmUrl: string;
+}): Promise<void> {
+  const email = buildConfirmSignupEmail({
+    to: input.to,
+    from: getPlatformFrom(),
+    name: input.name,
+    confirmUrl: input.confirmUrl,
+  });
+  await safeSend("confirm_signup", email);
 }
 
 /** Sends a password-reset link. */

@@ -26,7 +26,8 @@ const { createAdminClient } = await import("@/lib/supabase/admin")
 const { notifyPasswordReset } = await import("@/lib/email/notify")
 const { redirect } = await import("next/navigation")
 const { revalidatePath } = await import("next/cache")
-const { loginAction, requestPasswordResetAction } = await import("./actions")
+const { loginAction, requestPasswordResetAction, resendConfirmationAction } =
+  await import("./actions")
 
 function loginFormData(overrides: Record<string, string> = {}) {
   const formData = new FormData()
@@ -71,7 +72,11 @@ describe("loginAction", () => {
     vi.mocked(verifyTurnstileToken).mockResolvedValue(true)
     const mockSupabase = {
       auth: {
-        signInWithPassword: vi.fn().mockResolvedValue({ error: null }),
+        signInWithPassword: vi.fn().mockResolvedValue({
+          data: { user: { email_confirmed_at: "2024-01-01T00:00:00Z" } },
+          error: null,
+        }),
+        signOut: vi.fn(),
       },
     }
     vi.mocked(createClient).mockResolvedValue(mockSupabase as never)
@@ -82,8 +87,70 @@ describe("loginAction", () => {
       email: "jane@example.com",
       password: "password123",
     })
+    expect(mockSupabase.auth.signOut).not.toHaveBeenCalled()
     expect(revalidatePath).toHaveBeenCalledWith("/", "layout")
     expect(redirect).toHaveBeenCalledWith("/dashboard")
+  })
+
+  it("blocks sign-in and signs the user back out when the email isn't confirmed", async () => {
+    vi.mocked(verifyTurnstileToken).mockResolvedValue(true)
+    const mockSupabase = {
+      auth: {
+        signInWithPassword: vi.fn().mockResolvedValue({
+          data: { user: { email_confirmed_at: null } },
+          error: null,
+        }),
+        signOut: vi.fn().mockResolvedValue({ error: null }),
+      },
+    }
+    vi.mocked(createClient).mockResolvedValue(mockSupabase as never)
+
+    const result = await loginAction({ ok: false }, loginFormData())
+
+    expect(mockSupabase.auth.signOut).toHaveBeenCalled()
+    expect(result).toEqual({
+      ok: false,
+      error:
+        "Please confirm your email before signing in. Check your inbox for the confirmation link.",
+      unconfirmed: true,
+      email: "jane@example.com",
+    })
+    expect(redirect).not.toHaveBeenCalled()
+  })
+})
+
+describe("resendConfirmationAction", () => {
+  it("rejects with the turnstile error and never calls resend when verification fails", async () => {
+    vi.mocked(verifyTurnstileToken).mockResolvedValue(false)
+
+    const result = await resendConfirmationAction({ ok: false }, resetFormData())
+
+    expect(result).toEqual({
+      ok: false,
+      error: "Please complete the verification challenge.",
+    })
+    expect(createClient).not.toHaveBeenCalled()
+  })
+
+  it("resends the confirmation email when verification succeeds", async () => {
+    vi.mocked(verifyTurnstileToken).mockResolvedValue(true)
+    const mockSupabase = {
+      auth: {
+        resend: vi.fn().mockResolvedValue({ data: {}, error: null }),
+      },
+    }
+    vi.mocked(createClient).mockResolvedValue(mockSupabase as never)
+
+    const result = await resendConfirmationAction({ ok: false }, resetFormData())
+
+    expect(mockSupabase.auth.resend).toHaveBeenCalledWith({
+      type: "signup",
+      email: "jane@example.com",
+      options: {
+        emailRedirectTo: "https://localhost:3000/auth/confirm?next=%2Fonboarding",
+      },
+    })
+    expect(result).toEqual({ ok: true, sent: true })
   })
 })
 

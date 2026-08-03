@@ -20,9 +20,9 @@ export const metadata: Metadata = {
 export default async function LoginPage({
   searchParams,
 }: {
-  searchParams: Promise<{ signup?: string; setup?: string; code?: string }>
+  searchParams: Promise<{ signup?: string; setup?: string; code?: string; error?: string }>
 }) {
-  const { signup, setup, code } = await searchParams
+  const { signup, setup, code, error } = await searchParams
 
   if (!(await hasSuperAdmin())) {
     redirect("/setup")
@@ -35,13 +35,18 @@ export default async function LoginPage({
         ? "Account created successfully! Sign in with your credentials."
         : undefined
 
+  const errorMessage =
+    error === "confirm_failed"
+      ? "That confirmation link is invalid or has expired."
+      : undefined
+
   return (
     <div className="relative flex min-h-dvh flex-col items-center justify-center overflow-hidden bg-gradient-to-br from-brand-200 to-brand-50">
       <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden max-md:hidden">
         <div className="absolute -top-40 -right-40 size-[30rem] rounded-full bg-brand-200/60 blur-3xl" />
         <div className="absolute -bottom-40 -left-40 size-[30rem] rounded-full bg-brand-50/60 blur-3xl" />
       </div>
-      <LoginForm successMessage={successMessage} code={code} />
+      <LoginForm successMessage={successMessage} errorMessage={errorMessage} code={code} />
     </div>
   )
 }

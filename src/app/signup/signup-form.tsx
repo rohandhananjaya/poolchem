@@ -1,7 +1,6 @@
 "use client"
 
 import * as React from "react"
-import { useRouter } from "next/navigation"
 import Link from "next/link"
 import Image from "next/image"
 
@@ -15,14 +14,39 @@ import { signupAction, type SignupFormState } from "./actions"
 const INITIAL_STATE: SignupFormState = { ok: false }
 
 export function SignupForm() {
-  const router = useRouter()
   const [state, action, pending] = React.useActionState(signupAction, INITIAL_STATE)
   const [turnstileToken, setTurnstileToken] = React.useState("")
+  const [submittedEmail, setSubmittedEmail] = React.useState("")
 
-  React.useEffect(() => {
-    if (!state.ok) return
-    router.push("/login?signup=success")
-  }, [state.ok, router])
+  if (state.ok) {
+    return (
+      <div className="flex flex-1 items-center justify-center px-4 py-16">
+        <div className="w-full max-w-sm rounded-xl border border-border bg-card p-6 md:p-8 shadow-sm text-center">
+          <Link href="/" className="inline-flex items-center justify-center mb-4">
+            <Image
+              src="/images/POOLBENCH.png"
+              alt="Poolbench"
+              width={140}
+              height={40}
+              className="h-auto w-auto"
+              priority
+            />
+          </Link>
+          <h1 className="text-xl font-semibold tracking-tight text-foreground">
+            Check your email
+          </h1>
+          <p className="mt-2 text-sm text-muted-foreground">
+            {submittedEmail
+              ? `We sent a confirmation link to ${submittedEmail}. Click it to activate your account.`
+              : "We sent you a confirmation link. Click it to activate your account."}
+          </p>
+          <Button asChild size="lg" className="mt-6 w-full">
+            <Link href="/login">Back to sign in</Link>
+          </Button>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="flex flex-1 items-center justify-center px-4 py-16">
@@ -85,6 +109,7 @@ export function SignupForm() {
               autoComplete="email"
               placeholder="you@example.com"
               required
+              onChange={(e) => setSubmittedEmail(e.target.value)}
             />
           </div>
 

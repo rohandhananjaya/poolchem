@@ -47,7 +47,13 @@ describe("getCurrentUser", () => {
     vi.mocked(createClient).mockResolvedValue({
       auth: {
         getUser: vi.fn().mockResolvedValue({
-          data: { user: { id: "sb-1", email: "user@test.com" } },
+          data: {
+            user: {
+              id: "sb-1",
+              email: "user@test.com",
+              email_confirmed_at: "2024-01-01T00:00:00Z",
+            },
+          },
         }),
       },
     } as never);
@@ -69,7 +75,13 @@ describe("getCurrentUser", () => {
     vi.mocked(createClient).mockResolvedValue({
       auth: {
         getUser: vi.fn().mockResolvedValue({
-          data: { user: { id: "sb-2", email: "user@test.com" } },
+          data: {
+            user: {
+              id: "sb-2",
+              email: "user@test.com",
+              email_confirmed_at: "2024-01-01T00:00:00Z",
+            },
+          },
         }),
       },
     } as never);
@@ -97,7 +109,13 @@ describe("getCurrentUser", () => {
     vi.mocked(createClient).mockResolvedValue({
       auth: {
         getUser: vi.fn().mockResolvedValue({
-          data: { user: { id: "sb-new", email: "user@test.com" } },
+          data: {
+            user: {
+              id: "sb-new",
+              email: "user@test.com",
+              email_confirmed_at: "2024-01-01T00:00:00Z",
+            },
+          },
         }),
       },
     } as never);
@@ -133,11 +151,38 @@ describe("getCurrentUser", () => {
     expect(prisma.user.findUnique).not.toHaveBeenCalled();
   });
 
+  it("returns null for an unconfirmed Supabase user, without hitting the DB", async () => {
+    vi.mocked(createClient).mockResolvedValue({
+      auth: {
+        getUser: vi.fn().mockResolvedValue({
+          data: {
+            user: {
+              id: "sb-5",
+              email: "user@test.com",
+              email_confirmed_at: null,
+            },
+          },
+        }),
+      },
+    } as never);
+
+    const result = await getCurrentUser();
+
+    expect(result).toBeNull();
+    expect(prisma.user.findUnique).not.toHaveBeenCalled();
+  });
+
   it("returns null when there's no supabaseId match and no email to fall back on", async () => {
     vi.mocked(createClient).mockResolvedValue({
       auth: {
         getUser: vi.fn().mockResolvedValue({
-          data: { user: { id: "sb-3", email: null } },
+          data: {
+            user: {
+              id: "sb-3",
+              email: null,
+              email_confirmed_at: "2024-01-01T00:00:00Z",
+            },
+          },
         }),
       },
     } as never);
@@ -153,7 +198,13 @@ describe("getCurrentUser", () => {
     vi.mocked(createClient).mockResolvedValue({
       auth: {
         getUser: vi.fn().mockResolvedValue({
-          data: { user: { id: "sb-4", email: "unknown@test.com" } },
+          data: {
+            user: {
+              id: "sb-4",
+              email: "unknown@test.com",
+              email_confirmed_at: "2024-01-01T00:00:00Z",
+            },
+          },
         }),
       },
     } as never);
@@ -170,7 +221,12 @@ describe("requireAuth", () => {
     vi.mocked(createClient).mockResolvedValue({
       auth: {
         getUser: vi.fn().mockResolvedValue({
-          data: { user: { email: "user@test.com" } },
+          data: {
+            user: {
+              email: "user@test.com",
+              email_confirmed_at: "2024-01-01T00:00:00Z",
+            },
+          },
         }),
       },
     } as never);
@@ -202,7 +258,12 @@ describe("requireRole", () => {
     vi.mocked(createClient).mockResolvedValue({
       auth: {
         getUser: vi.fn().mockResolvedValue({
-          data: { user: { email: "user@test.com" } },
+          data: {
+            user: {
+              email: "user@test.com",
+              email_confirmed_at: "2024-01-01T00:00:00Z",
+            },
+          },
         }),
       },
     } as never);
@@ -217,7 +278,12 @@ describe("requireRole", () => {
     vi.mocked(createClient).mockResolvedValue({
       auth: {
         getUser: vi.fn().mockResolvedValue({
-          data: { user: { email: "user@test.com" } },
+          data: {
+            user: {
+              email: "user@test.com",
+              email_confirmed_at: "2024-01-01T00:00:00Z",
+            },
+          },
         }),
       },
     } as never);
@@ -233,7 +299,12 @@ describe("requireOwner", () => {
     vi.mocked(createClient).mockResolvedValue({
       auth: {
         getUser: vi.fn().mockResolvedValue({
-          data: { user: { email: "owner@test.com" } },
+          data: {
+            user: {
+              email: "owner@test.com",
+              email_confirmed_at: "2024-01-01T00:00:00Z",
+            },
+          },
         }),
       },
     } as never);
@@ -250,7 +321,12 @@ describe("requireOwner", () => {
     vi.mocked(createClient).mockResolvedValue({
       auth: {
         getUser: vi.fn().mockResolvedValue({
-          data: { user: { email: "user@test.com" } },
+          data: {
+            user: {
+              email: "user@test.com",
+              email_confirmed_at: "2024-01-01T00:00:00Z",
+            },
+          },
         }),
       },
     } as never);
@@ -267,7 +343,12 @@ describe("requireTech", () => {
       vi.mocked(createClient).mockResolvedValue({
         auth: {
           getUser: vi.fn().mockResolvedValue({
-            data: { user: { email: `user@test.com` } },
+            data: {
+              user: {
+                email: `user@test.com`,
+                email_confirmed_at: "2024-01-01T00:00:00Z",
+              },
+            },
           }),
         },
       } as never);
@@ -286,7 +367,12 @@ describe("requireTech", () => {
     vi.mocked(createClient).mockResolvedValue({
       auth: {
         getUser: vi.fn().mockResolvedValue({
-          data: { user: { email: "user@test.com" } },
+          data: {
+            user: {
+              email: "user@test.com",
+              email_confirmed_at: "2024-01-01T00:00:00Z",
+            },
+          },
         }),
       },
     } as never);
@@ -304,7 +390,12 @@ describe("requireSuperAdmin", () => {
     vi.mocked(createClient).mockResolvedValue({
       auth: {
         getUser: vi.fn().mockResolvedValue({
-          data: { user: { email: "admin@test.com" } },
+          data: {
+            user: {
+              email: "admin@test.com",
+              email_confirmed_at: "2024-01-01T00:00:00Z",
+            },
+          },
         }),
       },
     } as never);
@@ -321,7 +412,12 @@ describe("requireSuperAdmin", () => {
     vi.mocked(createClient).mockResolvedValue({
       auth: {
         getUser: vi.fn().mockResolvedValue({
-          data: { user: { email: "user@test.com" } },
+          data: {
+            user: {
+              email: "user@test.com",
+              email_confirmed_at: "2024-01-01T00:00:00Z",
+            },
+          },
         }),
       },
     } as never);
@@ -336,7 +432,12 @@ describe("requireCompanyAccess", () => {
     vi.mocked(createClient).mockResolvedValue({
       auth: {
         getUser: vi.fn().mockResolvedValue({
-          data: { user: { email: "user@test.com" } },
+          data: {
+            user: {
+              email: "user@test.com",
+              email_confirmed_at: "2024-01-01T00:00:00Z",
+            },
+          },
         }),
       },
     } as never);
@@ -350,7 +451,12 @@ describe("requireCompanyAccess", () => {
     vi.mocked(createClient).mockResolvedValue({
       auth: {
         getUser: vi.fn().mockResolvedValue({
-          data: { user: { email: "admin@test.com" } },
+          data: {
+            user: {
+              email: "admin@test.com",
+              email_confirmed_at: "2024-01-01T00:00:00Z",
+            },
+          },
         }),
       },
     } as never);
@@ -367,7 +473,12 @@ describe("requireCompanyAccess", () => {
     vi.mocked(createClient).mockResolvedValue({
       auth: {
         getUser: vi.fn().mockResolvedValue({
-          data: { user: { email: "user@test.com" } },
+          data: {
+            user: {
+              email: "user@test.com",
+              email_confirmed_at: "2024-01-01T00:00:00Z",
+            },
+          },
         }),
       },
     } as never);
@@ -384,7 +495,12 @@ describe("getCompanyId", () => {
     vi.mocked(createClient).mockResolvedValue({
       auth: {
         getUser: vi.fn().mockResolvedValue({
-          data: { user: { email: "user@test.com" } },
+          data: {
+            user: {
+              email: "user@test.com",
+              email_confirmed_at: "2024-01-01T00:00:00Z",
+            },
+          },
         }),
       },
     } as never);
@@ -398,7 +514,12 @@ describe("getCompanyId", () => {
     vi.mocked(createClient).mockResolvedValue({
       auth: {
         getUser: vi.fn().mockResolvedValue({
-          data: { user: { email: "admin@test.com" } },
+          data: {
+            user: {
+              email: "admin@test.com",
+              email_confirmed_at: "2024-01-01T00:00:00Z",
+            },
+          },
         }),
       },
     } as never);

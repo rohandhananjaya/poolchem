@@ -3,13 +3,13 @@
 Next.js 16 App Router. Pattern: **Server Component page → `db/` helper → render**; mutations are **Server Actions** (`actions.ts`) that re-check auth, call a `db/` helper, then `revalidatePath`. No REST/GraphQL layer. Each route folder also has `loading.tsx` / `error.tsx` where present (Suspense + error boundaries) — omitted below.
 
 ## Auth boundary
-[../proxy.ts](../proxy.ts) (NOT `middleware.ts`) refreshes the Supabase session and guards `/dashboard/*`, `/admin/*`, and `/scan` (carrying query params like `?code=` to `/login` so a scanned-QR deep link survives sign-in). OAuth lands at `auth/callback/route.ts`.
+[../proxy.ts](../proxy.ts) (NOT `middleware.ts`) refreshes the Supabase session and guards `/dashboard/*`, `/admin/*`, and `/scan` (carrying query params like `?code=` to `/login` so a scanned-QR deep link survives sign-in). OAuth lands at `auth/callback/route.ts`; signup-confirmation and other `token_hash`-based links land at `auth/confirm/route.ts` (verifies via `verifyOtp`, establishes the session, redirects to `?next=`). `getCurrentUser()` (`src/lib/auth.ts`) treats a Supabase user with no `email_confirmed_at` as unauthenticated, so an unconfirmed session can't reach any protected route regardless of the Supabase project's own "Confirm email" setting.
 
 ## Public routes
 - `page.tsx` — marketing/landing
 - `setup/page.tsx` — one-time platform-admin bootstrap wizard; redirects to `/login` once a SUPER_ADMIN exists. `actions.ts`: `setupAction`
-- `login/page.tsx` — password + Google OAuth; redirects to `/setup` while no SUPER_ADMIN exists. `loginAction` and `requestPasswordResetAction` are gated by Cloudflare Turnstile (`src/lib/turnstile.ts`) to block credential-stuffing/reset-email abuse
-- `signup/page.tsx` — creates a Company + OWNER user; redirects to `/setup` while no SUPER_ADMIN exists. `signupAction` is gated by Cloudflare Turnstile (`src/lib/turnstile.ts`) to block automated account creation
+- `login/page.tsx` — password + Google OAuth; redirects to `/setup` while no SUPER_ADMIN exists. `loginAction`, `requestPasswordResetAction`, and `resendConfirmationAction` (resends the signup-confirmation email via Supabase's own `auth.resend()`, surfaced when `loginAction` detects an unconfirmed account) are gated by Cloudflare Turnstile (`src/lib/turnstile.ts`) to block credential-stuffing/reset-email/resend abuse
+- `signup/page.tsx` — creates a Company + OWNER user (unconfirmed until they click the emailed link); redirects to `/setup` while no SUPER_ADMIN exists. `signupAction` mints a signup-confirmation link via `admin.auth.admin.generateLink({ type: "signup" })` and emails it (`notifyConfirmSignup`) instead of auto-confirming; gated by Cloudflare Turnstile (`src/lib/turnstile.ts`) to block automated account creation
 - `pool/[poolToken]/page.tsx` — **public** homeowner dashboard (no auth); reads via `getPoolByPublicToken` / `getHomeownerDashboard`
 - `report/[reportToken]/page.tsx` — **public** shareable service report (no auth); reads via `getPublicReport`
 - `onboarding/page.tsx` — post-signup setup wizard (needs a session but sits outside `(dashboard)`); prompts to fill in company phone/address and add a first pool if either is missing. `actions.ts`: `updateCompanyDetailsAction`, `createFirstPoolAction`

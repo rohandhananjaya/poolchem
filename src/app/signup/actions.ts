@@ -6,8 +6,12 @@ import { createCompany } from "@/lib/db/company"
 import { createUser } from "@/lib/db/users"
 import { formText } from "@/lib/utils"
 import { startTrial } from "@/lib/db/packages"
-import { notifyWelcome } from "@/lib/email/notify"
+import { notifyConfirmSignup } from "@/lib/email/notify"
 import { verifyTurnstileToken, TURNSTILE_ERROR_MESSAGE } from "@/lib/turnstile"
+
+function getOrigin(): string {
+  return process.env.NEXT_PUBLIC_APP_URL ?? "https://localhost:3000"
+}
 
 export interface SignupFormState {
   ok: boolean
@@ -43,11 +47,14 @@ export async function signupAction(
   try {
     const admin = createAdminClient()
     let supabaseId: string | null = null
+    let confirmUrl: string | null = null
     if (admin) {
-      const { data: authData, error: authError } = await admin.auth.admin.createUser({
+      const origin = getOrigin()
+      const { data: authData, error: authError } = await admin.auth.admin.generateLink({
+        type: "signup",
         email,
         password,
-        email_confirm: true,
+        options: { redirectTo: `${origin}/auth/confirm` },
       })
 
       if (authError) {
@@ -57,6 +64,10 @@ export async function signupAction(
         return { ok: false, error: `Failed to create account: ${authError.message}` }
       }
       supabaseId = authData.user.id
+      const tokenHash = authData.properties?.hashed_token
+      if (tokenHash) {
+        confirmUrl = `${origin}/auth/confirm?token_hash=${encodeURIComponent(tokenHash)}&type=signup&next=${encodeURIComponent("/onboarding")}`
+      }
     }
 
     const company = await createCompany({ name: companyName, email })
@@ -71,7 +82,9 @@ export async function signupAction(
 
     await startTrial(company.id)
 
-    await notifyWelcome({ to: email, name, companyName })
+    if (confirmUrl) {
+      await notifyConfirmSignup({ to: email, name, confirmUrl })
+    }
 
     return { ok: true }
   } catch {

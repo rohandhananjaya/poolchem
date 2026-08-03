@@ -160,6 +160,28 @@ export function buildPasswordResetEmail(props: PasswordResetEmailProps) {
   };
 }
 
+export interface ConfirmSignupEmailProps {
+  to: string;
+  from: string;
+  name: string;
+  confirmUrl: string;
+}
+
+export function buildConfirmSignupEmail(props: ConfirmSignupEmailProps) {
+  return {
+    to: props.to,
+    from: props.from,
+    subject: "Confirm your email to activate Poolbench",
+    html: renderShell({
+      heading: "Confirm your email",
+      intro: `Hi ${esc(props.name)}, one more step before your account is ready.`,
+      body: `<p style="margin:0">Click the button below to confirm your email address and activate your Poolbench account.</p>
+<p style="margin:12px 0 0">If you didn't create this account, you can safely ignore this email.</p>`,
+      cta: { label: "Confirm email address", url: props.confirmUrl },
+    }),
+  };
+}
+
 export interface VisitAssignedEmailProps {
   to: string;
   from: string;

@@ -32,6 +32,13 @@ export const getCurrentUser = cache(async (): Promise<User | null> => {
     return null;
   }
 
+  // Enforced at the app layer, independent of the Supabase project's own
+  // "Confirm email" dashboard toggle: an unconfirmed signup must not reach
+  // any protected page/action, so treat it as no session at all.
+  if (!user.email_confirmed_at) {
+    return null;
+  }
+
   const bySupabaseId = await prisma.user.findUnique({
     where: { supabaseId: user.id },
   });

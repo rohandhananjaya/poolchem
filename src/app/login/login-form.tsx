@@ -9,15 +9,22 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { PasswordInput } from "@/components/ui/password-input"
 import { TurnstileWidget, isTurnstileEnabled } from "@/components/ui/turnstile-widget"
-import { loginAction, requestPasswordResetAction, type LoginFormState } from "./actions"
+import {
+  loginAction,
+  requestPasswordResetAction,
+  resendConfirmationAction,
+  type LoginFormState,
+} from "./actions"
 
 const INITIAL_STATE: LoginFormState = { ok: false }
 
 export function LoginForm({
   successMessage,
+  errorMessage,
   code,
 }: {
   successMessage?: string
+  errorMessage?: string
   code?: string
 }) {
   const [state, action, pending] = React.useActionState(loginAction, INITIAL_STATE)
@@ -25,11 +32,16 @@ export function LoginForm({
     requestPasswordResetAction,
     INITIAL_STATE,
   )
+  const [resendState, resendAction, resendPending] = React.useActionState(
+    resendConfirmationAction,
+    INITIAL_STATE,
+  )
   const [showReset, setShowReset] = React.useState(false)
   const [signInToken, setSignInToken] = React.useState("")
   const [resetToken, setResetToken] = React.useState("")
+  const [resendToken, setResendToken] = React.useState("")
 
-  const error = state.error
+  const error = state.error ?? errorMessage
 
   const resetView = showReset || resetState.sent ? (
     <form action={resetAction} className="mt-6 space-y-4">
@@ -188,6 +200,38 @@ export function LoginForm({
             className="mt-6 rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive"
           >
             {error}
+          </div>
+        )}
+
+        {state.unconfirmed && !resendState.sent && (
+          <form action={resendAction} className="mt-3 space-y-2">
+            <input type="hidden" name="email" value={state.email ?? ""} />
+            <TurnstileWidget
+              onVerify={setResendToken}
+              onExpire={() => setResendToken("")}
+              className="flex justify-center"
+            />
+            <Button
+              type="submit"
+              variant="outline"
+              size="sm"
+              className="w-full"
+              disabled={resendPending || (isTurnstileEnabled() && !resendToken)}
+            >
+              {resendPending ? "Sending…" : "Resend confirmation email"}
+            </Button>
+            {resendState.error && (
+              <p className="text-xs text-destructive text-center">{resendState.error}</p>
+            )}
+          </form>
+        )}
+
+        {resendState.sent && (
+          <div
+            role="status"
+            className="mt-3 rounded-lg border border-emerald-300 bg-emerald-50 px-3 py-2 text-sm text-emerald-700"
+          >
+            If that account exists, a confirmation link is on its way.
           </div>
         )}
 

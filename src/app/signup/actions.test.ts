@@ -20,7 +20,7 @@ vi.mock("@/lib/db/packages", () => ({
   startTrial: vi.fn(),
 }))
 vi.mock("@/lib/email/notify", () => ({
-  notifyWelcome: vi.fn(),
+  notifyConfirmSignup: vi.fn(),
 }))
 
 const { verifyTurnstileToken } = await import("@/lib/turnstile")
@@ -29,7 +29,7 @@ const { createAdminClient } = await import("@/lib/supabase/admin")
 const { createCompany } = await import("@/lib/db/company")
 const { createUser } = await import("@/lib/db/users")
 const { startTrial } = await import("@/lib/db/packages")
-const { notifyWelcome } = await import("@/lib/email/notify")
+const { notifyConfirmSignup } = await import("@/lib/email/notify")
 const { signupAction } = await import("./actions")
 
 function buildFormData(overrides: Record<string, string> = {}) {
@@ -70,8 +70,11 @@ describe("signupAction", () => {
     const mockAdmin = {
       auth: {
         admin: {
-          createUser: vi.fn().mockResolvedValue({
-            data: { user: { id: "supabase-1" } },
+          generateLink: vi.fn().mockResolvedValue({
+            data: {
+              user: { id: "supabase-1" },
+              properties: { hashed_token: "abc123" },
+            },
             error: null,
           }),
         },
@@ -81,11 +84,17 @@ describe("signupAction", () => {
     vi.mocked(createCompany).mockResolvedValue({ id: "company-1" } as never)
     vi.mocked(createUser).mockResolvedValue({ id: "user-1" } as never)
     vi.mocked(startTrial).mockResolvedValue(undefined as never)
-    vi.mocked(notifyWelcome).mockResolvedValue(undefined as never)
+    vi.mocked(notifyConfirmSignup).mockResolvedValue(undefined as never)
 
     const result = await signupAction({ ok: false }, buildFormData())
 
     expect(result).toEqual({ ok: true })
+    expect(mockAdmin.auth.admin.generateLink).toHaveBeenCalledWith({
+      type: "signup",
+      email: "jane@example.com",
+      password: "password123",
+      options: { redirectTo: "https://localhost:3000/auth/confirm" },
+    })
     expect(createCompany).toHaveBeenCalledWith({
       name: "ClearBlue Pools",
       email: "jane@example.com",
@@ -98,10 +107,11 @@ describe("signupAction", () => {
       supabaseId: "supabase-1",
     })
     expect(startTrial).toHaveBeenCalledWith("company-1")
-    expect(notifyWelcome).toHaveBeenCalledWith({
+    expect(notifyConfirmSignup).toHaveBeenCalledWith({
       to: "jane@example.com",
       name: "Jane Smith",
-      companyName: "ClearBlue Pools",
+      confirmUrl:
+        "https://localhost:3000/auth/confirm?token_hash=abc123&type=signup&next=%2Fonboarding",
     })
   })
 })
