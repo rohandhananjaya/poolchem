@@ -21,6 +21,7 @@ import {
 } from "lucide-react"
 
 import { createClient } from "@/lib/supabase/client"
+import { PRIVACY_URL, TERMS_URL } from "@/lib/config"
 import { cn } from "@/lib/utils"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import {
@@ -194,10 +195,10 @@ export function MainNav({ user, company: _company, companyPackage }: MainNavProp
 
         <div className="border-t border-sidebar-border px-3 py-2" suppressHydrationWarning>
           <div className="flex items-center justify-center gap-3 text-xs text-sidebar-foreground/50" suppressHydrationWarning>
-            <Link href="/privacy" className="hover:text-sidebar-foreground/90 transition-colors">
+            <Link href={PRIVACY_URL} className="hover:text-sidebar-foreground/90 transition-colors">
               Privacy
             </Link>
-            <Link href="/terms" className="hover:text-sidebar-foreground/90 transition-colors">
+            <Link href={TERMS_URL} className="hover:text-sidebar-foreground/90 transition-colors">
               Terms
             </Link>
           </div>

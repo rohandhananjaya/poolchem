@@ -3,6 +3,7 @@
 import * as React from "react"
 
 import { Button } from "@/components/ui/button"
+import { PRIVACY_URL } from "@/lib/config"
 
 const STORAGE_KEY = "poolbench-cookie-consent"
 const CONSENT_CHANGE_EVENT = "poolbench-cookie-consent-change"
@@ -50,7 +51,7 @@ export function CookieConsentBanner() {
           <p className="text-sm text-muted-foreground">
             Poolbench uses essential cookies for authentication.{" "}
             <a
-              href="https://poolbench.com/privacy"
+              href={PRIVACY_URL}
               className="underline underline-offset-2 hover:text-foreground transition-colors"
             >
               Learn more
