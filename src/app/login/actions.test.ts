@@ -107,7 +107,7 @@ describe("requestPasswordResetAction", () => {
       auth: {
         admin: {
           generateLink: vi.fn().mockResolvedValue({
-            data: { properties: { action_link: "https://example.com/reset" } },
+            data: { properties: { hashed_token: "abc123" } },
             error: null,
           }),
         },
@@ -121,7 +121,7 @@ describe("requestPasswordResetAction", () => {
     expect(result).toEqual({ ok: true, sent: true })
     expect(notifyPasswordReset).toHaveBeenCalledWith({
       to: "jane@example.com",
-      resetUrl: "https://example.com/reset",
+      resetUrl: "https://localhost:3000/auth/update-password?token_hash=abc123&type=recovery",
     })
   })
 })

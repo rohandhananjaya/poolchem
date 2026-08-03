@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 
 import { UpdatePasswordForm } from "./update-password-form";
 
@@ -9,5 +10,9 @@ export const metadata: Metadata = {
 };
 
 export default function UpdatePasswordPage() {
-  return <UpdatePasswordForm />;
+  return (
+    <Suspense>
+      <UpdatePasswordForm />
+    </Suspense>
+  );
 }

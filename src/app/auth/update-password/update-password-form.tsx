@@ -3,6 +3,7 @@
 import * as React from "react";
 import Link from "next/link";
 import Image from "next/image";
+import { useSearchParams } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -11,7 +12,13 @@ import { createClient } from "@/lib/supabase/client";
 
 export function UpdatePasswordForm() {
   const supabase = React.useState(() => createClient())[0];
-  const [loading, setLoading] = React.useState(true);
+  const searchParams = useSearchParams();
+  // Recovery links arrive at /auth/update-password?token_hash=…&type=recovery
+  // (our own domain, not a Supabase-hosted redirect) — verify the token
+  // ourselves to establish the session.
+  const tokenHash = searchParams.get("token_hash");
+  const hasToken = !!tokenHash && searchParams.get("type") === "recovery";
+  const [loading, setLoading] = React.useState(hasToken);
   const [hasSession, setHasSession] = React.useState(false);
   const [password, setPassword] = React.useState("");
   const [confirm, setConfirm] = React.useState("");
@@ -19,18 +26,12 @@ export function UpdatePasswordForm() {
   const [done, setDone] = React.useState(false);
 
   React.useEffect(() => {
-    // Recovery links arrive at /auth/update-password#access_token=… — the
-    // browser client detects the session from the URL hash on init.
-    const { data: subscription } = supabase.auth.onAuthStateChange((_event, session) => {
-      setHasSession(!!session);
+    if (!hasToken) return;
+    supabase.auth.verifyOtp({ token_hash: tokenHash!, type: "recovery" }).then(({ data, error }) => {
+      setHasSession(!!data.session && !error);
       setLoading(false);
     });
-    supabase.auth.getSession().then(({ data }) => {
-      setHasSession(!!data.session);
-      setLoading(false);
-    });
-    return () => subscription.subscription.unsubscribe();
-  }, [supabase]);
+  }, [supabase, hasToken, tokenHash]);
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();

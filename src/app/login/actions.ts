@@ -83,8 +83,12 @@ export async function requestPasswordResetAction(
     return { ok: false, error: "We couldn't send a reset link. Please try again." }
   }
 
-  const resetUrl = data?.properties?.action_link
-  if (resetUrl) {
+  // Build our own link from the hashed token rather than using
+  // `action_link` (a direct link to Supabase's hosted verify endpoint) so the
+  // emailed URL never exposes the Supabase project host.
+  const tokenHash = data?.properties?.hashed_token
+  if (tokenHash) {
+    const resetUrl = `${origin}/auth/update-password?token_hash=${encodeURIComponent(tokenHash)}&type=recovery`
     await notifyPasswordReset({ to: email, resetUrl })
   }
 
