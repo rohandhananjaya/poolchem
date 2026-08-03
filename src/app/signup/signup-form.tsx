@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { PasswordInput } from "@/components/ui/password-input"
+import { TurnstileWidget, isTurnstileEnabled } from "@/components/ui/turnstile-widget"
 import { signupAction, type SignupFormState } from "./actions"
 
 const INITIAL_STATE: SignupFormState = { ok: false }
@@ -16,6 +17,7 @@ const INITIAL_STATE: SignupFormState = { ok: false }
 export function SignupForm() {
   const router = useRouter()
   const [state, action, pending] = React.useActionState(signupAction, INITIAL_STATE)
+  const [turnstileToken, setTurnstileToken] = React.useState("")
 
   React.useEffect(() => {
     if (!state.ok) return
@@ -100,11 +102,17 @@ export function SignupForm() {
             </p>
           </div>
 
+          <TurnstileWidget
+            onVerify={setTurnstileToken}
+            onExpire={() => setTurnstileToken("")}
+            className="flex justify-center"
+          />
+
           <Button
             type="submit"
             size="lg"
             className="w-full"
-            disabled={pending}
+            disabled={pending || (isTurnstileEnabled() && !turnstileToken)}
           >
             {pending ? "Creating…" : "Create account"}
           </Button>

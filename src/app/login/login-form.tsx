@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { PasswordInput } from "@/components/ui/password-input"
+import { TurnstileWidget, isTurnstileEnabled } from "@/components/ui/turnstile-widget"
 import { loginAction, requestPasswordResetAction, type LoginFormState } from "./actions"
 
 const INITIAL_STATE: LoginFormState = { ok: false }
@@ -25,6 +26,8 @@ export function LoginForm({
     INITIAL_STATE,
   )
   const [showReset, setShowReset] = React.useState(false)
+  const [signInToken, setSignInToken] = React.useState("")
+  const [resetToken, setResetToken] = React.useState("")
 
   const error = state.error
 
@@ -62,7 +65,18 @@ export function LoginForm({
         </div>
       )}
 
-      <Button type="submit" size="lg" className="w-full" disabled={resetPending}>
+      <TurnstileWidget
+        onVerify={setResetToken}
+        onExpire={() => setResetToken("")}
+        className="flex justify-center"
+      />
+
+      <Button
+        type="submit"
+        size="lg"
+        className="w-full"
+        disabled={resetPending || (isTurnstileEnabled() && !resetToken)}
+      >
         {resetPending ? "Sending…" : "Send reset link"}
       </Button>
       <button
@@ -109,7 +123,18 @@ export function LoginForm({
         />
       </div>
 
-      <Button type="submit" size="lg" className="w-full" disabled={pending}>
+      <TurnstileWidget
+        onVerify={setSignInToken}
+        onExpire={() => setSignInToken("")}
+        className="flex justify-center"
+      />
+
+      <Button
+        type="submit"
+        size="lg"
+        className="w-full"
+        disabled={pending || (isTurnstileEnabled() && !signInToken)}
+      >
         {pending ? "Signing in…" : "Sign in"}
       </Button>
       <p className="text-xs text-muted-foreground text-center">

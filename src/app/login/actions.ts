@@ -7,6 +7,7 @@ import { createClient } from "@/lib/supabase/server"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { notifyPasswordReset } from "@/lib/email/notify"
 import { formText } from "@/lib/utils"
+import { verifyTurnstileToken, TURNSTILE_ERROR_MESSAGE } from "@/lib/turnstile"
 
 export interface LoginFormState {
   ok: boolean
@@ -24,6 +25,11 @@ export async function loginAction(
 
   if (!email || !password) {
     return { ok: false, error: "Email and password are required." }
+  }
+
+  const turnstileToken = formText(formData, "cf-turnstile-response")
+  if (!(await verifyTurnstileToken(turnstileToken))) {
+    return { ok: false, error: TURNSTILE_ERROR_MESSAGE }
   }
 
   const supabase = await createClient()
@@ -52,6 +58,11 @@ export async function requestPasswordResetAction(
   const email = formText(formData, "email")
   if (email === "") {
     return { ok: false, error: "Email is required." }
+  }
+
+  const turnstileToken = formText(formData, "cf-turnstile-response")
+  if (!(await verifyTurnstileToken(turnstileToken))) {
+    return { ok: false, error: TURNSTILE_ERROR_MESSAGE }
   }
 
   const admin = createAdminClient()

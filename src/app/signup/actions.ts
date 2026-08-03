@@ -7,6 +7,7 @@ import { createUser } from "@/lib/db/users"
 import { formText } from "@/lib/utils"
 import { startTrial } from "@/lib/db/packages"
 import { notifyWelcome } from "@/lib/email/notify"
+import { verifyTurnstileToken, TURNSTILE_ERROR_MESSAGE } from "@/lib/turnstile"
 
 export interface SignupFormState {
   ok: boolean
@@ -27,6 +28,11 @@ export async function signupAction(
   if (email === "") return { ok: false, error: "Email is required." }
   if (password.length < 6) {
     return { ok: false, error: "Password must be at least 6 characters." }
+  }
+
+  const turnstileToken = formText(formData, "cf-turnstile-response")
+  if (!(await verifyTurnstileToken(turnstileToken))) {
+    return { ok: false, error: TURNSTILE_ERROR_MESSAGE }
   }
 
   const existing = await prisma.user.findUnique({ where: { email } })

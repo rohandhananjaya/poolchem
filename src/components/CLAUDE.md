@@ -3,8 +3,8 @@
 Feature components grouped by domain; shadcn/ui primitives in [ui/](ui/) (style `radix-nova`, see [../../components.json](../../components.json)). Most feature components are Client Components (`"use client"`); pages fetch via `db/` helpers and pass data down. Check the top of a file for `"use client"` before assuming.
 
 ## ui/ — shadcn primitives (don't hand-edit generated ones; re-add via CLI)
-`avatar` `button` `dialog` `alert-dialog` `dropdown-menu` `tabs` `card` `card-row` `badge` `error-state` `empty-state` `input` `label` `password-input` `loading-skeleton` `pagination` `stat-tile` `shell` `sonner`
-- `shell` = page frame used by every dashboard page; `sonner` = toast host; `error-state` / `empty-state` / `loading-skeleton` = shared error/empty/loading UI; `card-row` = the list-row idiom used across pools/visits/reports; `stat-tile` = KPI tile used on dashboard + admin analytics.
+`avatar` `button` `dialog` `alert-dialog` `dropdown-menu` `tabs` `card` `card-row` `badge` `error-state` `empty-state` `input` `label` `password-input` `loading-skeleton` `pagination` `stat-tile` `shell` `sonner` `turnstile-widget`
+- `shell` = page frame used by every dashboard page; `sonner` = toast host; `error-state` / `empty-state` / `loading-skeleton` = shared error/empty/loading UI; `card-row` = the list-row idiom used across pools/visits/reports; `stat-tile` = KPI tile used on dashboard + admin analytics; `turnstile-widget` = `TurnstileWidget` + `isTurnstileEnabled()`, Cloudflare Turnstile bot-check used on `/signup` and `/login` (renders nothing when `NEXT_PUBLIC_TURNSTILE_SITE_KEY` is unset, or when `NEXT_PUBLIC_TURNSTILE_ENABLED="false"` — an explicit master off-switch that doesn't require removing the keys — see `src/lib/turnstile.ts` for the server-side verification half).
 
 ## dashboard/
 `StatsRow` (KPI tiles) · `DashboardHeader` (greeting + realtime notification bell, reads `NotificationContext`) · `EmptyState` · `ScanFab` (floating scan button) · `RefreshButton` · `DashboardSkeleton`
