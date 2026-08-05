@@ -48,6 +48,13 @@ enum PushPlatform {
   IOS
 }
 
+enum TransactionStatus {
+  PENDING
+  PAID
+  REFUNDED
+  FAILED
+}
+
 /// A tenant. Every other record is scoped to a Company.
 model Company {
   id                   String    @id @default(cuid())
@@ -79,6 +86,7 @@ model Company {
   auditLogs AuditLog[]
   companyPackage CompanyPackage?
   invoices Invoice[]
+  paymentTransactions PaymentTransaction[]
   apiKeys ApiKey[]
   feedback Feedback[]
   pushDevices PushDevice[]
@@ -248,6 +256,9 @@ enum CompanyPackageStatus {
   ACTIVE
   EXPIRED
   CANCELLED
+  /// Fee-per-transaction billing: full feature access, no monthly subscription,
+  /// no expiry. Set when the platform's `feeBasedBilling` flag is on.
+  FEE_BASED
 }
 
 enum InvoiceStatus {
@@ -315,6 +326,10 @@ model PlatformSettings {
   stripeEnabled  Boolean  @default(false)
   paypalEnabled  Boolean  @default(false)
   paymentDevMode Boolean  @default(true)
+  /// When on, platform bills a flat % per card transaction (`PaymentTransaction`)
+  /// instead of a monthly per-pool subscription. Retires the old plan-gating
+  /// ("per-pool pricing") logic: migrated companies run `FEE_BASED`.
+  feeBasedBilling Boolean @default(false)
   updatedAt      DateTime @updatedAt
 
   @@map("platform_settings")
@@ -338,6 +353,30 @@ model Invoice {
   @@index([companyId])
   @@index([packageId])
   @@map("invoices")
+}
+
+/// A card transaction charged to a customer, recorded so the platform can
+/// auto-apply its flat % processing fee. `feePercent`/`feeAmount` are snapshotted
+/// at capture time so later fee changes never rewrite history. `visitId` links
+/// to the service visit (populated once card-present capture lands).
+model PaymentTransaction {
+  id         String            @id @default(cuid())
+  companyId  String
+  visitId    String?
+  /// Amount charged to the customer, in cents.
+  amount     Int
+  /// Platform processing fee at capture time, in basis points (250 = 2.5%).
+  feePercent Int               @default(0)
+  /// Fee the platform earns = round(amount * feePercent / 10000), in cents.
+  feeAmount  Int               @default(0)
+  status     TransactionStatus @default(PENDING)
+  paidAt     DateTime?
+  createdAt  DateTime          @default(now())
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@index([companyId, createdAt])
+  @@map("payment_transactions")
 }
 
 /// Tenant-scoped audit trail for user actions (who did what, when).

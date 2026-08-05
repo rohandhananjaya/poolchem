@@ -1,7 +1,10 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  checkFeatureAccess,
   getHealthScoringLevel,
+  hasPoolCapacity,
+  hasTechCapacity,
   type CompanyPackageInfo,
   type PackageFeatures,
 } from "./package-features";
@@ -29,6 +32,7 @@ function makePackage(
       slug: "basic",
       name: "Basic",
       price: 2900,
+      feePercent: 250,
       features: features("basic"),
       sortOrder: 0,
     },
@@ -38,6 +42,7 @@ function makePackage(
     paidAt: new Date(),
     pendingPackage: null,
     pendingEffectiveAt: null,
+    feeBased: false,
     ...overrides,
   };
 }
@@ -96,6 +101,13 @@ describe("getHealthScoringLevel", () => {
     expect(getHealthScoringLevel(pkg)).toBe("advanced+lsi");
   });
 
+  it("returns advanced+lsi for a fee-based company regardless of plan", () => {
+    expect(getHealthScoringLevel(makePackage({ status: "FEE_BASED" }))).toBe("advanced+lsi");
+    expect(
+      getHealthScoringLevel(makePackage({ feeBased: true, status: "ACTIVE", package: null })),
+    ).toBe("advanced+lsi");
+  });
+
   it("falls back to basic when an ACTIVE plan omits health_scoring", () => {
     const { max_pools, chemical_recs, service_reports, qr_code, scheduling, max_techs, priority_support, custom_branding, api_access, csv_import } = features("basic");
     const pkg = makePackage({
@@ -116,5 +128,33 @@ describe("getHealthScoringLevel", () => {
       },
     });
     expect(getHealthScoringLevel(pkg)).toBe("basic");
+  });
+});
+
+describe("fee-based billing feature access", () => {
+  it("unlocks every feature for a fee-based company", () => {
+    const feeBased = makePackage({ status: "FEE_BASED" });
+    for (const feature of ["api_access", "csv_import", "custom_branding"] as const) {
+      expect(checkFeatureAccess(feeBased, feature)).toBe(true);
+    }
+  });
+
+  it("ignores the chosen plan's limits for a fee-based company", () => {
+    const limited = makePackage({
+      status: "FEE_BASED",
+      package: {
+        ...makePackage().package!,
+        features: { ...features("basic"), max_pools: 1, max_techs: 1 },
+      },
+    });
+    expect(hasPoolCapacity(limited, 50)).toBe(true);
+    expect(hasTechCapacity(limited, 50)).toBe(true);
+    expect(checkFeatureAccess(limited, "api_access")).toBe(true);
+  });
+
+  it("unlocks features via the feeBased flag even when status is ACTIVE", () => {
+    const flagged = makePackage({ feeBased: true, status: "ACTIVE" });
+    expect(checkFeatureAccess(flagged, "scheduling")).toBe(true);
+    expect(hasPoolCapacity(flagged, 100)).toBe(true);
   });
 });

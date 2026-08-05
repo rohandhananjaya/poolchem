@@ -64,8 +64,8 @@ function formData(entries: Record<string, string>): FormData {
   return fd;
 }
 
-const basicPkg = { id: "pkg-basic", slug: "basic", name: "Basic", price: 1900, features: {} as never, sortOrder: 0 };
-const proPkg = { id: "pkg-pro", slug: "pro", name: "Pro", price: 2900, features: {} as never, sortOrder: 1 };
+const basicPkg = { id: "pkg-basic", slug: "basic", name: "Basic", price: 1900, feePercent: 0, features: {} as never, sortOrder: 0 };
+const proPkg = { id: "pkg-pro", slug: "pro", name: "Pro", price: 2900, feePercent: 0, features: {} as never, sortOrder: 1 };
 
 const paidAt = new Date("2026-01-15T00:00:00Z");
 
@@ -78,6 +78,7 @@ function activeCompanyPackage(pkg = basicPkg) {
     paidAt,
     pendingPackage: null,
     pendingEffectiveAt: null,
+    feeBased: false,
   };
 }
 
@@ -183,6 +184,7 @@ describe("switchPackageAction", () => {
       paidAt: null,
       pendingPackage: null,
       pendingEffectiveAt: null,
+      feeBased: false,
     });
 
     const result = await switchPackageAction({ ok: false }, formData({ package: "basic" }));

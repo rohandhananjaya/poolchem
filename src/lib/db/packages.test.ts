@@ -33,6 +33,8 @@ const {
   getAllPackages,
   createPackage,
   updatePackage,
+  getOrCreateCompanyPackage,
+  getDefaultFeePercent,
 } = await import("@/lib/db/packages");
 
 const now = new Date("2026-01-15T00:00:00Z");
@@ -104,6 +106,7 @@ beforeEach(() => {
     stripeEnabled: true,
     paypalEnabled: true,
     paymentDevMode: true,
+    feeBasedBilling: false,
     updatedAt: now,
   });
 });
@@ -767,5 +770,102 @@ describe("countCompaniesOnPackage", () => {
       where: { OR: [{ packageId: "pkg-basic" }, { pendingPackageId: "pkg-basic" }] },
     });
     expect(result).toBe(3);
+  });
+});
+
+describe("fee-based billing", () => {
+  it("returns a trial when the platform flag is off", async () => {
+    prismaMock.companyPackage.findUnique.mockResolvedValue(null);
+    prismaMock.companyPackage.upsert.mockResolvedValue(makeCompanyPackage({ status: "TRIAL" }));
+
+    const result = await getOrCreateCompanyPackage("company-1");
+
+    expect(prismaMock.companyPackage.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        create: expect.objectContaining({ status: "TRIAL" }),
+      }),
+    );
+    expect(result.feeBased).toBe(false);
+  });
+
+  it("starts a company fee-based (no trial) when the platform flag is on", async () => {
+    prismaMock.platformSettings.upsert.mockResolvedValue({
+      id: "singleton",
+      trialDays: 30,
+      stripeEnabled: true,
+      paypalEnabled: true,
+      paymentDevMode: true,
+      feeBasedBilling: true,
+      updatedAt: now,
+    });
+    prismaMock.companyPackage.findUnique.mockResolvedValue(null);
+    prismaMock.companyPackage.upsert.mockResolvedValue(makeCompanyPackage({ status: "FEE_BASED" }));
+
+    const result = await getOrCreateCompanyPackage("company-1");
+
+    expect(prismaMock.companyPackage.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        create: expect.objectContaining({ status: "FEE_BASED" }),
+      }),
+    );
+    expect(result.status).toBe("FEE_BASED");
+    expect(result.feeBased).toBe(true);
+  });
+
+  it("keeps full access when a cancellation webhook hits a fee-based company", async () => {
+    prismaMock.companyPackage.findUnique.mockResolvedValue(
+      makeCompanyPackage({ status: "FEE_BASED", packageId: null, package: null }),
+    );
+
+    const result = await handleSubscriptionCancelled("company-1");
+
+    expect(prismaMock.companyPackage.update).not.toHaveBeenCalled();
+    expect(result.status).toBe("FEE_BASED");
+  });
+
+  it("refuses to activate a subscription for a fee-based company", async () => {
+    prismaMock.companyPackage.findUnique.mockResolvedValue(
+      makeCompanyPackage({ status: "FEE_BASED", packageId: null, package: null }),
+    );
+
+    await expect(
+      handlePaymentSuccess("company-1", "basic", "stripe", "sub_1", "cus_1"),
+    ).rejects.toThrow(/fee-per-transaction/);
+  });
+
+  it("reads the platform fee percent from the default (lowest sortOrder) package", async () => {
+    prismaMock.package.findFirst.mockResolvedValue(makePackage({ feePercent: 250 }));
+
+    const fee = await getDefaultFeePercent();
+
+    expect(fee).toBe(250);
+  });
+
+  it("returns 0 for the platform fee when no package exists", async () => {
+    prismaMock.package.findFirst.mockResolvedValue(null);
+
+    const fee = await getDefaultFeePercent();
+
+    expect(fee).toBe(0);
+  });
+});
+
+describe("getCompanyPackage includes feeBased flag", () => {
+  it("reports feeBased for a FEE_BASED row", async () => {
+    prismaMock.companyPackage.findUnique.mockResolvedValue(
+      makeCompanyPackage({ status: "FEE_BASED", packageId: null, package: null }),
+    );
+
+    const result = await getCompanyPackage("company-1");
+
+    expect(result?.feeBased).toBe(true);
+  });
+
+  it("reports feeBased false for an active subscription", async () => {
+    prismaMock.companyPackage.findUnique.mockResolvedValue(makeCompanyPackage());
+
+    const result = await getCompanyPackage("company-1");
+
+    expect(result?.feeBased).toBe(false);
   });
 });

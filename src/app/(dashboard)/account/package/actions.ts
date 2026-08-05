@@ -49,6 +49,14 @@ export async function createPaymentAction(
     const companyId = await getCompanyId()
     if (!companyId) return { ok: false, error: "No company found." }
 
+    const current = await getCompanyPackage(companyId)
+    if (current?.feeBased) {
+      return {
+        ok: false,
+        error: "Billing is fee-per-transaction — there's no monthly plan to subscribe to.",
+      }
+    }
+
     const packageSlug = formData.get("package") as string
     const providerName = formData.get("provider") as PaymentProviderName | undefined
 
@@ -273,6 +281,14 @@ export async function startTrialAction(
     const companyId = await getCompanyId()
     if (!companyId) return { ok: false, error: "No company found." }
 
+    const current = await getCompanyPackage(companyId)
+    if (current?.feeBased) {
+      return {
+        ok: false,
+        error: "Billing is fee-per-transaction — there's no trial to start.",
+      }
+    }
+
     const result = await startTrial(companyId)
     revalidatePath("/account/package")
     return { ok: true, companyPackage: result }
@@ -324,6 +340,12 @@ export async function switchPackageAction(
     const current = await getCompanyPackage(companyId)
     if (!current || current.status !== "ACTIVE" || !current.package) {
       return { ok: false, error: "You don't have an active plan to switch from." }
+    }
+    if (current.feeBased) {
+      return {
+        ok: false,
+        error: "Billing is fee-per-transaction — there's no monthly plan to switch.",
+      }
     }
 
     const target = await getPackageBySlug(targetSlug)

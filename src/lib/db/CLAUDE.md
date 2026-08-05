@@ -69,28 +69,36 @@ Get the tenant with `getCompanyId()` / `requireAuth()` from [../auth.ts](../auth
 **schedule.ts**
 - `getScheduleData(companyId) → ScheduledVisit[]`
 
-**packages.ts** — subscription/trial system. `Package` (plan definitions, platform-wide, not tenant-scoped — `feePercent` is basis points charged per transaction on top of the flat `price`, e.g. 250 = 2.5%) vs `CompanyPackage` (one per company; `packageId` is `null` while on trial with no plan chosen yet).
+**packages.ts** — subscription/trial system. `Package` (plan definitions, platform-wide, not tenant-scoped — `feePercent` is basis points charged per transaction on top of the flat `price`, e.g. 250 = 2.5%) vs `CompanyPackage` (one per company; `packageId` is `null` while on trial with no plan chosen yet). Under fee-per-transaction billing (`PlatformSettings.feeBasedBilling`), companies get `status: FEE_BASED` — full non-expiring feature access, no subscription, no monthly invoice. `CompanyPackageInfo.feeBased` mirrors that status.
 - `toCompanyPackageInfo(cp: CompanyPackageWithRelations) → CompanyPackageInfo` — internal shaping helper, exported for reuse by callers that fetch their own `CompanyPackage` rows
-- `getAllPackages() → PackageInfo[]` · `getPackageBySlug(slug)` · `getPackageById(id)`
+- `getAllPackages() → PackageInfo[]` · `getPackageBySlug(slug)` · `getPackageById(id)` · `getDefaultFeePercent() → number` — platform-wide transaction fee %, read from the default (lowest `sortOrder`) package's `feePercent`
 - `getCheckoutPlanRef(packageSlug, providerName, devMode) → string | undefined` — PayPal only; resolves (and caches) the plan a first-time checkout must reuse so it lands on the same plan/product later upgrade/downgrade revises target. Returns `undefined` for Stripe (its checkout prices inline, no shared-product constraint)
 - `getCompanyPackage(companyId) → CompanyPackageInfo | null` — lazily flips an overdue `TRIAL` to `EXPIRED`, and applies a due scheduled downgrade (see `scheduleDowngrade`), on read
-- `getOrCreateCompanyPackage(companyId) → CompanyPackageInfo` — starts a trial if the company has no row yet
+- `getOrCreateCompanyPackage(companyId) → CompanyPackageInfo` — starts a trial if the company has no row yet, **or** a `FEE_BASED` row when the platform flag is on
 - `startTrial(companyId)` — full feature access, no plan chosen, for `PlatformSettings.trialDays`
-- `handlePaymentSuccess(companyId, packageSlug, provider, providerSubscriptionId, providerCustomerId)` — activates a plan from a webhook/first-checkout; also cancels a live subscription on the *other* provider if one exists (payment-method switch)
+- `startFeeBased(companyId)` — puts a company on fee-per-transaction billing (full access, no subscription); one-way per company
+- `handlePaymentSuccess(companyId, packageSlug, provider, providerSubscriptionId, providerCustomerId)` — activates a plan from a webhook/first-checkout; also cancels a live subscription on the *other* provider if one exists (payment-method switch). Throws if the company is `FEE_BASED`.
 - `upgradeCompanyPackage(companyId, targetPackageSlug, returnUrls?) → UpgradeOutcome` — revises the company's existing subscription to a pricier plan immediately, provider-prorated. Returns `{status: "applied", companyPackage, prorationAmount?}` normally, or `{status: "requires_approval", approvalUrl}` if PayPal demands the subscriber re-approve (nothing is written to the DB in that case — `returnUrls` is where PayPal sends them back)
-- `confirmPendingUpgrade(companyId, targetPackageSlug) → CompanyPackageInfo` — completes an upgrade left pending by `requires_approval`, called from the account page once the subscriber is redirected back; polls PayPal briefly for the plan to actually match before applying
-- `handlePlanRevisionConfirmed(companyId, providerPlanId) → CompanyPackageInfo` — webhook counterpart to `confirmPendingUpgrade` (looks the Package up by its cached plan ref since the webhook's `custom_id` still reflects the original signup package); both funnel through the same idempotent apply, so whichever fires first wins and the other is a no-op
+- `confirmPendingUpgrade(companyId, targetPackageSlug)` → `CompanyPackageInfo` — completes an upgrade left pending by `requires_approval`, called from the account page once the subscriber is redirected back; polls PayPal briefly for the plan to actually match before applying
+- `handlePlanRevisionConfirmed(companyId, providerPlanId)` → `CompanyPackageInfo` — webhook counterpart to `confirmPendingUpgrade` (looks the Package up by its cached plan ref since the webhook's `custom_id` still reflects the original signup package); both funnel through the same idempotent apply, so whichever fires first wins and the other is a no-op
 - `scheduleDowngrade(companyId, targetPackageSlug) → { companyPackage, effectiveAt }` — schedules a move to a cheaper plan for the end of the current paid period; current plan/features stay active until then
 - `cancelPendingDowngrade(companyId)` — cancels a scheduled-but-not-yet-applied downgrade; idempotent no-op if nothing pending
-- `handleSubscriptionCancelled(companyId)` — sets `status: CANCELLED`, called from the payment webhook routes
+- `handleSubscriptionCancelled(companyId)` — sets `status: CANCELLED`, called from the payment webhook routes; **no-ops (keeps full access)** for a `FEE_BASED` company so a stale cancellation never strips billing
 - `simulateSwitch(companyId, targetPackageSlug)` — dev/no-provider stand-in for upgrade/downgrade, mirrors `simulatePayment`
-- `simulatePayment(companyId, packageSlug)` — sets `ACTIVE` + records an `Invoice` (simulated, no real billing)
+- `simulatePayment(companyId, packageSlug)` — sets `ACTIVE` + records an `Invoice` (simulated, no real billing); throws if the company is `FEE_BASED`
 - `expireTrial(companyId)` / `checkAndExpireTrials()` — manual/batch expiry (not wired to a cron; expiry normally happens lazily via `getCompanyPackage`)
 - `getCompanyInvoices(companyId)`
 - `createPackage(data)` · `updatePackage(id, data)` · `deletePackage(id)` · `countCompaniesOnPackage(packageId)` — plan-catalog CRUD for `/admin/packages`; counts a package as "in use" if any company has it as current OR pending
 
+**payment-transactions.ts** — fee-per-transaction engine. When the platform bills a flat % per card payment, each card charge is a `PaymentTransaction` with the fee %/amount snapshotted at capture time; card-present capture (Epic 1 card 1) marks them paid, `simulateTransaction` is the dev stand-in.
+- `computeFeeAmount(amountCents, feeBasisPoints) → number` — pure fee math, rounded to the cent
+- `recordTransaction({ companyId, amount, visitId? }) → PaymentTransactionInfo` — auto-applies the current platform fee %, creates a `PENDING` row
+- `markTransactionPaid(transactionId, companyId)` — sets `PAID` + `paidAt`; threw on a cross-tenant miss
+- `getCompanyTransactions(companyId, limit=20)` — newest first
+- `simulateTransaction(companyId, amount)` — dev/no-reader stand-in: records + immediately marks paid (mirrors `simulatePayment`)
+
 **platform-settings.ts** — single-row platform config.
-- `getPlatformSettings() → { trialDays }` · `updateTrialDays(days) → { trialDays }`
+- `getPlatformSettings() → { trialDays }` · `updateTrialDays(days) → { trialDays }` · `updateFeeBasedBilling(enabled)` — the last flips the master fee-per-transaction flag and, when enabled, migrates every trial/active company to `FEE_BASED` (one-way per company)
 
 **push-devices.ts** — registered native app tokens (FCM/APNs) for visit-assignment push. Every token is tenant + user scoped; a token can only be registered/unregistered against the authenticated user's own `companyId`/`userId`.
 - `registerPushDevice({ companyId, userId, token, platform }) → PushDevice` — upsert by `token` (re-registering the same token updates owner/platform), `platform: "ANDROID" | "IOS"`
@@ -136,11 +144,12 @@ Get the tenant with `getCompanyId()` / `requireAuth()` from [../auth.ts](../auth
 - `getPaymentSettings() → PaymentSettings` — `{ stripeEnabled, paypalEnabled, paymentDevMode }`; upserts the row if missing
 - `updatePaymentSettings(data: Partial<PaymentSettings>) → PaymentSettings`
 
-## Tests (145+ tests across 10 files)
+## Tests (150+ tests across 12 files)
 
 All DB tests mock `@/lib/prisma` and require `server-only` to be stubbed (handled by the Vitest config alias). Tests are in the same directory with `.test.ts` suffix:
-- `visits.test.ts` — 38 tests · `company.test.ts` — 12 · `pools.test.ts` — 20 · `packages.test.ts` — 27
+- `visits.test.ts` — 38 tests · `company.test.ts` — 12 · `pools.test.ts` — 20 · `packages.test.ts` — 32
 - `users.test.ts` — 14 · `reports.test.ts` — 3 · `schedule.test.ts` — 8 · `dashboard.test.ts` — 2 · `api-keys.test.ts` — 12 · `feedback.test.ts` — 9 · `push-devices.test.ts` — 5
+- `payment-transactions.test.ts` — 8 · `platform-settings.test.ts` — 3
 
 No tests yet for `admin-dashboard.ts`, `admin-audit.ts`, `admin-diagnostics.ts`, `payment-settings.ts`, or `invitations.ts` — a real coverage gap, not just a doc omission.
 

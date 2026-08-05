@@ -4,7 +4,8 @@ import { MessageSquare } from "lucide-react"
 
 import { requireTech } from "@/lib/auth"
 import { getCompanyById, updateCompany } from "@/lib/db/company"
-import { getOrCreateCompanyPackage } from "@/lib/db/packages"
+import { getOrCreateCompanyPackage, getDefaultFeePercent } from "@/lib/db/packages"
+import { getCompanyTransactions } from "@/lib/db/payment-transactions"
 import { getPaymentSettings } from "@/lib/db/payment-settings"
 import { checkFeatureAccess } from "@/lib/package-features"
 import { getConnectAccountStatus } from "@/lib/payment/connect"
@@ -13,6 +14,7 @@ import { Button } from "@/components/ui/button"
 import { ProfileForms } from "@/components/profile/ProfileForms"
 import { SignOutButton } from "@/components/profile/SignOutButton"
 import { PaymentProcessorCard } from "@/components/settings/PaymentProcessorCard"
+import { BillingCard } from "@/components/settings/BillingCard"
 import type { UserRole } from "@/generated/prisma/client"
 
 export default async function ProfilePage({
@@ -37,6 +39,15 @@ export default async function ProfilePage({
     canEditCompany && companyPackage
       ? checkFeatureAccess(companyPackage, "custom_branding")
       : false
+
+  const [feePercent, transactions] = user.companyId
+    ? await Promise.all([
+        getDefaultFeePercent(),
+        getCompanyTransactions(user.companyId, 10),
+      ])
+    : [0, []]
+
+  const { paymentDevMode } = await getPaymentSettings()
 
   // Stripe has no onboarding webhook wired up yet, so the "onboarded" flag is
   // refreshed lazily: on the return leg from Stripe's hosted flow, and any
@@ -82,6 +93,14 @@ export default async function ProfilePage({
           <PaymentProcessorCard
             connected={!!company.stripeConnectAccountId}
             onboarded={connectOnboarded}
+          />
+        ) : null}
+        {company ? (
+          <BillingCard
+            feeBased={companyPackage?.feeBased ?? false}
+            feePercent={feePercent}
+            transactions={transactions}
+            canSimulate={canEditCompany && paymentDevMode}
           />
         ) : null}
         <section className="rounded-xl border border-border bg-card p-4 md:p-6">

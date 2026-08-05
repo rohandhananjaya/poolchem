@@ -7,6 +7,10 @@ import { createClient as createAdminClient } from "@supabase/supabase-js";
 import { requireAuth, requireOwner } from "@/lib/auth";
 import { getCompanyById, updateCompany } from "@/lib/db/company";
 import { getCompanyPackage } from "@/lib/db/packages";
+import {
+  simulateTransaction,
+  type PaymentTransactionInfo,
+} from "@/lib/db/payment-transactions";
 import { getPaymentSettings } from "@/lib/db/payment-settings";
 import { checkFeatureAccess } from "@/lib/package-features";
 import {
@@ -231,6 +235,42 @@ export async function disconnectStripeAction(
     return { ok: true };
   } catch {
     return { ok: false, error: "Could not disconnect. Please try again." };
+  }
+}
+
+export interface TransactionSimulationState {
+  ok: boolean
+  error?: string
+  transaction?: PaymentTransactionInfo
+}
+
+/**
+ * Dev/no-real-reader stand-in for capturing a card payment: records a
+ * transaction with the auto-applied flat % fee and immediately marks it paid.
+ * Owners only. Wired to a "simulate charge" form in the Settings billing
+ * section until card-present capture (Epic 1 card 1) lands.
+ */
+export async function simulateTransactionAction(
+  _prev: TransactionSimulationState,
+  formData: FormData,
+): Promise<TransactionSimulationState> {
+  const user = await requireOwner()
+  if (!user.companyId) return { ok: false, error: "No company affiliation." }
+
+  const amountDollars = parseFloat(formText(formData, "amount"))
+  if (!Number.isFinite(amountDollars) || amountDollars <= 0) {
+    return { ok: false, error: "Enter a positive dollar amount." }
+  }
+
+  try {
+    const transaction = await simulateTransaction(user.companyId, Math.round(amountDollars * 100))
+    revalidatePath("/settings")
+    return { ok: true, transaction }
+  } catch (error) {
+    return {
+      ok: false,
+      error: error instanceof Error ? error.message : "Could not capture payment.",
+    }
   }
 }
 

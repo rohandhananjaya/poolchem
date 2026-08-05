@@ -11,6 +11,9 @@ vi.mock("@/lib/db/company", () => ({
 vi.mock("@/lib/db/packages", () => ({
   getCompanyPackage: vi.fn(),
 }));
+vi.mock("@/lib/db/payment-transactions", () => ({
+  simulateTransaction: vi.fn(),
+}));
 vi.mock("@/lib/db/payment-settings", () => ({
   getPaymentSettings: vi.fn(),
 }));
@@ -69,7 +72,9 @@ const {
   exportDataAction,
   connectStripeAction,
   disconnectStripeAction,
+  simulateTransactionAction,
 } = await import("./actions");
+const { simulateTransaction } = await import("@/lib/db/payment-transactions");
 
 const mockUser = {
   id: "user-1",
@@ -658,5 +663,53 @@ describe("disconnectStripeAction", () => {
     const result = await disconnectStripeAction({ ok: false });
 
     expect(result).toEqual({ ok: false, error: "Could not disconnect. Please try again." });
+  });
+});
+
+describe("simulateTransactionAction", () => {
+  it("simulates a charge for an owner and revalidates settings", async () => {
+    vi.mocked(requireOwner).mockResolvedValue({ ...mockUser, role: "OWNER" } as never);
+    vi.mocked(simulateTransaction).mockResolvedValue({
+      id: "txn-1",
+      amount: 10000,
+      feePercent: 250,
+      feeAmount: 250,
+      status: "PAID",
+      paidAt: new Date(),
+      createdAt: new Date(),
+    });
+
+    const result = await simulateTransactionAction(
+      { ok: false },
+      formData({ amount: "100.00" }),
+    );
+
+    expect(simulateTransaction).toHaveBeenCalledWith("company-1", 10000);
+    expect(result.ok).toBe(true);
+    expect(revalidatePath).toHaveBeenCalledWith("/settings");
+  });
+
+  it("rejects a missing or non-positive amount", async () => {
+    vi.mocked(requireOwner).mockResolvedValue({ ...mockUser, role: "OWNER" } as never);
+
+    const result = await simulateTransactionAction(
+      { ok: false },
+      formData({ amount: "0" }),
+    );
+
+    expect(result).toEqual({ ok: false, error: "Enter a positive dollar amount." });
+    expect(simulateTransaction).not.toHaveBeenCalled();
+  });
+
+  it("returns an error when the capture fails", async () => {
+    vi.mocked(requireOwner).mockResolvedValue({ ...mockUser, role: "OWNER" } as never);
+    vi.mocked(simulateTransaction).mockRejectedValue(new Error("Processor error"));
+
+    const result = await simulateTransactionAction(
+      { ok: false },
+      formData({ amount: "25.00" }),
+    );
+
+    expect(result).toEqual({ ok: false, error: "Processor error" });
   });
 });

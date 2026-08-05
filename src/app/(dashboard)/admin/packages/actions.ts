@@ -10,6 +10,7 @@ import {
   countCompaniesOnPackage,
 } from "@/lib/db/packages"
 import { updateTrialDays } from "@/lib/db/platform-settings"
+import { updateFeeBasedBilling } from "@/lib/db/platform-settings"
 import { updatePaymentSettings } from "@/lib/db/payment-settings"
 import type { PackageFeatures } from "@/lib/package-features"
 import { logger } from "@/lib/log"
@@ -135,6 +136,25 @@ export async function updatePaymentSettingsAction(formData: FormData) {
     context: "admin.packages.updatePaymentSettingsAction",
     userId: currentUser.id,
     metadata: { stripeEnabled, paypalEnabled, paymentDevMode },
+  })
+  revalidatePath("/admin/packages")
+}
+
+/**
+ * Flips the platform between monthly-subscription billing and fee-per-transaction
+ * billing. Turning it on migrates every trial/active company to `FEE_BASED`
+ * (full access, no monthly subscription, no invoice).
+ */
+export async function updateFeeBasedBillingAction(formData: FormData) {
+  const currentUser = await requireSuperAdmin()
+
+  const feeBasedBilling = formData.get("feeBasedBilling") === "on"
+  await updateFeeBasedBilling(feeBasedBilling)
+
+  logger.info("Fee-based billing toggle updated", {
+    context: "admin.packages.updateFeeBasedBillingAction",
+    userId: currentUser.id,
+    metadata: { feeBasedBilling },
   })
   revalidatePath("/admin/packages")
 }

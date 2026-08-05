@@ -45,6 +45,7 @@ export function toCompanyPackageInfo(
     paidAt: cp.paidAt,
     pendingPackage: cp.pendingPackage ? toPackageInfo(cp.pendingPackage) : null,
     pendingEffectiveAt: cp.pendingEffectiveAt ?? null,
+    feeBased: cp.status === "FEE_BASED",
   }
 }
 
@@ -106,6 +107,27 @@ export async function getAllPackages(): Promise<PackageInfo[]> {
     orderBy: { sortOrder: "asc" },
   })
   return packages.map(toPackageInfo)
+}
+
+/**
+ * The platform-wide transaction fee, in basis points (250 = 2.5%), auto-applied
+ * to every card transaction a company processes. Read from the default
+ * (lowest `sortOrder`) package's `feePercent` — the same single source of truth
+ * the public flat-fee pricing page uses.
+ */
+export async function getDefaultFeePercent(): Promise<number> {
+  const def = await prisma.package.findFirst({ orderBy: { sortOrder: "asc" } })
+  return def?.feePercent ?? 0
+}
+
+/** Throws if the company has migrated to fee-per-transaction billing. */
+async function assertNotFeeBased(companyId: string): Promise<void> {
+  const cp = await prisma.companyPackage.findUnique({ where: { companyId } })
+  if (cp?.status === "FEE_BASED") {
+    throw new Error(
+      "This company is on fee-per-transaction billing — subscriptions are disabled.",
+    )
+  }
 }
 
 export async function getPackageBySlug(slug: string): Promise<PackageInfo | null> {
@@ -249,7 +271,36 @@ export async function getOrCreateCompanyPackage(
   const existing = await getCompanyPackage(companyId)
   if (existing) return existing
 
+  // Fee-per-transaction platform: new companies skip the trial/subscription
+  // lifecycle entirely and get full, non-expiring feature access.
+  const { feeBasedBilling } = await getPlatformSettings()
+  if (feeBasedBilling) {
+    return startFeeBased(companyId)
+  }
+
   return startTrial(companyId)
+}
+
+/**
+ * Puts a company on fee-per-transaction billing: full feature access, no plan,
+ * no trial, no monthly subscription. Migration is one-way per company.
+ */
+export async function startFeeBased(companyId: string): Promise<CompanyPackageInfo> {
+  const cp = await prisma.companyPackage.upsert({
+    where: { companyId },
+    update: {
+      status: "FEE_BASED",
+      packageId: null,
+      trialStart: null,
+      trialEnd: null,
+      paidAt: null,
+      pendingPackageId: null,
+      pendingEffectiveAt: null,
+    },
+    create: { companyId, status: "FEE_BASED" },
+    include: { package: true, pendingPackage: true },
+  })
+  return toCompanyPackageInfo(cp)
 }
 
 /**
@@ -292,6 +343,7 @@ export async function handlePaymentSuccess(
   providerSubscriptionId: string,
   providerCustomerId: string,
 ): Promise<CompanyPackageInfo> {
+  await assertNotFeeBased(companyId)
   const pkg = await prisma.package.findUnique({ where: { slug: packageSlug } })
   if (!pkg) throw new Error(`Package "${packageSlug}" not found.`)
 
@@ -394,6 +446,7 @@ async function applyConfirmedUpgrade(
   companyId: string,
   targetPkg: Package,
 ): Promise<CompanyPackageInfo> {
+  await assertNotFeeBased(companyId)
   const existing = await prisma.companyPackage.findUnique({
     where: { companyId },
     include: { package: true, pendingPackage: true },
@@ -645,6 +698,17 @@ export async function cancelPendingDowngrade(companyId: string): Promise<Company
 
 /** Sets a company's subscription to CANCELLED — called from the webhook routes. */
 export async function handleSubscriptionCancelled(companyId: string): Promise<CompanyPackageInfo> {
+  const existing = await prisma.companyPackage.findUnique({
+    where: { companyId },
+    include: { package: true, pendingPackage: true },
+  })
+  if (!existing) throw new Error(`Company "${companyId}" has no package record.`)
+  // A company migrated to fee-per-transaction billing keeps full access; a
+  // stale subscription-cancellation webhook must not strip it.
+  if (existing.status === "FEE_BASED") {
+    return toCompanyPackageInfo(existing)
+  }
+
   const cp = await prisma.companyPackage.update({
     where: { companyId },
     data: { status: "CANCELLED" },
@@ -695,6 +759,7 @@ export async function simulatePayment(
   companyId: string,
   packageSlug: string,
 ): Promise<CompanyPackageInfo> {
+  await assertNotFeeBased(companyId)
   const pkg = await prisma.package.findUnique({ where: { slug: packageSlug } })
   if (!pkg) throw new Error(`Package "${packageSlug}" not found.`)
 

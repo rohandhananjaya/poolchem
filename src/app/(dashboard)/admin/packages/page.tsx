@@ -12,6 +12,7 @@ import {
   updatePackageAction,
   updateTrialDaysAction,
   updatePaymentSettingsAction,
+  updateFeeBasedBillingAction,
 } from "./actions"
 import { PackageFeatureFields } from "@/components/package/package-feature-fields"
 import { formatPrice, formatFeePercent } from "@/lib/package-features"
@@ -52,6 +53,35 @@ export default async function AdminPackagesPage() {
               <p className="text-xs text-muted-foreground">
                 Every new company gets full feature access for this many days before choosing a plan.
               </p>
+            </form>
+          </div>
+        </section>
+
+        {/* Billing Mode */}
+        <section>
+          <h2 className="text-lg font-semibold text-foreground mb-4">Billing Mode</h2>
+          <div className="rounded-xl border border-border bg-card p-4">
+            <form action={updateFeeBasedBillingAction} className="flex items-start gap-4">
+              <label className="flex items-center gap-3 rounded-lg border border-border bg-background p-3 cursor-pointer hover:bg-muted/50 transition-colors">
+                <input
+                  type="checkbox"
+                  name="feeBasedBilling"
+                  defaultChecked={platformSettings.feeBasedBilling}
+                  className="size-4 accent-brand-600"
+                />
+                <div>
+                  <div className="flex items-center gap-1.5 text-sm font-medium text-foreground">
+                    <CreditCard className="size-4" />
+                    Fee-per-transaction billing
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Charge a flat % per card payment instead of a monthly per-pool subscription.
+                    Turning this on migrates every trial/active company to fee-based billing
+                    (full access, no subscription, no monthly invoice).
+                  </p>
+                </div>
+              </label>
+              <Button type="submit" size="sm" className="mt-3">Save</Button>
             </form>
           </div>
         </section>

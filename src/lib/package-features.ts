@@ -34,21 +34,31 @@ export interface CompanyPackageInfo {
   /** Set while a downgrade is scheduled but hasn't taken effect yet. */
   pendingPackage: PackageInfo | null
   pendingEffectiveAt: Date | null
+  /** True when the company runs fee-per-transaction billing (no subscription). */
+  feeBased: boolean
 }
 
 export function parseFeatures(json: string): PackageFeatures {
   return JSON.parse(json) as PackageFeatures
 }
 
+/** A company on fee-per-transaction billing gets every feature unlocked. */
+function isFeeBased(companyPackage: CompanyPackageInfo): boolean {
+  return companyPackage.feeBased || companyPackage.status === "FEE_BASED"
+}
+
 /**
  * A company on an active (non-expired) trial gets every feature unlocked,
  * regardless of which plan it will eventually pay for. Once the trial ends
- * or a plan is chosen, access follows that plan's `features`.
+ * or a plan is chosen, access follows that plan's `features`. A fee-based
+ * company (no subscription) also gets everything.
  */
 export function checkFeatureAccess(
   companyPackage: CompanyPackageInfo,
   feature: keyof PackageFeatures,
 ): boolean {
+  if (isFeeBased(companyPackage)) return true
+
   if (companyPackage.status === "TRIAL" && !isTrialExpired(companyPackage)) {
     return true
   }
@@ -81,6 +91,7 @@ export function getHealthScoringLevel(
   companyPackage: CompanyPackageInfo | null,
 ): "basic" | "advanced+lsi" {
   if (!companyPackage) return "basic";
+  if (isFeeBased(companyPackage)) return "advanced+lsi";
   if (companyPackage.status === "TRIAL" && !isTrialExpired(companyPackage)) {
     return "advanced+lsi";
   }
@@ -97,6 +108,8 @@ export function hasPoolCapacity(
   companyPackage: CompanyPackageInfo,
   currentCount: number,
 ): boolean {
+  if (isFeeBased(companyPackage)) return true
+
   if (companyPackage.status === "TRIAL" && !isTrialExpired(companyPackage)) {
     return true
   }
@@ -119,6 +132,8 @@ export function hasTechCapacity(
   companyPackage: CompanyPackageInfo,
   currentCount: number,
 ): boolean {
+  if (isFeeBased(companyPackage)) return true
+
   if (companyPackage.status === "TRIAL" && !isTrialExpired(companyPackage)) {
     return true
   }

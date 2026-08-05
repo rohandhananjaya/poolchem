@@ -2,7 +2,7 @@ import { redirect } from "next/navigation"
 import { Check, X, Clock } from "lucide-react"
 
 import { getCurrentUser, requireAuth } from "@/lib/auth"
-import { getAllPackages, getCompanyPackage } from "@/lib/db/packages"
+import { getAllPackages, getCompanyPackage, getDefaultFeePercent } from "@/lib/db/packages"
 import { getPaymentSettings } from "@/lib/db/payment-settings"
 import { Shell } from "@/components/ui/shell"
 import { PackageBadge } from "@/components/package/package-badge"
@@ -16,6 +16,7 @@ import {
   getPlanFeatureMatrix,
   FEATURE_LABELS,
   formatFeatureValue,
+formatFeePercent,
 } from "@/lib/package-features"
 
 export const dynamic = "force-dynamic"
@@ -70,6 +71,8 @@ export default async function AccountPackagePage({
 
   if (!companyPackage) redirect("/dashboard")
 
+  const feeBased = companyPackage.feeBased || companyPackage.status === "FEE_BASED"
+  const defaultFeePercent = await getDefaultFeePercent()
   const expired = isTrialExpired(companyPackage)
   const featureMatrix = getPlanFeatureMatrix(allPackages)
   const sortedPackages = [...allPackages].sort((a, b) => a.price - b.price)
@@ -111,16 +114,22 @@ export default async function AccountPackagePage({
             <div>
               <div className="flex items-center gap-3">
                 <h2 className="text-xl font-semibold text-foreground">
-                  {onTrial ? "Free Trial" : (companyPackage.package?.name ?? "Free Trial")}
+                  {feeBased
+                    ? "Fee-per-transaction billing"
+                    : onTrial
+                      ? "Free Trial"
+                      : (companyPackage.package?.name ?? "Free Trial")}
                 </h2>
                 <PackageBadge companyPackage={companyPackage} />
               </div>
               <p className="mt-1 text-sm text-muted-foreground">
-                {onTrial
-                  ? "Full access, no plan chosen yet"
-                  : companyPackage.package
-                    ? formatPrice(companyPackage.package.price) + "/mo"
-                    : "Full access, no plan chosen yet"}
+                {feeBased
+                  ? formatFeePercent(defaultFeePercent) + " per card payment"
+                  : onTrial
+                    ? "Full access, no plan chosen yet"
+                    : companyPackage.package
+                      ? formatPrice(companyPackage.package.price) + "/mo"
+                      : "Full access, no plan chosen yet"}
               </p>
             </div>
           </div>
@@ -148,7 +157,12 @@ export default async function AccountPackagePage({
             />
           )}
 
-          {onTrial ? (
+          {feeBased ? (
+            <div className="mt-6 rounded-lg bg-brand-50 px-3 py-2 text-sm text-brand-800 dark:bg-brand-900/20 dark:text-brand-300">
+              No monthly subscription. Pay a flat {formatFeePercent(defaultFeePercent)}
+              fee on each card payment instead — every feature is unlocked.
+            </div>
+          ) : onTrial ? (
             <p className="mt-6 text-sm text-muted-foreground">
               All features are unlocked during your trial. Choose a plan below for
               when your trial ends.
@@ -181,74 +195,76 @@ export default async function AccountPackagePage({
         </div>
 
         {/* All plans comparison */}
-        <section>
-          <h2 className="mb-4 text-lg font-semibold text-foreground">
-            Compare plans
-          </h2>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-            {sortedPackages.map((pkg) => {
-              const isCurrent =
-                companyPackage.status === "ACTIVE" && companyPackage.package?.id === pkg.id
-              return (
-                <div
-                  key={pkg.id}
-                  className={`rounded-xl border p-5 ${
-                    isCurrent
-                      ? "border-brand-500 bg-brand-50 dark:bg-brand-900/20"
-                      : "border-border bg-card"
-                  }`}
-                >
-                  <h3 className="text-base font-semibold text-foreground">{pkg.name}</h3>
-                  <p className="mt-1 text-2xl font-bold text-foreground">
-                    {formatPrice(pkg.price)}
-                    <span className="text-sm font-normal text-muted-foreground">/mo</span>
-                  </p>
+        {!feeBased && (
+          <section>
+            <h2 className="mb-4 text-lg font-semibold text-foreground">
+              Compare plans
+            </h2>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+              {sortedPackages.map((pkg) => {
+                const isCurrent =
+                  companyPackage.status === "ACTIVE" && companyPackage.package?.id === pkg.id
+                return (
+                  <div
+                    key={pkg.id}
+                    className={`rounded-xl border p-5 ${
+                      isCurrent
+                        ? "border-brand-500 bg-brand-50 dark:bg-brand-900/20"
+                        : "border-border bg-card"
+                    }`}
+                  >
+                    <h3 className="text-base font-semibold text-foreground">{pkg.name}</h3>
+                    <p className="mt-1 text-2xl font-bold text-foreground">
+                      {formatPrice(pkg.price)}
+                      <span className="text-sm font-normal text-muted-foreground">/mo</span>
+                    </p>
 
-                  <ul className="mt-4 space-y-2">
-                    {featureMatrix.map((row) => {
-                      const val = row.values[pkg.slug]
-                      return (
-                        <li key={row.feature} className="flex items-center gap-2 text-sm">
-                          {val ? (
-                            <Check className="size-3.5 shrink-0 text-emerald-500" />
-                          ) : (
-                            <X className="size-3.5 shrink-0 text-muted-foreground" />
-                          )}
-                          <span className="text-muted-foreground">
-                            {row.feature}
-                            {typeof val === "string" && (
-                              <span className="ml-1 font-medium text-foreground">{val}</span>
+                    <ul className="mt-4 space-y-2">
+                      {featureMatrix.map((row) => {
+                        const val = row.values[pkg.slug]
+                        return (
+                          <li key={row.feature} className="flex items-center gap-2 text-sm">
+                            {val ? (
+                              <Check className="size-3.5 shrink-0 text-emerald-500" />
+                            ) : (
+                              <X className="size-3.5 shrink-0 text-muted-foreground" />
                             )}
-                          </span>
-                        </li>
-                      )
-                    })}
-                  </ul>
+                            <span className="text-muted-foreground">
+                              {row.feature}
+                              {typeof val === "string" && (
+                                <span className="ml-1 font-medium text-foreground">{val}</span>
+                              )}
+                            </span>
+                          </li>
+                        )
+                      })}
+                    </ul>
 
-                  <div className="mt-6">
-                    {isCurrent ? (
-                      <p className="text-center text-xs text-muted-foreground">
-                        Current plan
-                      </p>
-                    ) : isActivePaid ? (
-                      <SwitchPlanDialog
-                        pkg={pkg}
-                        currentPrice={companyPackage.package!.price}
-                        currentName={companyPackage.package!.name}
-                      />
-                    ) : (
-                      <PayNowDialog
-                        pkg={pkg}
-                        stripeEnabled={paymentSettings.stripeEnabled}
-                        paypalEnabled={paymentSettings.paypalEnabled}
-                      />
-                    )}
+                    <div className="mt-6">
+                      {isCurrent ? (
+                        <p className="text-center text-xs text-muted-foreground">
+                          Current plan
+                        </p>
+                      ) : isActivePaid ? (
+                        <SwitchPlanDialog
+                          pkg={pkg}
+                          currentPrice={companyPackage.package!.price}
+                          currentName={companyPackage.package!.name}
+                        />
+                      ) : (
+                        <PayNowDialog
+                          pkg={pkg}
+                          stripeEnabled={paymentSettings.stripeEnabled}
+                          paypalEnabled={paymentSettings.paypalEnabled}
+                        />
+                      )}
+                    </div>
                   </div>
-                </div>
-              )
-            })}
-          </div>
-        </section>
+                )
+              })}
+            </div>
+          </section>
+        )}
       </div>
     </Shell>
   )

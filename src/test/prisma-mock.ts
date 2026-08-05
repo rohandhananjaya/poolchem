@@ -113,6 +113,16 @@ export const prismaMock = {
   platformSettings: {
     upsert: vi.fn(),
   },
+  paymentTransaction: {
+    findMany: vi.fn(),
+    findFirst: vi.fn(),
+    findUnique: vi.fn(),
+    create: vi.fn(),
+    update: vi.fn(),
+    delete: vi.fn(),
+    deleteMany: vi.fn(),
+    count: vi.fn(),
+  },
   systemLog: {
     create: vi.fn(),
   },
