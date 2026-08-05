@@ -30,6 +30,9 @@ const {
   handlePlanRevisionConfirmed,
   expireTrial,
   checkAndExpireTrials,
+  getAllPackages,
+  createPackage,
+  updatePackage,
 } = await import("@/lib/db/packages");
 
 const now = new Date("2026-01-15T00:00:00Z");
@@ -42,6 +45,7 @@ function makePackage(overrides: Record<string, unknown> = {}) {
     slug: "basic",
     name: "Basic",
     price: 1900,
+    feePercent: 250,
     features: JSON.stringify({ max_pools: 10 }),
     sortOrder: 0,
     stripePriceId: null,
@@ -717,6 +721,39 @@ describe("checkAndExpireTrials", () => {
     expect(prismaMock.companyPackage.updateMany).not.toHaveBeenCalled();
     expect(mockNotify.notifyTrialExpired).not.toHaveBeenCalled();
     expect(mockNotify.notifyTrialExpiring).not.toHaveBeenCalled();
+  });
+});
+
+describe("getAllPackages", () => {
+  it("includes each package's feePercent alongside price", async () => {
+    prismaMock.package.findMany.mockResolvedValue([makePackage({ feePercent: 250 })]);
+
+    const [pkg] = await getAllPackages();
+
+    expect(pkg.feePercent).toBe(250);
+  });
+});
+
+describe("createPackage / updatePackage", () => {
+  it("createPackage persists a feePercent, defaulting to 0 when omitted", async () => {
+    prismaMock.package.create.mockResolvedValue(makePackage());
+
+    await createPackage({ slug: "flat", name: "Flat", price: 0, features: "{}" });
+
+    expect(prismaMock.package.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({ feePercent: 0 }),
+    });
+  });
+
+  it("updatePackage forwards an updated feePercent", async () => {
+    prismaMock.package.update.mockResolvedValue(makePackage({ feePercent: 300 }));
+
+    await updatePackage("pkg-basic", { feePercent: 300 });
+
+    expect(prismaMock.package.update).toHaveBeenCalledWith({
+      where: { id: "pkg-basic" },
+      data: { feePercent: 300 },
+    });
   });
 });
 

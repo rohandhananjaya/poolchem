@@ -69,7 +69,7 @@ Get the tenant with `getCompanyId()` / `requireAuth()` from [../auth.ts](../auth
 **schedule.ts**
 - `getScheduleData(companyId) → ScheduledVisit[]`
 
-**packages.ts** — subscription/trial system. `Package` (plan definitions, platform-wide, not tenant-scoped) vs `CompanyPackage` (one per company; `packageId` is `null` while on trial with no plan chosen yet).
+**packages.ts** — subscription/trial system. `Package` (plan definitions, platform-wide, not tenant-scoped — `feePercent` is basis points charged per transaction on top of the flat `price`, e.g. 250 = 2.5%) vs `CompanyPackage` (one per company; `packageId` is `null` while on trial with no plan chosen yet).
 - `toCompanyPackageInfo(cp: CompanyPackageWithRelations) → CompanyPackageInfo` — internal shaping helper, exported for reuse by callers that fetch their own `CompanyPackage` rows
 - `getAllPackages() → PackageInfo[]` · `getPackageBySlug(slug)` · `getPackageById(id)`
 - `getCheckoutPlanRef(packageSlug, providerName, devMode) → string | undefined` — PayPal only; resolves (and caches) the plan a first-time checkout must reuse so it lands on the same plan/product later upgrade/downgrade revises target. Returns `undefined` for Stripe (its checkout prices inline, no shared-product constraint)

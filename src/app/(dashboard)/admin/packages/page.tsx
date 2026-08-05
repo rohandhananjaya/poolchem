@@ -14,7 +14,7 @@ import {
   updatePaymentSettingsAction,
 } from "./actions"
 import { PackageFeatureFields } from "@/components/package/package-feature-fields"
-import { formatPrice } from "@/lib/package-features"
+import { formatPrice, formatFeePercent } from "@/lib/package-features"
 
 export const dynamic = "force-dynamic"
 
@@ -147,9 +147,15 @@ export default async function AdminPackagesPage() {
                       <input name="name" required className="w-full rounded-lg border border-border bg-background px-2 py-1.5 text-sm" />
                     </div>
                   </div>
-                  <div>
-                    <label className="block text-xs font-medium text-foreground mb-1">Price ($)</label>
-                    <input name="price" type="number" min="0" step="0.01" defaultValue="0" className="w-full rounded-lg border border-border bg-background px-2 py-1.5 text-sm" />
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="block text-xs font-medium text-foreground mb-1">Price ($)</label>
+                      <input name="price" type="number" min="0" step="0.01" defaultValue="0" className="w-full rounded-lg border border-border bg-background px-2 py-1.5 text-sm" />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-foreground mb-1">Fee (%)</label>
+                      <input name="feePercent" type="number" min="0" step="0.1" defaultValue="0" className="w-full rounded-lg border border-border bg-background px-2 py-1.5 text-sm" />
+                    </div>
                   </div>
                   <PackageFeatureFields />
                   <Button type="submit" size="sm" className="w-full">Create</Button>
@@ -169,7 +175,7 @@ export default async function AdminPackagesPage() {
                       <span className="text-xs text-muted-foreground">({pkg.slug})</span>
                     </div>
                     <p className="mt-1 text-xs text-muted-foreground">
-                      {formatPrice(pkg.price)}/mo · max {pkg.features.max_pools || 0} pools
+                      {formatPrice(pkg.price)}/mo + {formatFeePercent(pkg.feePercent)} per transaction · max {pkg.features.max_pools || 0} pools
                     </p>
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
@@ -187,6 +193,10 @@ export default async function AdminPackagesPage() {
                           <div>
                             <label className="block text-xs font-medium text-foreground mb-1">Price ($)</label>
                             <input name="price" type="number" min="0" step="0.01" defaultValue={(pkg.price / 100).toFixed(2)} className="w-full rounded-lg border border-border bg-background px-2 py-1.5 text-xs" />
+                          </div>
+                          <div>
+                            <label className="block text-xs font-medium text-foreground mb-1">Fee (%)</label>
+                            <input name="feePercent" type="number" min="0" step="0.1" defaultValue={(pkg.feePercent / 100).toFixed(1)} className="w-full rounded-lg border border-border bg-background px-2 py-1.5 text-xs" />
                           </div>
                           <PackageFeatureFields features={pkg.features} />
                           <Button type="submit" size="xs" className="w-full">Save</Button>

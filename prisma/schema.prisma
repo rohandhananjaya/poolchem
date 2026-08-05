@@ -257,6 +257,7 @@ model Package {
   slug         String   @unique
   name         String
   price        Int      // cents (e.g., 1900 = $19.00)
+  feePercent   Int      @default(0) // basis points on top of price (e.g., 250 = 2.5%)
   features     String   // JSON string — parsed at runtime
   sortOrder    Int      @default(0)
   /// Cached, lazily-created Stripe Price id for this package — reused across

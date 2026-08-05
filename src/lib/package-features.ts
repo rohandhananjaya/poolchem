@@ -19,6 +19,8 @@ export interface PackageInfo {
   slug: string
   name: string
   price: number
+  /** Basis points on top of price (e.g., 250 = 2.5%) charged per transaction. */
+  feePercent: number
   features: PackageFeatures
   sortOrder: number
 }
@@ -138,6 +140,11 @@ export function isTrialExpired(companyPackage: CompanyPackageInfo): boolean {
 
 export function formatPrice(cents: number): string {
   return `$${(cents / 100).toFixed(2)}`
+}
+
+/** Basis points → a display string, e.g. 250 -> "2.5%". */
+export function formatFeePercent(basisPoints: number): string {
+  return `${(basisPoints / 100).toFixed(basisPoints % 100 === 0 ? 0 : 1)}%`
 }
 
 export const FEATURE_LABELS: { key: keyof PackageFeatures; label: string }[] = [

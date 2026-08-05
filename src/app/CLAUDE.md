@@ -10,6 +10,7 @@ Next.js 16 App Router. Pattern: **Server Component page → `db/` helper → ren
 - `setup/page.tsx` — one-time platform-admin bootstrap wizard; redirects to `/login` once a SUPER_ADMIN exists. `actions.ts`: `setupAction`
 - `login/page.tsx` — password + Google OAuth; redirects to `/setup` while no SUPER_ADMIN exists. `loginAction`, `requestPasswordResetAction`, and `resendConfirmationAction` (resends the signup-confirmation email via Supabase's own `auth.resend()`, surfaced when `loginAction` detects an unconfirmed account) are gated by Cloudflare Turnstile (`src/lib/turnstile.ts`) to block credential-stuffing/reset-email/resend abuse
 - `signup/page.tsx` — creates a Company + OWNER user (unconfirmed until they click the emailed link); redirects to `/setup` while no SUPER_ADMIN exists. `signupAction` mints a signup-confirmation link via `admin.auth.admin.generateLink({ type: "signup" })` and emails it (`notifyConfirmSignup`) instead of auto-confirming; gated by Cloudflare Turnstile (`src/lib/turnstile.ts`) to block automated account creation
+- `pricing/page.tsx` — **public** flat-fee pricing page (no auth); reads via `getAllPackages`, shows the lowest-`sortOrder` package's flat price (or "Free") + `feePercent` — no per-pool/per-tech calculator, no tier comparison
 - `pool/[poolToken]/page.tsx` — **public** homeowner dashboard (no auth); reads via `getPoolByPublicToken` / `getHomeownerDashboard`
 - `report/[reportToken]/page.tsx` — **public** shareable service report (no auth); reads via `getPublicReport`
 - `onboarding/page.tsx` — post-signup setup wizard (needs a session but sits outside `(dashboard)`); prompts to fill in company phone/address and add a first pool if either is missing. `actions.ts`: `updateCompanyDetailsAction`, `createFirstPoolAction`
@@ -21,7 +22,7 @@ Next.js 16 App Router. Pattern: **Server Component page → `db/` helper → ren
 - `icon.tsx` — 32×32 favicon (the PWA/Apple icons are static PNGs in `public/icons/`: `icon-192.png`, `icon-512.png`, `apple-touch-icon.png`)
 
 ### (public)/ — **stale**: these routes don't exist yet
-This section previously listed a `(public)/` route group (blog, about-us, services, contact-us, features, pricing, documentation) — none of it exists in the repo (confirmed via glob). Don't assume any of these pages are there; build them if/when actually needed.
+This section previously listed a `(public)/` route group (blog, about-us, services, contact-us, features, documentation) — none of it exists in the repo (confirmed via glob). `pricing/` (above) is the first exception. Don't assume any of the rest are there; build them if/when actually needed.
 
 ## (dashboard)/ — auth-required route group, shared `layout.tsx` (nav shell)
 - `dashboard/` — home; `getDashboardData(companyId)`. For SUPER_ADMIN (no `companyId`), renders a platform-overview dashboard instead via `getAdminDashboardData()` + `getServerHealthSummary()` (`<PlatformKPIs>`, `<ServerHealthSummary>`, `<LiveServerCharts>`, etc.)

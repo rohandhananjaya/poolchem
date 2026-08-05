@@ -36,12 +36,14 @@ export async function createPackageAction(formData: FormData) {
   const slug = (formData.get("slug") as string)?.trim().toLowerCase()
   const name = (formData.get("name") as string)?.trim()
   const price = parseInt(formData.get("price") as string, 10) || 0
+  const feePercent = parseFloat(formData.get("feePercent") as string) || 0
   const features = parsePackageFeaturesFromForm(formData)
 
   const pkg = await createPackage({
     slug,
     name,
     price: Math.round(price * 100),
+    feePercent: Math.round(feePercent * 100),
     features: JSON.stringify(features),
   })
   logger.info("Package created", {
@@ -60,11 +62,13 @@ export async function updatePackageAction(formData: FormData) {
 
   const name = (formData.get("name") as string)?.trim()
   const price = parseInt(formData.get("price") as string, 10) || 0
+  const feePercent = parseFloat(formData.get("feePercent") as string) || 0
   const features = parsePackageFeaturesFromForm(formData)
 
   await updatePackage(id, {
     name,
     price: Math.round(price * 100),
+    feePercent: Math.round(feePercent * 100),
     features: JSON.stringify(features),
   })
   logger.info("Package updated", {

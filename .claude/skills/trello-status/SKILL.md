@@ -1,6 +1,6 @@
 ---
 name: trello-status
-description: Fetch a Trello card when mentioned in chat, move it between To Do / Doing / Done lists, and create a feature git branch when development starts. Triggers on a Trello card name/URL/ID mention, or a request to change a card's status.
+description: Fetch a Trello card when mentioned in chat, move it between To Do / Doing / Done lists, create a feature git branch when development starts, and brainstorm the implementation approach. Triggers on a Trello card name/URL/ID mention, or a request to change a card's status.
 ---
 
 # Trello card lookup + status change
@@ -8,7 +8,7 @@ description: Fetch a Trello card when mentioned in chat, move it between To Do /
 Handles three intents:
 1. **Mention** — user references a Trello card by name, URL, or ID → fetch and summarize it.
 2. **Status change** — user asks to move a card to **To Do**, **Doing**, or **Done**.
-3. **Start development** — card moves into **Doing** → also cut a feature git branch.
+3. **Start development** — card moves into **Doing** → cut a feature git branch, then brainstorm the implementation approach (see below).
 
 ## Tools
 
@@ -45,6 +45,15 @@ Only fires the first time a card enters Doing, not on every re-mention. Steps:
 3. Base branch = current branch (this repo's base is `development`, see repo git status) unless user says otherwise — confirm which if ambiguous.
 4. `git checkout -b <branch-name> <base-branch>` — creates and switches. Report the branch name and base to the user.
 5. Don't push the branch — local creation only, unless the user explicitly asks to push.
+
+## Brainstorm step (runs right after the branch is cut)
+
+Don't just report the branch name and stop — the point of entering Doing is to start building. Immediately:
+
+1. Investigate before proposing anything: read the card's description/acceptance criteria closely, then check the actual codebase for what already exists in that area (relevant routes, `db/` helpers, schema, prior art). Delegate to an Explore agent for anything broader than a couple of targeted greps. Don't brainstorm from the card text alone — ground it in what's really there.
+2. Summarize findings tersely (what exists, what doesn't, what the acceptance criteria concretely require) and flag any real scope ambiguity — e.g. the card's target surface/data model isn't obvious, or acceptance criteria could map to more than one existing system.
+3. If ambiguity is genuine and the choice materially changes what gets built (schema touched, which page/route, data model implications), ask via `AskUserQuestion` with concrete options before writing code. If scope is unambiguous, skip the question and proceed straight to implementation — don't ask just to confirm the obvious.
+4. Once scope is settled, load whatever project skills the touched files trigger (e.g. this repo's `prisma-db`, `ui-design`, `solid-principles`, `testing-patterns`) and implement: schema/migration if needed, `db/` layer, UI, tests, and keep `src/app/CLAUDE.md` / `src/lib/db/CLAUDE.md` in sync per root `CLAUDE.md`'s doc-sync rule.
 
 ## Gotchas
 

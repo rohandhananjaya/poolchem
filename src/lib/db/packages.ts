@@ -23,6 +23,7 @@ function toPackageInfo(pkg: Package): PackageInfo {
     slug: pkg.slug,
     name: pkg.name,
     price: pkg.price,
+    feePercent: pkg.feePercent,
     features: parseFeatures(pkg.features),
     sortOrder: pkg.sortOrder,
   }
@@ -812,10 +813,11 @@ export async function createPackage(data: {
   slug: string
   name: string
   price: number
+  feePercent?: number
   features: string
   sortOrder?: number
 }): Promise<Package> {
-  return prisma.package.create({ data: { sortOrder: 0, ...data } })
+  return prisma.package.create({ data: { sortOrder: 0, feePercent: 0, ...data } })
 }
 
 export async function updatePackage(
@@ -823,6 +825,7 @@ export async function updatePackage(
   data: Partial<{
     name: string
     price: number
+    feePercent: number
     features: string
     sortOrder: number
   }>,
