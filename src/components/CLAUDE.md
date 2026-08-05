@@ -24,6 +24,10 @@ Feature components grouped by domain; shadcn/ui primitives in [ui/](ui/) (style 
 
 `ProfileForms` (account + company forms, posts to `settings/actions.ts`) — links out to `/account/api-keys` for owners · `SignOutButton` (signs out via Supabase + redirects to `/login`; on native only, unregisters the device push token first via `unregisterPushDeviceAction`)
 
+## settings/
+
+`PaymentProcessorCard` (OWNER-only; connect/disconnect the company's own Stripe Express account via `connectStripeAction`/`disconnectStripeAction`, shows live connected/onboarded status) — rendered on `settings/page.tsx` beside `ProfileForms`, not inside it (distinct concern from platform-subscription billing).
+
 ## account/
 `ApiKeysManager` (list/generate/revoke API keys for the `api_access` plan feature; one-time secret reveal on generation; locked upsell hint when `canUseApiKeys` is false — same idiom as `csv_import`/`custom_branding`) · `DownloadPostmanButton` (downloads a Postman collection pre-wired to `/api/v1` via `downloadPostmanCollectionAction`; rendered in the `ApiKeysManager` header)
 

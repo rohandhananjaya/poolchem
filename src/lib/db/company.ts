@@ -21,6 +21,8 @@ export interface UpdateCompanyData {
   stripeCustomerId?: string | null;
   stripeSubscriptionId?: string | null;
   subscriptionStatus?: string | null;
+  stripeConnectAccountId?: string | null;
+  stripeConnectOnboarded?: boolean;
   fromEmail?: string | null;
 }
 

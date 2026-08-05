@@ -1,12 +1,18 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import { createClient as createAdminClient } from "@supabase/supabase-js";
 
 import { requireAuth, requireOwner } from "@/lib/auth";
-import { updateCompany } from "@/lib/db/company";
+import { getCompanyById, updateCompany } from "@/lib/db/company";
 import { getCompanyPackage } from "@/lib/db/packages";
+import { getPaymentSettings } from "@/lib/db/payment-settings";
 import { checkFeatureAccess } from "@/lib/package-features";
+import {
+  createConnectOnboardingLink,
+  disconnectConnectAccount,
+} from "@/lib/payment/connect";
 import { deleteCompanyLogoObject, uploadCompanyLogo, validateLogoFile } from "@/lib/storage";
 import {
   updateUser,
@@ -165,6 +171,66 @@ export async function exportDataAction(): Promise<
       ok: false,
       error: "Could not export your data. Please try again.",
     };
+  }
+}
+
+/**
+ * Starts (or resumes) Stripe Express onboarding for the company's own
+ * payment-processor account, then redirects to Stripe's hosted flow.
+ * Restricted to company owners.
+ */
+export async function connectStripeAction(): Promise<void> {
+  const user = await requireOwner();
+  if (!user.companyId) redirect("/settings");
+
+  const company = await getCompanyById(user.companyId);
+  if (!company) redirect("/settings");
+
+  const { paymentDevMode } = await getPaymentSettings();
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://localhost:3000";
+
+  const { url, accountId } = await createConnectOnboardingLink(
+    {
+      companyEmail: company.email,
+      existingAccountId: company.stripeConnectAccountId,
+      returnUrl: `${baseUrl}/settings?stripe_connect=return`,
+      refreshUrl: `${baseUrl}/settings?stripe_connect=refresh`,
+    },
+    paymentDevMode,
+  );
+
+  if (accountId !== company.stripeConnectAccountId) {
+    await updateCompany(user.companyId, { stripeConnectAccountId: accountId });
+  }
+
+  redirect(url);
+}
+
+/** Disconnects the company's payment-processor account. Restricted to owners. */
+export async function disconnectStripeAction(
+  _prev: FormState,
+): Promise<FormState> {
+  const user = await requireOwner();
+  if (!user.companyId) {
+    return { ok: false, error: "No company affiliation." };
+  }
+
+  const company = await getCompanyById(user.companyId);
+  if (!company?.stripeConnectAccountId) {
+    return { ok: false, error: "No payment processor is connected." };
+  }
+
+  try {
+    const { paymentDevMode } = await getPaymentSettings();
+    await disconnectConnectAccount(company.stripeConnectAccountId, paymentDevMode);
+    await updateCompany(user.companyId, {
+      stripeConnectAccountId: null,
+      stripeConnectOnboarded: false,
+    });
+    revalidatePath("/settings");
+    return { ok: true };
+  } catch {
+    return { ok: false, error: "Could not disconnect. Please try again." };
   }
 }
 

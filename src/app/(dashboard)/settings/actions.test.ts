@@ -6,9 +6,22 @@ vi.mock("@/lib/auth", () => ({
 }));
 vi.mock("@/lib/db/company", () => ({
   updateCompany: vi.fn(),
+  getCompanyById: vi.fn(),
 }));
 vi.mock("@/lib/db/packages", () => ({
   getCompanyPackage: vi.fn(),
+}));
+vi.mock("@/lib/db/payment-settings", () => ({
+  getPaymentSettings: vi.fn(),
+}));
+vi.mock("@/lib/payment/connect", () => ({
+  createConnectOnboardingLink: vi.fn(),
+  disconnectConnectAccount: vi.fn(),
+}));
+vi.mock("next/navigation", () => ({
+  redirect: vi.fn(() => {
+    throw new Error("NEXT_REDIRECT");
+  }),
 }));
 vi.mock("@/lib/storage", () => ({
   uploadCompanyLogo: vi.fn(),
@@ -36,8 +49,12 @@ vi.mock("@supabase/supabase-js", () => ({
 }));
 
 const { requireAuth, requireOwner } = await import("@/lib/auth");
-const { updateCompany } = await import("@/lib/db/company");
+const { updateCompany, getCompanyById } = await import("@/lib/db/company");
 const { getCompanyPackage } = await import("@/lib/db/packages");
+const { getPaymentSettings } = await import("@/lib/db/payment-settings");
+const { createConnectOnboardingLink, disconnectConnectAccount } =
+  await import("@/lib/payment/connect");
+const { redirect } = await import("next/navigation");
 const { uploadCompanyLogo, deleteCompanyLogoObject, validateLogoFile } =
   await import("@/lib/storage");
 const { updateUser } = await import("@/lib/db/users");
@@ -50,6 +67,8 @@ const {
   updatePasswordAction,
   deleteAccountAction,
   exportDataAction,
+  connectStripeAction,
+  disconnectStripeAction,
 } = await import("./actions");
 
 const mockUser = {
@@ -521,5 +540,123 @@ describe("exportDataAction", () => {
       ok: false,
       error: "Current password is incorrect.",
     });
+  });
+});
+
+describe("connectStripeAction", () => {
+  it("creates a new connect account, persists it, and redirects to onboarding", async () => {
+    vi.mocked(requireOwner).mockResolvedValue(mockUser as never);
+    vi.mocked(getCompanyById).mockResolvedValue({
+      id: "company-1",
+      email: "co@test.com",
+      stripeConnectAccountId: null,
+    } as never);
+    vi.mocked(getPaymentSettings).mockResolvedValue({
+      stripeEnabled: true,
+      paypalEnabled: false,
+      paymentDevMode: true,
+    });
+    vi.mocked(createConnectOnboardingLink).mockResolvedValue({
+      url: "https://connect.stripe.com/setup/acct_new",
+      accountId: "acct_new",
+    });
+
+    await expect(connectStripeAction()).rejects.toThrow("NEXT_REDIRECT");
+
+    expect(createConnectOnboardingLink).toHaveBeenCalledWith(
+      expect.objectContaining({ companyEmail: "co@test.com", existingAccountId: null }),
+      true,
+    );
+    expect(updateCompany).toHaveBeenCalledWith("company-1", {
+      stripeConnectAccountId: "acct_new",
+    });
+    expect(redirect).toHaveBeenCalledWith("https://connect.stripe.com/setup/acct_new");
+  });
+
+  it("reuses an existing connect account without re-saving it", async () => {
+    vi.mocked(requireOwner).mockResolvedValue(mockUser as never);
+    vi.mocked(getCompanyById).mockResolvedValue({
+      id: "company-1",
+      email: "co@test.com",
+      stripeConnectAccountId: "acct_existing",
+    } as never);
+    vi.mocked(getPaymentSettings).mockResolvedValue({
+      stripeEnabled: true,
+      paypalEnabled: false,
+      paymentDevMode: true,
+    });
+    vi.mocked(createConnectOnboardingLink).mockResolvedValue({
+      url: "https://connect.stripe.com/setup/acct_existing",
+      accountId: "acct_existing",
+    });
+
+    await expect(connectStripeAction()).rejects.toThrow("NEXT_REDIRECT");
+
+    expect(updateCompany).not.toHaveBeenCalled();
+  });
+
+  it("redirects to settings when the user has no company", async () => {
+    vi.mocked(requireOwner).mockResolvedValue({ ...mockUser, companyId: null } as never);
+
+    await expect(connectStripeAction()).rejects.toThrow("NEXT_REDIRECT");
+
+    expect(redirect).toHaveBeenCalledWith("/settings");
+    expect(createConnectOnboardingLink).not.toHaveBeenCalled();
+  });
+});
+
+describe("disconnectStripeAction", () => {
+  it("disconnects the account and clears the company's connect fields", async () => {
+    vi.mocked(requireOwner).mockResolvedValue(mockUser as never);
+    vi.mocked(getCompanyById).mockResolvedValue({
+      id: "company-1",
+      stripeConnectAccountId: "acct_existing",
+    } as never);
+    vi.mocked(getPaymentSettings).mockResolvedValue({
+      stripeEnabled: true,
+      paypalEnabled: false,
+      paymentDevMode: true,
+    });
+
+    const result = await disconnectStripeAction({ ok: false });
+
+    expect(result).toEqual({ ok: true });
+    expect(disconnectConnectAccount).toHaveBeenCalledWith("acct_existing", true);
+    expect(updateCompany).toHaveBeenCalledWith("company-1", {
+      stripeConnectAccountId: null,
+      stripeConnectOnboarded: false,
+    });
+    expect(revalidatePath).toHaveBeenCalledWith("/settings");
+  });
+
+  it("returns an error when no processor is connected", async () => {
+    vi.mocked(requireOwner).mockResolvedValue(mockUser as never);
+    vi.mocked(getCompanyById).mockResolvedValue({
+      id: "company-1",
+      stripeConnectAccountId: null,
+    } as never);
+
+    const result = await disconnectStripeAction({ ok: false });
+
+    expect(result).toEqual({ ok: false, error: "No payment processor is connected." });
+    expect(disconnectConnectAccount).not.toHaveBeenCalled();
+  });
+
+  it("returns an error when the Stripe call fails", async () => {
+    vi.mocked(requireOwner).mockResolvedValue(mockUser as never);
+    vi.mocked(getCompanyById).mockResolvedValue({
+      id: "company-1",
+      stripeConnectAccountId: "acct_existing",
+    } as never);
+    vi.mocked(getPaymentSettings).mockResolvedValue({
+      stripeEnabled: true,
+      paypalEnabled: false,
+      paymentDevMode: true,
+    });
+    vi.mocked(disconnectConnectAccount).mockRejectedValue(new Error("Stripe error"));
+
+    const result = await disconnectStripeAction({ ok: false });
+
+    expect(result).toEqual({ ok: false, error: "Could not disconnect. Please try again." });
   });
 });

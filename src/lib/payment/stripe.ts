@@ -10,7 +10,7 @@ import type {
   ReviseSubscriptionResult,
 } from "./types"
 
-function getStripe(devMode?: boolean): Stripe {
+export function getStripe(devMode?: boolean): Stripe {
   const key = devMode
     ? process.env.STRIPE_SECRET_KEY_SANDBOX
     : process.env.STRIPE_SECRET_KEY_LIVE
