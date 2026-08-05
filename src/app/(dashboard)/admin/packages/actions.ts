@@ -11,6 +11,7 @@ import {
 } from "@/lib/db/packages"
 import { updateTrialDays } from "@/lib/db/platform-settings"
 import { updateFeeBasedBilling } from "@/lib/db/platform-settings"
+import { updateLegacyPerPoolRate } from "@/lib/db/platform-settings"
 import { updatePaymentSettings } from "@/lib/db/payment-settings"
 import type { PackageFeatures } from "@/lib/package-features"
 import { logger } from "@/lib/log"
@@ -157,4 +158,28 @@ export async function updateFeeBasedBillingAction(formData: FormData) {
     metadata: { feeBasedBilling },
   })
   revalidatePath("/admin/packages")
+}
+
+/**
+ * Sets the estimated monthly cost per pool under the retired per-pool model
+ * (dollars on the form, cents in the DB). Feeds the fee-vs-savings dashboard's
+ * old-model-cost estimate.
+ */
+export async function updateLegacyPerPoolRateAction(formData: FormData) {
+  const currentUser = await requireSuperAdmin()
+
+  const dollars = parseFloat(formData.get("legacyPerPoolRate") as string)
+  if (!Number.isFinite(dollars) || dollars < 0) {
+    throw new Error("Legacy per-pool rate must be a non-negative amount.")
+  }
+
+  await updateLegacyPerPoolRate(Math.round(dollars * 100))
+
+  logger.info("Legacy per-pool rate updated", {
+    context: "admin.packages.updateLegacyPerPoolRateAction",
+    userId: currentUser.id,
+    metadata: { cents: Math.round(dollars * 100) },
+  })
+  revalidatePath("/admin/packages")
+  revalidatePath("/dashboard")
 }

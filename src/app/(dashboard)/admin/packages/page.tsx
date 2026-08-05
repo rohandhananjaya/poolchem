@@ -13,6 +13,7 @@ import {
   updateTrialDaysAction,
   updatePaymentSettingsAction,
   updateFeeBasedBillingAction,
+  updateLegacyPerPoolRateAction,
 } from "./actions"
 import { PackageFeatureFields } from "@/components/package/package-feature-fields"
 import { formatPrice, formatFeePercent } from "@/lib/package-features"
@@ -82,6 +83,27 @@ export default async function AdminPackagesPage() {
                 </div>
               </label>
               <Button type="submit" size="sm" className="mt-3">Save</Button>
+            </form>
+
+            <form action={updateLegacyPerPoolRateAction} className="mt-4 flex items-end gap-3 border-t border-border pt-4">
+              <div>
+                <label className="block text-xs font-medium text-foreground mb-1">
+                  Legacy per-pool rate ($/pool/mo)
+                </label>
+                <input
+                  name="legacyPerPoolRate"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  defaultValue={(platformSettings.legacyPerPoolRate / 100).toFixed(2)}
+                  className="w-36 rounded-lg border border-border bg-background px-2 py-1.5 text-sm"
+                />
+              </div>
+              <Button type="submit" size="sm">Save</Button>
+              <p className="text-xs text-muted-foreground">
+                What the retired per-pool model would have cost per pool per month.
+                Used to estimate old-model cost on the SUPER_ADMIN fee-vs-savings dashboard.
+              </p>
             </form>
           </div>
         </section>

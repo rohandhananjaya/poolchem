@@ -10,6 +10,26 @@ export interface PlatformSettingsInfo {
   paypalEnabled: boolean
   paymentDevMode: boolean
   feeBasedBilling: boolean
+  /** Estimated monthly cost per pool under the retired per-pool model, in cents. */
+  legacyPerPoolRate: number
+}
+
+function toSettingsInfo(settings: {
+  trialDays: number
+  stripeEnabled: boolean
+  paypalEnabled: boolean
+  paymentDevMode: boolean
+  feeBasedBilling: boolean
+  legacyPerPoolRate: number
+}): PlatformSettingsInfo {
+  return {
+    trialDays: settings.trialDays,
+    stripeEnabled: settings.stripeEnabled,
+    paypalEnabled: settings.paypalEnabled,
+    paymentDevMode: settings.paymentDevMode,
+    feeBasedBilling: settings.feeBasedBilling,
+    legacyPerPoolRate: settings.legacyPerPoolRate,
+  }
 }
 
 export async function getPlatformSettings(): Promise<PlatformSettingsInfo> {
@@ -18,13 +38,7 @@ export async function getPlatformSettings(): Promise<PlatformSettingsInfo> {
     update: {},
     create: { id: SETTINGS_ID },
   })
-  return {
-    trialDays: settings.trialDays,
-    stripeEnabled: settings.stripeEnabled,
-    paypalEnabled: settings.paypalEnabled,
-    paymentDevMode: settings.paymentDevMode,
-    feeBasedBilling: settings.feeBasedBilling,
-  }
+  return toSettingsInfo(settings)
 }
 
 export async function updateTrialDays(days: number): Promise<PlatformSettingsInfo> {
@@ -33,13 +47,24 @@ export async function updateTrialDays(days: number): Promise<PlatformSettingsInf
     update: { trialDays: days },
     create: { id: SETTINGS_ID, trialDays: days },
   })
-  return {
-    trialDays: settings.trialDays,
-    stripeEnabled: settings.stripeEnabled,
-    paypalEnabled: settings.paypalEnabled,
-    paymentDevMode: settings.paymentDevMode,
-    feeBasedBilling: settings.feeBasedBilling,
+  return toSettingsInfo(settings)
+}
+
+/**
+ * Sets the estimated monthly cost per pool under the retired per-pool pricing
+ * model (cents). Feeds the SUPER_ADMIN fee-vs-savings dashboard's
+ * old-model-cost estimate (`active pools × this rate`).
+ */
+export async function updateLegacyPerPoolRate(cents: number): Promise<PlatformSettingsInfo> {
+  if (!Number.isFinite(cents) || cents < 0) {
+    throw new Error("Legacy per-pool rate must be a non-negative number of cents.")
   }
+  const settings = await prisma.platformSettings.upsert({
+    where: { id: SETTINGS_ID },
+    update: { legacyPerPoolRate: Math.round(cents) },
+    create: { id: SETTINGS_ID, legacyPerPoolRate: Math.round(cents) },
+  })
+  return toSettingsInfo(settings)
 }
 
 /**
@@ -70,11 +95,5 @@ export async function updateFeeBasedBilling(enabled: boolean): Promise<PlatformS
     })
   }
 
-  return {
-    trialDays: settings.trialDays,
-    stripeEnabled: settings.stripeEnabled,
-    paypalEnabled: settings.paypalEnabled,
-    paymentDevMode: settings.paymentDevMode,
-    feeBasedBilling: settings.feeBasedBilling,
-  }
+  return toSettingsInfo(settings)
 }

@@ -339,6 +339,11 @@ model PlatformSettings {
   /// instead of a monthly per-pool subscription. Retires the old plan-gating
   /// ("per-pool pricing") logic: migrated companies run `FEE_BASED`.
   feeBasedBilling Boolean @default(false)
+  /// Estimated monthly cost per pool under the retired per-pool pricing model,
+  /// in cents. Used only by the SUPER_ADMIN fee-vs-savings dashboard to show
+  /// admins what the old model would have cost (`active pools × this rate`);
+  /// a pure estimate — no legacy billing history is retained.
+  legacyPerPoolRate Int @default(0)
   updatedAt      DateTime @updatedAt
 
   @@map("platform_settings")

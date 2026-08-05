@@ -8,6 +8,7 @@ import { getCompanyById } from "@/lib/db/company"
 import { getDashboardData } from "@/lib/db/dashboard"
 import { getAdminDashboardData } from "@/lib/db/admin-dashboard"
 import { getServerHealthSummary } from "@/lib/db/admin-diagnostics"
+import { getFeeSavingsData } from "@/lib/db/fee-savings"
 import { Shell } from "@/components/ui/shell"
 import { Card, CardContent } from "@/components/ui/card"
 import { CompanyLogo } from "@/components/shared/CompanyLogo"
@@ -20,6 +21,7 @@ import { ScanFab } from "@/components/dashboard/ScanFab"
 import { PlatformKPIs } from "@/components/admin/PlatformKPIs"
 import { ServerHealthSummary } from "@/components/admin/ServerHealthSummary"
 import { LiveServerCharts } from "@/components/admin/LiveServerCharts"
+import { FeeSavingsCard } from "@/components/admin/FeeSavingsCard"
 import type { UserRole } from "@/generated/prisma/client"
 
 /** Time-of-day greeting from the server clock. */
@@ -106,9 +108,10 @@ export default async function DashboardPage() {
 /** Full realtime dashboard for SUPER_ADMIN users. */
 async function SuperAdminDashboard({ name }: { name: string }) {
   const now = new Date()
-  const [data, health] = await Promise.all([
+  const [data, health, feeSavings] = await Promise.all([
     getAdminDashboardData(),
     getServerHealthSummary(),
+    getFeeSavingsData(),
   ])
 
   return (
@@ -142,6 +145,10 @@ async function SuperAdminDashboard({ name }: { name: string }) {
       </header>
 
       <PlatformKPIs data={data} />
+
+      <div className="mt-6">
+        <FeeSavingsCard data={feeSavings} />
+      </div>
 
       <div className="mt-6">
         <LiveServerCharts />

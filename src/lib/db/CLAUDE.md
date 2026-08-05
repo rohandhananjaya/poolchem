@@ -99,11 +99,16 @@ Get the tenant with `getCompanyId()` / `requireAuth()` from [../auth.ts](../auth
 
 **platform-settings.ts** — single-row platform config.
 - `getPlatformSettings() → { trialDays }` · `updateTrialDays(days) → { trialDays }` · `updateFeeBasedBilling(enabled)` — the last flips the master fee-per-transaction flag and, when enabled, migrates every trial/active company to `FEE_BASED` (one-way per company)
+- `updateLegacyPerPoolRate(cents)` — sets the estimated monthly cost per pool under the retired per-pool model (`PlatformSettings.legacyPerPoolRate`, cents); feeds the fee-vs-savings dashboard's old-model estimate
 
 **visit-payments.ts** — card-present payments on a service visit (Epic 1 Payments-as-a-Service). A `ServiceVisit` has no own `companyId`; every helper is scoped via `pool: { companyId }`, matching `visits.ts`.
 - `getVisitPaymentStatus(visitId, companyId) → VisitPaymentStatus | null` — scoped read; `null` on a cross-tenant miss
 - `markVisitPaid(visitId, companyId)` — flips the visit's `paymentStatus` to `PAID`; throws on a cross-tenant miss
 - `recordVisitPayment({ companyId, visitId, amount }) → PaymentTransaction` — creates the linked `PaymentTransaction` (fee % snapshotted via `getDefaultFeePercent`), marks it `PAID`, and flips the visit to `PAID`; throws on a cross-tenant miss or non-positive amount
+
+**fee-savings.ts** — SUPER_ADMIN fee-vs-savings dashboard (Epic 1, card 5): real processing fees vs the retired per-pool model. **Unscoped** (platform-wide view).
+- `estimateLegacyCostCents(activePools, rateCents) → number` — pure old-model estimate (`pools × rate`), 0 on non-finite/negative input
+- `getFeeSavingsData(months=6) → FeeSavingsData` — MTD fees (sum of `PaymentTransaction.feeAmount`, PAID only, this calendar month), MTD old-model estimate (`active pools × legacyPerPoolRate`), MTD savings, and an N-month trend (oldest first). Old-model trend buckets use the *current* pool count as a proxy — no per-company historical pool counts are retained.
 
 **push-devices.ts** — registered native app tokens (FCM/APNs) for visit-assignment push. Every token is tenant + user scoped; a token can only be registered/unregistered against the authenticated user's own `companyId`/`userId`.
 - `registerPushDevice({ companyId, userId, token, platform }) → PushDevice` — upsert by `token` (re-registering the same token updates owner/platform), `platform: "ANDROID" | "IOS"`
@@ -154,7 +159,7 @@ Get the tenant with `getCompanyId()` / `requireAuth()` from [../auth.ts](../auth
 All DB tests mock `@/lib/prisma` and require `server-only` to be stubbed (handled by the Vitest config alias). Tests are in the same directory with `.test.ts` suffix:
 - `visits.test.ts` — 38 tests · `company.test.ts` — 12 · `pools.test.ts` — 20 · `packages.test.ts` — 32
 - `users.test.ts` — 14 · `reports.test.ts` — 3 · `schedule.test.ts` — 8 · `dashboard.test.ts` — 2 · `api-keys.test.ts` — 12 · `feedback.test.ts` — 9 · `push-devices.test.ts` — 5
-- `payment-transactions.test.ts` — 8 · `platform-settings.test.ts` — 3
+- `payment-transactions.test.ts` — 8 · `platform-settings.test.ts` — 4 · `fee-savings.test.ts` — 4
 
 No tests yet for `admin-dashboard.ts`, `admin-audit.ts`, `admin-diagnostics.ts`, `payment-settings.ts`, or `invitations.ts` — a real coverage gap, not just a doc omission.
 
