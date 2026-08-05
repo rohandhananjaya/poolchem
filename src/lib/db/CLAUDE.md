@@ -100,6 +100,11 @@ Get the tenant with `getCompanyId()` / `requireAuth()` from [../auth.ts](../auth
 **platform-settings.ts** — single-row platform config.
 - `getPlatformSettings() → { trialDays }` · `updateTrialDays(days) → { trialDays }` · `updateFeeBasedBilling(enabled)` — the last flips the master fee-per-transaction flag and, when enabled, migrates every trial/active company to `FEE_BASED` (one-way per company)
 
+**visit-payments.ts** — card-present payments on a service visit (Epic 1 Payments-as-a-Service). A `ServiceVisit` has no own `companyId`; every helper is scoped via `pool: { companyId }`, matching `visits.ts`.
+- `getVisitPaymentStatus(visitId, companyId) → VisitPaymentStatus | null` — scoped read; `null` on a cross-tenant miss
+- `markVisitPaid(visitId, companyId)` — flips the visit's `paymentStatus` to `PAID`; throws on a cross-tenant miss
+- `recordVisitPayment({ companyId, visitId, amount }) → PaymentTransaction` — creates the linked `PaymentTransaction` (fee % snapshotted via `getDefaultFeePercent`), marks it `PAID`, and flips the visit to `PAID`; throws on a cross-tenant miss or non-positive amount
+
 **push-devices.ts** — registered native app tokens (FCM/APNs) for visit-assignment push. Every token is tenant + user scoped; a token can only be registered/unregistered against the authenticated user's own `companyId`/`userId`.
 - `registerPushDevice({ companyId, userId, token, platform }) → PushDevice` — upsert by `token` (re-registering the same token updates owner/platform), `platform: "ANDROID" | "IOS"`
 - `unregisterPushDevice({ companyId, userId, token }) → number` — deleteMany scoped to user+token; returns deleted count

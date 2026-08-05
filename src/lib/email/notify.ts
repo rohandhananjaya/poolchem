@@ -22,6 +22,7 @@ import {
   buildConfirmSignupEmail,
   buildPasswordResetEmail,
   buildPaymentReceiptEmail,
+  buildCardPaymentReceiptEmail,
   buildSubscriptionCancelledEmail,
   buildTrialExpiringEmail,
   buildTrialExpiredEmail,
@@ -228,6 +229,36 @@ export async function notifyPaymentSuccess(input: {
     invoiceUrl: `${getOrigin()}/account/package`,
   });
   await safeSend("payment_success", email);
+}
+
+/**
+ * Sends a card-present payment receipt to the pool's homeowner after a visit
+ * charge. Resolves the visit + company server-side; no-ops (never throws) when
+ * the visit or company can't be found.
+ */
+export async function notifyCustomerReceipt(input: {
+  companyId: string;
+  visitId: string;
+  to: string;
+  amount: number;
+}): Promise<void> {
+  const visit = await getVisitById(input.visitId, input.companyId);
+  if (!visit) return;
+
+  const company = await getCompanyById(input.companyId);
+  const reportUrl = visit.publicToken
+    ? `${getOrigin()}/report/${visit.publicToken}`
+    : undefined;
+
+  const email = buildCardPaymentReceiptEmail({
+    to: input.to,
+    from: company ? getCompanyFromEmail(company) : getPlatformFrom(),
+    companyName: company?.name ?? "Your pool service provider",
+    poolName: visit.pool.name,
+    amount: input.amount,
+    reportUrl,
+  });
+  await safeSend("customer_receipt", email);
 }
 
 /** Sends a confirmation when a subscription is cancelled. */

@@ -30,6 +30,11 @@ enum ServiceVisitStatus {
   CANCELLED
 }
 
+enum VisitPaymentStatus {
+  UNPAID
+  PAID
+}
+
 enum FeedbackType {
   BUG_REPORT
   FEATURE_REQUEST
@@ -153,6 +158,10 @@ model ServiceVisit {
   techId       String?
   notes        String?
   status       ServiceVisitStatus @default(DRAFT)
+  // Whether the visit's card payment has been collected (card-present capture,
+  // Epic 1 Payments-as-a-Service). UNPAID by default; set to PAID when the
+  // linked PaymentTransaction is captured.
+  paymentStatus VisitPaymentStatus  @default(UNPAID)
   weatherNotes      String?
   cancellationReason String?
   // Unguessable token for the public, no-login shareable report link

@@ -26,6 +26,7 @@ import { WaterHealthGauge } from "@/components/visits/WaterHealthGauge"
 import { ChemicalRecommendations } from "@/components/visits/ChemicalRecommendations"
 import { AddChemicalDialog } from "@/components/visits/AddChemicalDialog"
 import { VisitNotes } from "@/components/visits/VisitNotes"
+import { VisitChargeCard } from "@/components/visits/VisitChargeCard"
 import {
   saveDraftAction,
   completeVisitAction,
@@ -43,6 +44,7 @@ type FormData = z.infer<typeof formSchema>
 interface SerializedVisit {
   id: string
   status: string
+  paymentStatus: string
   notes: string | null
   nextServiceDate: string | null
   pool: {
@@ -645,6 +647,16 @@ export function VisitForm({
           className="block w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground shadow-xs transition-colors placeholder:text-muted-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
         />
       </div>
+
+      {/* Card present payment (Epic 1 Payments-as-a-Service) */}
+      {visit.status !== "CANCELLED" && (
+        <VisitChargeCard
+          visitId={visit.id}
+          poolName={visit.pool.name}
+          paid={visit.paymentStatus === "PAID"}
+          readOnly={isOthersVisit}
+        />
+      )}
 
       {/* Action Buttons */}
       {!completed && !isOthersVisit && (

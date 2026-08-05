@@ -243,9 +243,7 @@ export interface PaymentReceiptEmailProps {
   packageName: string;
   amount?: number;
   invoiceUrl: string;
-}
-
-export function buildPaymentReceiptEmail(props: PaymentReceiptEmailProps) {
+}export function buildPaymentReceiptEmail(props: PaymentReceiptEmailProps) {
   const amountLine =
     props.amount != null
       ? `<p style="margin:12px 0 0"><strong>${esc(props.packageName)}</strong> — ${esc(formatMoney(props.amount))}/month</p>`
@@ -260,6 +258,35 @@ export function buildPaymentReceiptEmail(props: PaymentReceiptEmailProps) {
       body: `<p style="margin:0">Your payment was successful and your plan is active.</p>${amountLine}
 <p style="margin:12px 0 0">Your next billing date will be one month from today.</p>`,
       cta: { label: "View billing", url: props.invoiceUrl },
+    }),
+  };
+}
+
+export interface CardPaymentReceiptEmailProps {
+  to: string;
+  from: string;
+  companyName: string;
+  poolName: string;
+  /** Amount charged, in whole dollars. */
+  amount: number;
+  reportUrl?: string;
+}
+
+export function buildCardPaymentReceiptEmail(props: CardPaymentReceiptEmailProps) {
+  const reportCta = props.reportUrl
+    ? { label: "View service report", url: props.reportUrl }
+    : null;
+  return {
+    to: props.to,
+    from: props.from,
+    subject: `Payment receipt — ${esc(props.poolName)}`,
+    html: renderShell({
+      heading: "Payment received",
+      intro: `Your card was charged by ${esc(props.companyName)}.`,
+      body: `<p style="margin:0">Service visit for <strong>${esc(props.poolName)}</strong>.</p>
+<p style="margin:12px 0 0;font-size:18px;font-weight:600;color:#111">${esc(formatMoney(props.amount))}</p>
+<p style="margin:4px 0 0;font-size:12px;color:#999">Charged to your card at the equipment pad.</p>`,
+      cta: reportCta,
     }),
   };
 }

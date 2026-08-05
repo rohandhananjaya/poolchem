@@ -10,19 +10,33 @@ vi.mock("@/lib/db/visits", () => ({
   startVisit: vi.fn(),
   updateVisitStatus: vi.fn(),
   cancelVisit: vi.fn(),
+  getVisitById: vi.fn(),
+}));
+vi.mock("@/lib/db/company", () => ({
+  getCompanyById: vi.fn(),
+}));
+vi.mock("@/lib/db/visit-payments", () => ({
+  recordVisitPayment: vi.fn(),
+}));
+vi.mock("@/lib/payment/terminal", () => ({
+  getCardPresentProvider: vi.fn(),
 }));
 vi.mock("@/lib/email/notify", () => ({
   notifyVisitCancelled: vi.fn(),
   notifyReportAvailable: vi.fn(),
+  notifyCustomerReceipt: vi.fn(),
 }));
 vi.mock("next/cache", () => ({
   revalidatePath: vi.fn(),
 }));
-const { saveDraftVisit, completeVisit, startVisit, updateVisitStatus, cancelVisit, assertVisitAccess } = await import("@/lib/db/visits");
+const { saveDraftVisit, completeVisit, startVisit, updateVisitStatus, cancelVisit, assertVisitAccess, getVisitById } = await import("@/lib/db/visits");
 const { requireTech } = await import("@/lib/auth");
+const { getCompanyById } = await import("@/lib/db/company");
+const { recordVisitPayment } = await import("@/lib/db/visit-payments");
+const { getCardPresentProvider } = await import("@/lib/payment/terminal");
 const emailNotify = await import("@/lib/email/notify");
 const { revalidatePath } = await import("next/cache");
-const { saveDraftAction, completeVisitAction, startVisitAction, updateVisitStatusAction, cancelVisitAction } = await import("./actions");
+const { saveDraftAction, completeVisitAction, startVisitAction, updateVisitStatusAction, cancelVisitAction, chargeVisitAction } = await import("./actions");
 
 const mockUser = { id: "user-1", companyId: "company-1", role: "TECH" };
 const visitId = "visit-1";
@@ -200,5 +214,116 @@ describe("cancelVisitAction", () => {
     vi.mocked(cancelVisit).mockResolvedValue(null);
 
     await expect(cancelVisitAction(visitId, "reason")).rejects.toThrow("Visit not found.");
+  });
+});
+
+describe("chargeVisitAction", () => {
+  const mockCapture = vi.fn();
+  const mockCompany = { id: "company-1", name: "Test Co", email: "billing@testco.com", stripeConnectAccountId: "acct_1" };
+
+  beforeEach(() => {
+    vi.mocked(getCardPresentProvider).mockReturnValue({
+      captureCharge: mockCapture,
+    } as never);
+  });
+
+  it("captures a charge, records the visit payment, emails a receipt, and revalidates", async () => {
+    vi.mocked(requireTech).mockResolvedValue(mockUser as never);
+    vi.mocked(getVisitById).mockResolvedValue({
+      id: visitId,
+      paymentStatus: "UNPAID",
+      pool: { name: "Backyard", homeownerEmail: "owner@example.com" },
+    } as never);
+    vi.mocked(getCompanyById).mockResolvedValue(mockCompany as never);
+    mockCapture.mockResolvedValue({
+      providerReference: "sim_123",
+      captureMethod: "simulated",
+    });
+    vi.mocked(recordVisitPayment).mockResolvedValue({
+      id: "txn-1",
+      amount: 5000,
+      feeAmount: 125,
+    } as never);
+
+    const result = await chargeVisitAction(visitId, 5000);
+
+    expect(mockCapture).toHaveBeenCalledWith({
+      amountCents: 5000,
+      description: "Pool service — Backyard",
+      connectedAccountId: "acct_1",
+    });
+    expect(recordVisitPayment).toHaveBeenCalledWith({
+      companyId: "company-1",
+      visitId,
+      amount: 5000,
+    });
+    expect(emailNotify.notifyCustomerReceipt).toHaveBeenCalledWith({
+      companyId: "company-1",
+      visitId,
+      to: "owner@example.com",
+      amount: 50,
+    });
+    expect(revalidatePath).toHaveBeenCalledWith(`/visits/${visitId}`);
+    expect(result).toEqual({
+      ok: true,
+      transactionId: "txn-1",
+      amount: 5000,
+      feeAmount: 125,
+      captureMethod: "simulated",
+    });
+  });
+
+  it("skips the receipt when the pool has no homeowner email", async () => {
+    vi.mocked(requireTech).mockResolvedValue(mockUser as never);
+    vi.mocked(getVisitById).mockResolvedValue({
+      id: visitId,
+      paymentStatus: "UNPAID",
+      pool: { name: "Backyard", homeownerEmail: null },
+    } as never);
+    mockCapture.mockResolvedValue({
+      providerReference: "sim_123",
+      captureMethod: "simulated",
+    });
+    vi.mocked(recordVisitPayment).mockResolvedValue({
+      id: "txn-1",
+      amount: 2500,
+      feeAmount: 63,
+    } as never);
+
+    await chargeVisitAction(visitId, 2500);
+
+    expect(emailNotify.notifyCustomerReceipt).not.toHaveBeenCalled();
+  });
+
+  it("rejects charging an already-paid visit", async () => {
+    vi.mocked(requireTech).mockResolvedValue(mockUser as never);
+    vi.mocked(getVisitById).mockResolvedValue({
+      id: visitId,
+      paymentStatus: "PAID",
+      pool: { name: "Backyard", homeownerEmail: null },
+    } as never);
+
+    await expect(chargeVisitAction(visitId, 5000)).rejects.toThrow(
+      "This visit is already paid.",
+    );
+    expect(mockCapture).not.toHaveBeenCalled();
+    expect(recordVisitPayment).not.toHaveBeenCalled();
+  });
+
+  it("rejects a non-positive amount", async () => {
+    vi.mocked(requireTech).mockResolvedValue(mockUser as never);
+
+    await expect(chargeVisitAction(visitId, 0)).rejects.toThrow(
+      "Charge amount must be a positive number of cents.",
+    );
+    expect(mockCapture).not.toHaveBeenCalled();
+  });
+
+  it("throws when unauthenticated", async () => {
+    vi.mocked(requireTech).mockRejectedValue(new Error("Auth required"));
+
+    await expect(chargeVisitAction(visitId, 5000)).rejects.toThrow(
+      "Auth required",
+    );
   });
 });

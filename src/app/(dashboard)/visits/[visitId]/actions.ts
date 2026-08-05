@@ -7,6 +7,7 @@ import {
   assertVisitAccess,
   cancelVisit,
   completeVisit,
+  getVisitById,
   saveDraftVisit,
   startVisit,
   updateVisitStatus,
@@ -16,6 +17,9 @@ import {
 import { readingsSchema } from "@/lib/validation/visit-readings";
 import { ServiceVisitStatus } from "@/generated/prisma/client";
 import * as emailNotify from "@/lib/email/notify";
+import { getCompanyById } from "@/lib/db/company";
+import { recordVisitPayment } from "@/lib/db/visit-payments";
+import { getCardPresentProvider } from "@/lib/payment/terminal";
 
 export interface VisitFormValues {
   readings: VisitReadings;
@@ -118,4 +122,64 @@ export async function cancelVisitAction(visitId: string, reason: string) {
     reason,
   });
   revalidatePath(`/visits/${visitId}`);
+}
+
+export interface ChargeVisitResult {
+  ok: true;
+  transactionId: string;
+  amount: number;
+  feeAmount: number;
+  captureMethod: "simulated" | "reader";
+}
+
+/**
+ * Charges the customer's card for a visit at the equipment pad (Epic 1
+ * Payments-as-a-Service). Captures via the card-present provider (dev mock
+ * until a Stripe Terminal reader is wired), records the visit payment, marks
+ * the visit paid, and emails the receipt to the pool's homeowner.
+ */
+export async function chargeVisitAction(
+  visitId: string,
+  amountCents: number,
+): Promise<ChargeVisitResult> {
+  const user = await requireTech();
+  if (!user.companyId) throw new Error("No company affiliation.");
+
+  if (!Number.isFinite(amountCents) || amountCents <= 0) {
+    throw new Error("Charge amount must be a positive number of cents.");
+  }
+
+  const visit = await getVisitById(visitId, user.companyId);
+  if (!visit) throw new Error("Visit not found.");
+
+  await assertVisitAccess(visitId, user.companyId, user.id);
+  if (visit.paymentStatus === "PAID") {
+    throw new Error("This visit is already paid.");
+  }
+
+  const company = await getCompanyById(user.companyId);
+
+  const { captureMethod } = await getCardPresentProvider().captureCharge({
+    amountCents,
+    description: `Pool service — ${visit.pool.name}`,
+    connectedAccountId: company?.stripeConnectAccountId ?? null,
+  });
+
+  const tx = await recordVisitPayment({
+    companyId: user.companyId,
+    visitId,
+    amount: amountCents,
+  });
+
+  if (visit.pool.homeownerEmail) {
+    await emailNotify.notifyCustomerReceipt({
+      companyId: user.companyId,
+      visitId,
+      to: visit.pool.homeownerEmail,
+      amount: tx.amount / 100,
+    });
+  }
+
+  revalidatePath(`/visits/${visitId}`);
+  return { ok: true, transactionId: tx.id, amount: tx.amount, feeAmount: tx.feeAmount, captureMethod };
 }
