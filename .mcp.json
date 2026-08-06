@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "trello": {
+      "command": "node",
+      "args": ["C:\\Users\\rohan\\mcp-servers\\trello-desktop-mcp\\dist\\index.js"],
+      "env": {
+        "TRELLO_API_KEY": "685725ebb34d72ba76169683b156b14d",
+        "TRELLO_TOKEN": "ATTA2bfb33654d39315709fff99f9f00e28ad55560d01f794e144bab68773ce8a4c6004E0F03"
+      }
+    }
+  }
+}
