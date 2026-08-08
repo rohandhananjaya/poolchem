@@ -133,6 +133,7 @@ describe("completeVisitAction", () => {
     vi.mocked(completeVisit).mockResolvedValue({
       visit: { pool: { homeownerEmail: "owner@example.com" } },
       applied: true,
+      reportAlreadyNotified: false,
     } as never);
 
     await completeVisitAction(visitId, {
@@ -153,6 +154,30 @@ describe("completeVisitAction", () => {
       visitId,
       to: "owner@example.com",
     });
+  });
+
+  it("skips the report email when the report was already notified, even on a fresh write", async () => {
+    vi.mocked(requireTech).mockResolvedValue(mockUser as never);
+    vi.mocked(completeVisit).mockResolvedValue({
+      visit: { pool: { homeownerEmail: "owner@example.com" } },
+      applied: true,
+      reportAlreadyNotified: true,
+    } as never);
+
+    await completeVisitAction(visitId, {
+      readings: {
+        ph: 7.5,
+        freeChlorine: 2,
+        totalAlkalinity: 100,
+        calciumHardness: 300,
+        cyanuricAcid: 40,
+        temperature: 80,
+      },
+      chemicals: [],
+      notes: "",
+    });
+
+    expect(emailNotify.notifyReportAvailable).not.toHaveBeenCalled();
   });
 
   it("skips the report email when completeVisit reports an idempotent replay", async () => {

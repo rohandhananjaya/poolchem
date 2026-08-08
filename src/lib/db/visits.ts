@@ -192,6 +192,12 @@ export interface CompletedVisit {
   waterHealth: WaterHealthResult;
   /** Whether this call applied the write. `false` = already-applied replay. */
   applied: boolean;
+  /**
+   * Whether the visit's report email had already been sent before this call.
+   * The caller fires the report email only when this is `false` and the write
+   * applied, so a retried offline completion can never double-email.
+   */
+  reportAlreadyNotified: boolean;
 }
 
 /** The result of a save-draft write, with an idempotency flag. */
@@ -244,9 +250,11 @@ async function scheduleNextVisit(
  * all commit together or not at all.
  *
  * The write is idempotent: readings/chemicals are replaced (not appended), the
- * visit's `version` is bumped, and an optional `clientMutationId` is stored so a
+ * visit's `version` is bumped, an optional `clientMutationId` is stored so a
  * replayed offline mutation is a no-op (`applied: false`, no transaction, no
- * next-visit scheduling).
+ * next-visit scheduling), and `reportNotifiedAt` is stamped once so a retried
+ * offline completion can't double-send the report email (`reportAlreadyNotified`
+ * tells the caller whether the email had already gone out).
  *
  * @throws {Error} If the visit does not exist.
  */
@@ -279,6 +287,7 @@ export async function completeVisit(
       ),
       waterHealth: getWaterHealthScore(replayReadings),
       applied: false,
+      reportAlreadyNotified: Boolean(existing.reportNotifiedAt),
     };
   }
 
@@ -297,6 +306,9 @@ export async function completeVisit(
             nextServiceDate !== undefined ? nextServiceDate : undefined,
           version: { increment: 1 },
           clientMutationId: opts.clientMutationId ?? undefined,
+          // Stamp the first notification only, so a re-completion can't reset
+          // the timestamp and re-open the duplicate-email window.
+          reportNotifiedAt: existing.reportNotifiedAt ?? new Date(),
         },
         include: {
           pool: true,
@@ -339,6 +351,7 @@ export async function completeVisit(
           ),
           waterHealth: getWaterHealthScore(replayReadings),
           applied: false,
+          reportAlreadyNotified: Boolean(current.reportNotifiedAt),
         };
       }
     }
@@ -350,6 +363,7 @@ export async function completeVisit(
     recommendations: getChemicalRecommendations(readings, existing.pool.volume),
     waterHealth: getWaterHealthScore(readings),
     applied: true,
+    reportAlreadyNotified: Boolean(existing.reportNotifiedAt),
   };
 }
 

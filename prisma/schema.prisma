@@ -161,6 +161,11 @@ model ServiceVisit {
   // mutation is rejected server-side and deduped. Null for visits saved
   // online-only / before the offline epic.
   clientMutationId String? @unique
+  // When the completed visit's shareable report email was first sent to the
+  // homeowner. Set once inside the completion transaction so a retried offline
+  // completion — even one with a fresh clientMutationId — can't double-email.
+  // Null = report never notified.
+  reportNotifiedAt DateTime?
   createdAt    DateTime           @default(now())
   updatedAt    DateTime           @updatedAt
 

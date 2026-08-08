@@ -245,10 +245,12 @@ describe("completeVisit", () => {
           status: "COMPLETED",
           notes: "All good",
           version: { increment: 1 },
+          reportNotifiedAt: expect.any(Date),
         }),
       }),
     );
     expect(result.visit!.status).toBe("COMPLETED");
+    expect(result.reportAlreadyNotified).toBe(false);
   });
 
   it("skips chemical creation when none are provided", async () => {
@@ -472,6 +474,7 @@ describe("completeVisit", () => {
       status: "COMPLETED",
       version: 1,
       clientMutationId: "mut-1",
+      reportNotifiedAt: new Date("2026-08-01T12:00:00"),
       techId,
       pool: { ...mockPool, volume: 10_000 },
       tech: mockTech,
@@ -492,6 +495,7 @@ describe("completeVisit", () => {
     expect(result.applied).toBe(false);
     expect(prismaMock.$transaction).not.toHaveBeenCalled();
     expect(result.visit).toEqual(appliedVisit);
+    expect(result.reportAlreadyNotified).toBe(true);
   });
 
   it("applies a new clientMutationId, bumps version and stores the key", async () => {
@@ -586,6 +590,52 @@ describe("completeVisit", () => {
 
     expect(result.applied).toBe(false);
     expect(result.visit!.clientMutationId).toBe("mut-3");
+  });
+
+  it("flags reportAlreadyNotified and keeps the original stamp when already notified", async () => {
+    const firstNotifiedAt = new Date("2026-08-01T12:00:00");
+    prismaMock.serviceVisit.findUnique.mockResolvedValue({
+      id: visitId,
+      techId,
+      reportNotifiedAt: firstNotifiedAt,
+      pool: { ...mockPool, volume: 10_000 },
+    });
+
+    const txMock = {
+      waterReading: {
+        deleteMany: vi.fn().mockResolvedValue({}),
+        create: vi.fn().mockResolvedValue({}),
+      },
+      chemicalAdded: {
+        deleteMany: vi.fn().mockResolvedValue({}),
+        createMany: vi.fn().mockResolvedValue({}),
+      },
+      serviceVisit: {
+        update: vi.fn().mockResolvedValue({
+          id: visitId,
+          status: "COMPLETED",
+          reportNotifiedAt: firstNotifiedAt,
+          pool: mockPool,
+          tech: mockTech,
+          waterReadings: [readings],
+          chemicalsAdded: [],
+        }),
+      },
+    };
+    prismaMock.$transaction.mockImplementation(
+      (fn: (tx: typeof txMock) => unknown) => fn(txMock),
+    );
+
+    const result = await completeVisit(visitId, readings, []);
+
+    expect(result.reportAlreadyNotified).toBe(true);
+    expect(txMock.serviceVisit.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          reportNotifiedAt: firstNotifiedAt,
+        }),
+      }),
+    );
   });
 });
 

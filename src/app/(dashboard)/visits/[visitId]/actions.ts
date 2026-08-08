@@ -66,9 +66,11 @@ export async function completeVisitAction(
   );
 
   // Auto-send the shareable report to the pool's homeowner when one is set.
-  // Skipped when the write was an already-applied idempotent replay.
+  // Guarded by both the applied flag and a persisted reportNotifiedAt stamp so
+  // a retried offline completion — even one carrying a fresh clientMutationId —
+  // can never double-email.
   const homeownerEmail = completed.visit?.pool.homeownerEmail;
-  if (completed.applied && homeownerEmail) {
+  if (completed.applied && !completed.reportAlreadyNotified && homeownerEmail) {
     await emailNotify.notifyReportAvailable({
       companyId: user.companyId,
       visitId,
