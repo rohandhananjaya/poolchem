@@ -154,6 +154,13 @@ model ServiceVisit {
   // Null means no date was set; the report may still show a date from a future
   // scheduled visit.
   nextServiceDate DateTime?
+  // Monotonic revision counter for this visit, incremented server-side on each
+  // write so a stale/offline-replayed save can be detected by version.
+  version        Int      @default(0)
+  // UUID generated on-device for each queued offline save. Unique so a replayed
+  // mutation is rejected server-side and deduped. Null for visits saved
+  // online-only / before the offline epic.
+  clientMutationId String? @unique
   createdAt    DateTime           @default(now())
   updatedAt    DateTime           @updatedAt
 
