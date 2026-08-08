@@ -11,6 +11,9 @@ export default defineConfig({
       "server-only": fileURLToPath(
         new URL("./src/test/__mocks__/server-only.ts", import.meta.url),
       ),
+      "client-only": fileURLToPath(
+        new URL("./src/test/__mocks__/client-only.ts", import.meta.url),
+      ),
     },
   },
   test: {

@@ -26,6 +26,7 @@ This version has breaking changes — APIs, conventions, and file structure may 
 ## Codebase maps (read before searching)
 
 - `src/lib/db/CLAUDE.md` — helper signatures + tenancy
+- `src/lib/offline/CLAUDE.md` — client-side Dexie/IndexedDB offline persistence (drafts + mutation queue)
 - `src/app/CLAUDE.md` — route map, pages ↔ actions
 - `src/components/CLAUDE.md` — component inventory
 - `CLAUDE.md` (root) — overview + commands

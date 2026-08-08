@@ -41,6 +41,7 @@ Environment: copy [.env.example](.env.example) → `.env`. Required: `DATABASE_U
 
 These save time by inventorying every export:
 - [src/lib/db/CLAUDE.md](src/lib/db/CLAUDE.md) — data-access helper signatures + tenancy rules
+- [src/lib/offline/CLAUDE.md](src/lib/offline/CLAUDE.md) — client-side Dexie/IndexedDB offline persistence (drafts + mutation queue)
 - [src/app/CLAUDE.md](src/app/CLAUDE.md) — route map, pages ↔ helpers ↔ Server Actions
 - [src/components/CLAUDE.md](src/components/CLAUDE.md) — component inventory by domain
 
