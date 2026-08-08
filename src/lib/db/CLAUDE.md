@@ -53,8 +53,8 @@ Get the tenant with `getCompanyId()` / `requireAuth()` from [../auth.ts](../auth
 - `updateVisitStatus(visitId, companyId, status) → ServiceVisit | null` — changes visit status
 - `cancelVisit(visitId, companyId, reason) → ServiceVisit | null` — sets `CANCELLED` + stores `cancellationReason`
 - `updateVisit(visitId, companyId, data: { scheduledAt?, techId? }) → { visit: ServiceVisit; previousTechId: string | null } | null` — reschedule/reassign; only DRAFT/IN_PROGRESS visits; throws on CANCELLED/COMPLETED or an out-of-company `techId`. Returns `previousTechId` so callers can notify the tech who lost the visit
-- `completeVisit(visitId, readings: VisitReadings, chemicals: VisitChemical[], notes?, nextServiceDate?) → CompletedVisit`
-- `saveDraftVisit(visitId, readings, chemicals, notes?, nextServiceDate?)`
+- `completeVisit(visitId, readings: VisitReadings, chemicals: VisitChemical[], notes?, nextServiceDate?, opts?: VisitWriteOpts) → CompletedVisit & { applied }` — replaces (not duplicates) readings/chemicals, bumps `version`, stores `clientMutationId`; `applied: false` on an already-applied replay (no tx, no next-visit scheduling, no report email)
+- `saveDraftVisit(visitId, readings, chemicals, notes?, nextServiceDate?, opts?: VisitWriteOpts) → { visit, applied }` — idempotent replacement; throws on COMPLETED/CANCELLED visits; `applied: false` on an already-applied replay
 - `getVisitByPublicToken(publicToken) → ServiceVisit | null` — **public, unscoped**; COMPLETED visits only, backs `report/[reportToken]`
 - `getVisitHistory(poolId, limit)`
 - `getLastVisitReadings(poolId) → VisitReadings | null`

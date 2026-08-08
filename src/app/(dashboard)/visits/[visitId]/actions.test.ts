@@ -54,8 +54,36 @@ describe("saveDraftAction", () => {
       [],
       "test",
       null,
+      { clientMutationId: undefined },
     );
     expect(revalidatePath).toHaveBeenCalledWith(`/visits/${visitId}`);
+  });
+
+  it("passes clientMutationId through to saveDraftVisit when provided", async () => {
+    vi.mocked(requireTech).mockResolvedValue(mockUser as never);
+
+    await saveDraftAction(visitId, {
+      readings: {
+        ph: 7.5,
+        freeChlorine: 2,
+        totalAlkalinity: 100,
+        calciumHardness: 300,
+        cyanuricAcid: 40,
+        temperature: 80,
+      },
+      chemicals: [],
+      notes: "test",
+      clientMutationId: "mut-1",
+    });
+
+    expect(saveDraftVisit).toHaveBeenCalledWith(
+      visitId,
+      expect.any(Object),
+      [],
+      "test",
+      null,
+      { clientMutationId: "mut-1" },
+    );
   });
 
   it("throws when unauthenticated", async () => {
@@ -72,6 +100,7 @@ describe("completeVisitAction", () => {
     vi.mocked(requireTech).mockResolvedValue(mockUser as never);
     vi.mocked(completeVisit).mockResolvedValue({
       visit: { pool: { homeownerEmail: null } },
+      applied: true,
     } as never);
 
     await completeVisitAction(visitId, {
@@ -93,6 +122,7 @@ describe("completeVisitAction", () => {
       [],
       null,
       null,
+      { clientMutationId: undefined },
     );
     expect(emailNotify.notifyReportAvailable).not.toHaveBeenCalled();
     expect(revalidatePath).toHaveBeenCalledWith(`/visits/${visitId}`);
@@ -102,6 +132,7 @@ describe("completeVisitAction", () => {
     vi.mocked(requireTech).mockResolvedValue(mockUser as never);
     vi.mocked(completeVisit).mockResolvedValue({
       visit: { pool: { homeownerEmail: "owner@example.com" } },
+      applied: true,
     } as never);
 
     await completeVisitAction(visitId, {
@@ -122,6 +153,60 @@ describe("completeVisitAction", () => {
       visitId,
       to: "owner@example.com",
     });
+  });
+
+  it("skips the report email when completeVisit reports an idempotent replay", async () => {
+    vi.mocked(requireTech).mockResolvedValue(mockUser as never);
+    vi.mocked(completeVisit).mockResolvedValue({
+      visit: { pool: { homeownerEmail: "owner@example.com" } },
+      applied: false,
+    } as never);
+
+    await completeVisitAction(visitId, {
+      readings: {
+        ph: 7.5,
+        freeChlorine: 2,
+        totalAlkalinity: 100,
+        calciumHardness: 300,
+        cyanuricAcid: 40,
+        temperature: 80,
+      },
+      chemicals: [],
+      notes: "",
+    });
+
+    expect(emailNotify.notifyReportAvailable).not.toHaveBeenCalled();
+  });
+
+  it("passes clientMutationId through to completeVisit when provided", async () => {
+    vi.mocked(requireTech).mockResolvedValue(mockUser as never);
+    vi.mocked(completeVisit).mockResolvedValue({
+      visit: { pool: { homeownerEmail: null } },
+      applied: true,
+    } as never);
+
+    await completeVisitAction(visitId, {
+      readings: {
+        ph: 7.5,
+        freeChlorine: 2,
+        totalAlkalinity: 100,
+        calciumHardness: 300,
+        cyanuricAcid: 40,
+        temperature: 80,
+      },
+      chemicals: [],
+      notes: "",
+      clientMutationId: "mut-2",
+    });
+
+    expect(completeVisit).toHaveBeenCalledWith(
+      visitId,
+      expect.any(Object),
+      [],
+      null,
+      null,
+      { clientMutationId: "mut-2" },
+    );
   });
 
   it("throws when unauthenticated", async () => {

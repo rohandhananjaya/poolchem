@@ -23,6 +23,8 @@ export interface VisitFormValues {
   notes: string;
   /** YYYY-MM-DD string, or undefined to leave unset. */
   nextServiceDate?: string;
+  /** Device-generated idempotency key for offline replay. Optional. */
+  clientMutationId?: string;
 }
 
 export async function saveDraftAction(
@@ -40,6 +42,7 @@ export async function saveDraftAction(
     data.chemicals,
     data.notes || null,
     data.nextServiceDate ? new Date(`${data.nextServiceDate}T12:00:00`) : null,
+    { clientMutationId: data.clientMutationId },
   );
   revalidatePath(`/visits/${visitId}`);
 }
@@ -59,11 +62,13 @@ export async function completeVisitAction(
     data.chemicals,
     data.notes || null,
     data.nextServiceDate ? new Date(`${data.nextServiceDate}T12:00:00`) : null,
+    { clientMutationId: data.clientMutationId },
   );
 
   // Auto-send the shareable report to the pool's homeowner when one is set.
+  // Skipped when the write was an already-applied idempotent replay.
   const homeownerEmail = completed.visit?.pool.homeownerEmail;
-  if (homeownerEmail) {
+  if (completed.applied && homeownerEmail) {
     await emailNotify.notifyReportAvailable({
       companyId: user.companyId,
       visitId,

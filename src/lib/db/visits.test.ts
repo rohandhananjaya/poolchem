@@ -1,5 +1,6 @@
 import { describe, expect, it, beforeEach, vi } from "vitest";
 
+import { Prisma } from "@/generated/prisma/client";
 import { prismaMock } from "@/test/prisma-mock";
 
 vi.mock("server-only", () => ({}));
@@ -195,8 +196,14 @@ describe("completeVisit", () => {
     prismaMock.serviceVisit.findUnique.mockResolvedValue(existingVisit);
 
     const txMock = {
-      waterReading: { create: vi.fn().mockResolvedValue({}) },
-      chemicalAdded: { createMany: vi.fn().mockResolvedValue({}) },
+      waterReading: {
+        deleteMany: vi.fn().mockResolvedValue({}),
+        create: vi.fn().mockResolvedValue({}),
+      },
+      chemicalAdded: {
+        deleteMany: vi.fn().mockResolvedValue({}),
+        createMany: vi.fn().mockResolvedValue({}),
+      },
       serviceVisit: {
         update: vi.fn().mockResolvedValue({
           id: visitId,
@@ -219,8 +226,14 @@ describe("completeVisit", () => {
       "All good",
     );
 
+    expect(txMock.waterReading.deleteMany).toHaveBeenCalledWith({
+      where: { visitId },
+    });
     expect(txMock.waterReading.create).toHaveBeenCalledWith({
       data: { visitId, ...readings },
+    });
+    expect(txMock.chemicalAdded.deleteMany).toHaveBeenCalledWith({
+      where: { visitId },
     });
     expect(txMock.chemicalAdded.createMany).toHaveBeenCalledWith({
       data: chemicals.map((c) => ({ visitId, ...c })),
@@ -228,10 +241,14 @@ describe("completeVisit", () => {
     expect(txMock.serviceVisit.update).toHaveBeenCalledWith(
       expect.objectContaining({
         where: { id: visitId },
-        data: { status: "COMPLETED", notes: "All good" },
+        data: expect.objectContaining({
+          status: "COMPLETED",
+          notes: "All good",
+          version: { increment: 1 },
+        }),
       }),
     );
-    expect(result.visit.status).toBe("COMPLETED");
+    expect(result.visit!.status).toBe("COMPLETED");
   });
 
   it("skips chemical creation when none are provided", async () => {
@@ -242,8 +259,14 @@ describe("completeVisit", () => {
     prismaMock.serviceVisit.findUnique.mockResolvedValue(existingVisit);
 
     const txMock = {
-      waterReading: { create: vi.fn().mockResolvedValue({}) },
-      chemicalAdded: { createMany: vi.fn() },
+      waterReading: {
+        deleteMany: vi.fn().mockResolvedValue({}),
+        create: vi.fn().mockResolvedValue({}),
+      },
+      chemicalAdded: {
+        deleteMany: vi.fn().mockResolvedValue({}),
+        createMany: vi.fn(),
+      },
       serviceVisit: {
         update: vi.fn().mockResolvedValue({
           id: visitId,
@@ -272,8 +295,14 @@ describe("completeVisit", () => {
     prismaMock.serviceVisit.findUnique.mockResolvedValue(existingVisit);
 
     const txMock = {
-      waterReading: { create: vi.fn().mockResolvedValue({}) },
-      chemicalAdded: { createMany: vi.fn() },
+      waterReading: {
+        deleteMany: vi.fn().mockResolvedValue({}),
+        create: vi.fn().mockResolvedValue({}),
+      },
+      chemicalAdded: {
+        deleteMany: vi.fn().mockResolvedValue({}),
+        createMany: vi.fn(),
+      },
       serviceVisit: {
         update: vi.fn().mockResolvedValue({
           id: visitId,
@@ -306,8 +335,14 @@ describe("completeVisit", () => {
 
     const nextServiceDate = new Date("2026-08-15T12:00:00");
     const txMock = {
-      waterReading: { create: vi.fn().mockResolvedValue({}) },
-      chemicalAdded: { createMany: vi.fn() },
+      waterReading: {
+        deleteMany: vi.fn().mockResolvedValue({}),
+        create: vi.fn().mockResolvedValue({}),
+      },
+      chemicalAdded: {
+        deleteMany: vi.fn().mockResolvedValue({}),
+        createMany: vi.fn(),
+      },
       serviceVisit: {
         update: vi.fn().mockResolvedValue({
           id: visitId,
@@ -355,8 +390,14 @@ describe("completeVisit", () => {
     prismaMock.serviceVisit.findUnique.mockResolvedValue(existingVisit);
 
     const txMock = {
-      waterReading: { create: vi.fn().mockResolvedValue({}) },
-      chemicalAdded: { createMany: vi.fn() },
+      waterReading: {
+        deleteMany: vi.fn().mockResolvedValue({}),
+        create: vi.fn().mockResolvedValue({}),
+      },
+      chemicalAdded: {
+        deleteMany: vi.fn().mockResolvedValue({}),
+        createMany: vi.fn(),
+      },
       serviceVisit: {
         update: vi.fn().mockResolvedValue({
           id: visitId,
@@ -394,8 +435,14 @@ describe("completeVisit", () => {
     prismaMock.serviceVisit.findUnique.mockResolvedValue(existingVisit);
 
     const txMock = {
-      waterReading: { create: vi.fn().mockResolvedValue({}) },
-      chemicalAdded: { createMany: vi.fn() },
+      waterReading: {
+        deleteMany: vi.fn().mockResolvedValue({}),
+        create: vi.fn().mockResolvedValue({}),
+      },
+      chemicalAdded: {
+        deleteMany: vi.fn().mockResolvedValue({}),
+        createMany: vi.fn(),
+      },
       serviceVisit: {
         update: vi.fn().mockResolvedValue({
           id: visitId,
@@ -417,6 +464,128 @@ describe("completeVisit", () => {
 
     expect(txMock.serviceVisit.findFirst).not.toHaveBeenCalled();
     expect(txMock.serviceVisit.create).not.toHaveBeenCalled();
+  });
+
+  it("replays an already-applied clientMutationId as a no-op", async () => {
+    const appliedVisit = {
+      id: visitId,
+      status: "COMPLETED",
+      version: 1,
+      clientMutationId: "mut-1",
+      techId,
+      pool: { ...mockPool, volume: 10_000 },
+      tech: mockTech,
+      waterReadings: [readings],
+      chemicalsAdded: chemicals,
+    };
+    prismaMock.serviceVisit.findUnique.mockResolvedValue(appliedVisit);
+
+    const result = await completeVisit(
+      visitId,
+      readings,
+      chemicals,
+      null,
+      new Date("2026-08-15T12:00:00"),
+      { clientMutationId: "mut-1" },
+    );
+
+    expect(result.applied).toBe(false);
+    expect(prismaMock.$transaction).not.toHaveBeenCalled();
+    expect(result.visit).toEqual(appliedVisit);
+  });
+
+  it("applies a new clientMutationId, bumps version and stores the key", async () => {
+    prismaMock.serviceVisit.findUnique.mockResolvedValue({
+      id: visitId,
+      techId,
+      clientMutationId: null,
+      version: 0,
+      pool: { ...mockPool, volume: 10_000 },
+    });
+
+    const txMock = {
+      waterReading: {
+        deleteMany: vi.fn().mockResolvedValue({}),
+        create: vi.fn().mockResolvedValue({}),
+      },
+      chemicalAdded: {
+        deleteMany: vi.fn().mockResolvedValue({}),
+        createMany: vi.fn().mockResolvedValue({}),
+      },
+      serviceVisit: {
+        update: vi.fn().mockResolvedValue({
+          id: visitId,
+          status: "COMPLETED",
+          version: 1,
+          clientMutationId: "mut-2",
+          pool: mockPool,
+          tech: mockTech,
+          waterReadings: [readings],
+          chemicalsAdded: [],
+        }),
+        findFirst: vi.fn().mockResolvedValue(null),
+        create: vi.fn().mockResolvedValue({}),
+      },
+    };
+    prismaMock.$transaction.mockImplementation(
+      (fn: (tx: typeof txMock) => unknown) => fn(txMock),
+    );
+
+    const result = await completeVisit(
+      visitId,
+      readings,
+      [],
+      null,
+      null,
+      { clientMutationId: "mut-2" },
+    );
+
+    expect(result.applied).toBe(true);
+    expect(txMock.serviceVisit.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: visitId },
+        data: expect.objectContaining({
+          version: { increment: 1 },
+          clientMutationId: "mut-2",
+        }),
+      }),
+    );
+  });
+
+  it("returns the winner's state when a concurrent replay hits the unique key", async () => {
+    prismaMock.serviceVisit.findUnique
+      .mockResolvedValueOnce({
+        id: visitId,
+        techId,
+        pool: { ...mockPool, volume: 10_000 },
+      })
+      .mockResolvedValueOnce({
+        id: visitId,
+        status: "COMPLETED",
+        version: 1,
+        clientMutationId: "mut-3",
+        pool: mockPool,
+        tech: mockTech,
+        waterReadings: [readings],
+        chemicalsAdded: [],
+      });
+    const error = new Prisma.PrismaClientKnownRequestError("Unique constraint", {
+      code: "P2002",
+      clientVersion: "7",
+    });
+    prismaMock.$transaction.mockRejectedValue(error);
+
+    const result = await completeVisit(
+      visitId,
+      readings,
+      [],
+      null,
+      null,
+      { clientMutationId: "mut-3" },
+    );
+
+    expect(result.applied).toBe(false);
+    expect(result.visit!.clientMutationId).toBe("mut-3");
   });
 });
 
@@ -482,9 +651,111 @@ describe("saveDraftVisit", () => {
     expect(txMock.serviceVisit.update).toHaveBeenCalledWith(
       expect.objectContaining({
         where: { id: visitId },
-        data: { notes: "Draft notes" },
+        data: expect.objectContaining({
+          notes: "Draft notes",
+          version: { increment: 1 },
+        }),
       }),
     );
+  });
+
+  it("replays an already-applied clientMutationId as a no-op", async () => {
+    prismaMock.serviceVisit.findUnique.mockResolvedValue({
+      id: visitId,
+      status: "DRAFT",
+      version: 1,
+      clientMutationId: "mut-1",
+      pool: mockPool,
+      tech: mockTech,
+      waterReadings: [],
+      chemicalsAdded: [],
+    });
+
+    const result = await saveDraftVisit(
+      visitId,
+      readings,
+      [],
+      null,
+      null,
+      { clientMutationId: "mut-1" },
+    );
+
+    expect(result.applied).toBe(false);
+    expect(prismaMock.$transaction).not.toHaveBeenCalled();
+  });
+
+  it("applies a new clientMutationId, bumps version and stores the key", async () => {
+    prismaMock.serviceVisit.findUnique.mockResolvedValue({
+      id: visitId,
+      status: "DRAFT",
+      clientMutationId: null,
+      version: 0,
+    });
+
+    const txMock = {
+      waterReading: {
+        deleteMany: vi.fn().mockResolvedValue({}),
+        create: vi.fn().mockResolvedValue({}),
+      },
+      chemicalAdded: {
+        deleteMany: vi.fn().mockResolvedValue({}),
+        createMany: vi.fn().mockResolvedValue({}),
+      },
+      serviceVisit: {
+        update: vi.fn().mockResolvedValue({
+          id: visitId,
+          status: "DRAFT",
+          version: 1,
+          clientMutationId: "mut-2",
+        }),
+      },
+    };
+    prismaMock.$transaction.mockImplementation(
+      (fn: (tx: typeof txMock) => unknown) => fn(txMock),
+    );
+
+    const result = await saveDraftVisit(
+      visitId,
+      readings,
+      [],
+      null,
+      null,
+      { clientMutationId: "mut-2" },
+    );
+
+    expect(result.applied).toBe(true);
+    expect(txMock.serviceVisit.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          version: { increment: 1 },
+          clientMutationId: "mut-2",
+        }),
+      }),
+    );
+  });
+
+  it("throws when the visit is already COMPLETED", async () => {
+    prismaMock.serviceVisit.findUnique.mockResolvedValue({
+      id: visitId,
+      status: "COMPLETED",
+    });
+
+    await expect(saveDraftVisit(visitId, readings, [])).rejects.toThrow(
+      /completed or cancelled/i,
+    );
+    expect(prismaMock.$transaction).not.toHaveBeenCalled();
+  });
+
+  it("throws when the visit is already CANCELLED", async () => {
+    prismaMock.serviceVisit.findUnique.mockResolvedValue({
+      id: visitId,
+      status: "CANCELLED",
+    });
+
+    await expect(saveDraftVisit(visitId, readings, [])).rejects.toThrow(
+      /completed or cancelled/i,
+    );
+    expect(prismaMock.$transaction).not.toHaveBeenCalled();
   });
 });
 
@@ -551,7 +822,7 @@ describe("startVisit", () => {
     });
     expect(prismaMock.serviceVisit.update).toHaveBeenCalledWith({
       where: { id: visitId },
-      data: { status: "IN_PROGRESS", techId },
+      data: { status: "IN_PROGRESS", techId, version: { increment: 1 } },
     });
     expect(result?.status).toBe("IN_PROGRESS");
   });
@@ -572,7 +843,7 @@ describe("startVisit", () => {
 
     expect(prismaMock.serviceVisit.update).toHaveBeenCalledWith({
       where: { id: visitId },
-      data: { status: "IN_PROGRESS", techId },
+      data: { status: "IN_PROGRESS", techId, version: { increment: 1 } },
     });
   });
 
@@ -599,7 +870,7 @@ describe("updateVisitStatus", () => {
 
     expect(prismaMock.serviceVisit.update).toHaveBeenCalledWith({
       where: { id: visitId },
-      data: { status: "COMPLETED" },
+      data: { status: "COMPLETED", version: { increment: 1 } },
     });
     expect(result?.status).toBe("COMPLETED");
   });
@@ -625,7 +896,11 @@ describe("cancelVisit", () => {
 
     expect(prismaMock.serviceVisit.update).toHaveBeenCalledWith({
       where: { id: visitId },
-      data: { status: "CANCELLED", cancellationReason: "Client requested" },
+      data: {
+        status: "CANCELLED",
+        cancellationReason: "Client requested",
+        version: { increment: 1 },
+      },
     });
     expect(result?.status).toBe("CANCELLED");
   });
@@ -701,7 +976,7 @@ describe("updateVisit", () => {
 
     expect(prismaMock.serviceVisit.update).toHaveBeenCalledWith({
       where: { id: visitId },
-      data: { scheduledAt: newDate, techId },
+      data: { scheduledAt: newDate, techId, version: { increment: 1 } },
     });
     expect(result?.visit.techId).toBe(techId);
     expect(result?.previousTechId).toBeNull();
@@ -721,7 +996,7 @@ describe("updateVisit", () => {
 
     expect(prismaMock.serviceVisit.update).toHaveBeenCalledWith({
       where: { id: visitId },
-      data: { techId: null },
+      data: { techId: null, version: { increment: 1 } },
     });
   });
 

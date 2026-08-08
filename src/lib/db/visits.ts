@@ -35,6 +35,70 @@ export interface VisitChemical {
   unit: string;
 }
 
+/** Options controlling an idempotent visit write (offline replay support). */
+export interface VisitWriteOpts {
+  /**
+   * Device-generated key identifying a queued offline mutation. When the stored
+   * visit already carries this key the write is treated as an already-applied
+   * replay and skipped.
+   */
+  clientMutationId?: string;
+  /**
+   * Expected revision for a stale-write guard. Accepted now; strict mismatch
+   * rejection lands with the conflict-resolution work (deferred).
+   */
+  expectedVersion?: number;
+}
+
+/**
+ * Replaces a visit's child rows inside a transaction: deleteMany then recreate.
+ * Running this twice with the same input converges to the same state rather than
+ * duplicating WaterReading/ChemicalAdded rows — the basis for idempotent saves.
+ */
+async function replaceReadingsAndChemicals(
+  tx: Prisma.TransactionClient,
+  visitId: string,
+  readings: VisitReadings,
+  chemicals: VisitChemical[],
+): Promise<void> {
+  await tx.waterReading.deleteMany({ where: { visitId } });
+  await tx.waterReading.create({ data: { visitId, ...readings } });
+
+  await tx.chemicalAdded.deleteMany({ where: { visitId } });
+  if (chemicals.length > 0) {
+    await tx.chemicalAdded.createMany({
+      data: chemicals.map((c) => ({ visitId, ...c })),
+    });
+  }
+}
+
+/** Maps a persisted WaterReading back to the {@link VisitReadings} shape. */
+function toVisitReadings(reading: {
+  ph: number;
+  freeChlorine: number;
+  totalAlkalinity: number;
+  calciumHardness: number;
+  cyanuricAcid: number;
+  temperature: number;
+}): VisitReadings {
+  return {
+    ph: reading.ph,
+    freeChlorine: reading.freeChlorine,
+    totalAlkalinity: reading.totalAlkalinity,
+    calciumHardness: reading.calciumHardness,
+    cyanuricAcid: reading.cyanuricAcid,
+    temperature: reading.temperature,
+  };
+}
+
+/** Returns true for Prisma's unique-constraint violation (P2002). */
+function isUniqueConstraintError(error: unknown): boolean {
+  return (
+    error instanceof Prisma.PrismaClientKnownRequestError &&
+    error.code === "P2002"
+  );
+}
+
 /** Local midnight-to-midnight window for "today". */
 function todayRange(): { gte: Date; lt: Date } {
   const now = new Date();
@@ -126,6 +190,15 @@ export interface CompletedVisit {
   recommendations: ChemicalRecommendation[];
   /** Overall water-health assessment for the recorded readings. */
   waterHealth: WaterHealthResult;
+  /** Whether this call applied the write. `false` = already-applied replay. */
+  applied: boolean;
+}
+
+/** The result of a save-draft write, with an idempotency flag. */
+export interface SavedVisit {
+  visit: Awaited<ReturnType<typeof getVisitById>>;
+  /** Whether this call applied the write. `false` = already-applied replay. */
+  applied: boolean;
 }
 
 /**
@@ -170,6 +243,11 @@ async function scheduleNextVisit(
  * (when a next-service date is set) auto-scheduling the pool's next visit
  * all commit together or not at all.
  *
+ * The write is idempotent: readings/chemicals are replaced (not appended), the
+ * visit's `version` is bumped, and an optional `clientMutationId` is stored so a
+ * replayed offline mutation is a no-op (`applied: false`, no transaction, no
+ * next-visit scheduling).
+ *
  * @throws {Error} If the visit does not exist.
  */
 export async function completeVisit(
@@ -178,59 +256,100 @@ export async function completeVisit(
   chemicals: VisitChemical[],
   notes?: string | null,
   nextServiceDate?: Date | null,
+  opts: VisitWriteOpts = {},
 ): Promise<CompletedVisit> {
   const existing = await prisma.serviceVisit.findUnique({
     where: { id: visitId },
-    include: { pool: true },
+    include: { pool: true, tech: true, waterReadings: true, chemicalsAdded: true },
   });
 
   if (!existing) {
     throw new Error(`Visit "${visitId}" not found.`);
   }
 
-  const visit = await prisma.$transaction(async (tx) => {
-    await tx.waterReading.create({ data: { visitId, ...readings } });
+  if (opts.clientMutationId && existing.clientMutationId === opts.clientMutationId) {
+    const replayReadings = existing.waterReadings[0]
+      ? toVisitReadings(existing.waterReadings[0])
+      : readings;
+    return {
+      visit: existing,
+      recommendations: getChemicalRecommendations(
+        replayReadings,
+        existing.pool.volume,
+      ),
+      waterHealth: getWaterHealthScore(replayReadings),
+      applied: false,
+    };
+  }
 
-    if (chemicals.length > 0) {
-      await tx.chemicalAdded.createMany({
-        data: chemicals.map((chemical) => ({ visitId, ...chemical })),
+  let visit: Awaited<ReturnType<typeof getVisitById>>;
+  try {
+    visit = await prisma.$transaction(async (tx) => {
+      await replaceReadingsAndChemicals(tx, visitId, readings, chemicals);
+
+      const updated = await tx.serviceVisit.update({
+        where: { id: visitId },
+        data: {
+          status: ServiceVisitStatus.COMPLETED,
+          // Leave existing notes untouched when none are supplied.
+          notes: notes ?? undefined,
+          nextServiceDate:
+            nextServiceDate !== undefined ? nextServiceDate : undefined,
+          version: { increment: 1 },
+          clientMutationId: opts.clientMutationId ?? undefined,
+        },
+        include: {
+          pool: true,
+          tech: true,
+          waterReadings: true,
+          chemicalsAdded: true,
+        },
       });
-    }
 
-    const updated = await tx.serviceVisit.update({
-      where: { id: visitId },
-      data: {
-        status: ServiceVisitStatus.COMPLETED,
-        // Leave existing notes untouched when none are supplied.
-        notes: notes ?? undefined,
-        nextServiceDate:
-          nextServiceDate !== undefined ? nextServiceDate : undefined,
-      },
-      include: {
-        pool: true,
-        tech: true,
-        waterReadings: true,
-        chemicalsAdded: true,
-      },
+      if (nextServiceDate) {
+        await scheduleNextVisit(
+          tx,
+          existing.pool.id,
+          existing.techId,
+          nextServiceDate,
+          visitId,
+        );
+      }
+
+      return updated;
     });
-
-    if (nextServiceDate) {
-      await scheduleNextVisit(
-        tx,
-        existing.pool.id,
-        existing.techId,
-        nextServiceDate,
-        visitId,
-      );
+  } catch (error) {
+    // Two concurrent same-key replays both pass the pre-check; the second hits
+    // the @unique on clientMutationId inside the tx. Re-read and report the
+    // winner's state as an already-applied replay.
+    if (isUniqueConstraintError(error) && opts.clientMutationId) {
+      const current = await prisma.serviceVisit.findUnique({
+        where: { id: visitId },
+        include: { pool: true, tech: true, waterReadings: true, chemicalsAdded: true },
+      });
+      if (current) {
+        const replayReadings = current.waterReadings[0]
+          ? toVisitReadings(current.waterReadings[0])
+          : readings;
+        return {
+          visit: current,
+          recommendations: getChemicalRecommendations(
+            replayReadings,
+            current.pool.volume,
+          ),
+          waterHealth: getWaterHealthScore(replayReadings),
+          applied: false,
+        };
+      }
     }
-
-    return updated;
-  });
+    throw error;
+  }
 
   return {
     visit,
     recommendations: getChemicalRecommendations(readings, existing.pool.volume),
     waterHealth: getWaterHealthScore(readings),
+    applied: true,
   };
 }
 
@@ -330,6 +449,7 @@ export async function startVisit(
     data: {
       status: ServiceVisitStatus.IN_PROGRESS,
       techId: techId ?? visit.techId,
+      version: { increment: 1 },
     },
   });
 }
@@ -381,7 +501,7 @@ export async function updateVisitStatus(
 
   return prisma.serviceVisit.update({
     where: { id: visitId },
-    data: { status },
+    data: { status, version: { increment: 1 } },
   });
 }
 
@@ -405,7 +525,11 @@ export async function cancelVisit(
 
   return prisma.serviceVisit.update({
     where: { id: visitId },
-    data: { status: ServiceVisitStatus.CANCELLED, cancellationReason: reason },
+    data: {
+      status: ServiceVisitStatus.CANCELLED,
+      cancellationReason: reason,
+      version: { increment: 1 },
+    },
   });
 }
 
@@ -454,6 +578,7 @@ export async function updateVisit(
     data: {
       scheduledAt: data.scheduledAt !== undefined ? data.scheduledAt : undefined,
       techId: data.techId !== undefined ? data.techId : undefined,
+      version: { increment: 1 },
     },
   });
 
@@ -466,7 +591,11 @@ export async function updateVisit(
  *
  * Uses a transaction so that readings, chemicals, and notes all update together.
  *
- * @throws {Error} If the visit does not exist.
+ * The write is idempotent: a replayed `clientMutationId` is a no-op
+ * (`applied: false`), and COMPLETED/CANCELLED visits are rejected so a replayed
+ * draft can never clobber a finished visit.
+ *
+ * @throws {Error} If the visit does not exist, or is COMPLETED or CANCELLED.
  */
 export async function saveDraftVisit(
   visitId: string,
@@ -474,41 +603,60 @@ export async function saveDraftVisit(
   chemicals: VisitChemical[],
   notes?: string | null,
   nextServiceDate?: Date | null,
-) {
+  opts: VisitWriteOpts = {},
+): Promise<SavedVisit> {
   const existing = await prisma.serviceVisit.findUnique({
     where: { id: visitId },
+    include: { pool: true, tech: true, waterReadings: true, chemicalsAdded: true },
   });
 
   if (!existing) {
     throw new Error(`Visit "${visitId}" not found.`);
   }
 
-  const visit = await prisma.$transaction(async (tx) => {
-    await tx.waterReading.deleteMany({ where: { visitId } });
-    await tx.waterReading.create({ data: { visitId, ...readings } });
+  if (
+    existing.status === ServiceVisitStatus.COMPLETED ||
+    existing.status === ServiceVisitStatus.CANCELLED
+  ) {
+    throw new Error("Cannot save a draft for a completed or cancelled visit.");
+  }
 
-    await tx.chemicalAdded.deleteMany({ where: { visitId } });
-    if (chemicals.length > 0) {
-      await tx.chemicalAdded.createMany({
-        data: chemicals.map((c) => ({ visitId, ...c })),
+  if (opts.clientMutationId && existing.clientMutationId === opts.clientMutationId) {
+    return { visit: existing, applied: false };
+  }
+
+  let visit: Awaited<ReturnType<typeof getVisitById>>;
+  try {
+    visit = await prisma.$transaction(async (tx) => {
+      await replaceReadingsAndChemicals(tx, visitId, readings, chemicals);
+
+      return tx.serviceVisit.update({
+        where: { id: visitId },
+        data: {
+          notes: notes ?? undefined,
+          nextServiceDate:
+            nextServiceDate !== undefined ? nextServiceDate : undefined,
+          version: { increment: 1 },
+          clientMutationId: opts.clientMutationId ?? undefined,
+        },
+        include: {
+          pool: true,
+          tech: true,
+          waterReadings: true,
+          chemicalsAdded: true,
+        },
       });
-    }
-
-    return tx.serviceVisit.update({
-      where: { id: visitId },
-      data: {
-        notes: notes ?? undefined,
-        nextServiceDate:
-          nextServiceDate !== undefined ? nextServiceDate : undefined,
-      },
-      include: {
-        pool: true,
-        tech: true,
-        waterReadings: true,
-        chemicalsAdded: true,
-      },
     });
-  });
+  } catch (error) {
+    if (isUniqueConstraintError(error) && opts.clientMutationId) {
+      const current = await prisma.serviceVisit.findUnique({
+        where: { id: visitId },
+        include: { pool: true, tech: true, waterReadings: true, chemicalsAdded: true },
+      });
+      if (current) return { visit: current, applied: false };
+    }
+    throw error;
+  }
 
-  return visit;
+  return { visit, applied: true };
 }
