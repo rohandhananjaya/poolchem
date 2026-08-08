@@ -84,6 +84,12 @@ export interface QueuedMutation {
   retryCount: number;
   /** Last failure message, for diagnostics. */
   lastError?: string;
+  /**
+   * Epoch-ms before which the entry must not be retried (backoff schedule). Set
+   * when a transient failure schedules the next attempt; absent on entries that
+   * have never failed or are retried immediately (e.g. after `retryDead`).
+   */
+  nextRetryAt?: number;
   createdAt: number;
   updatedAt: number;
 }

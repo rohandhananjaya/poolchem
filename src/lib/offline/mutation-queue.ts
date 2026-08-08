@@ -103,20 +103,26 @@ export async function getByClientMutationId(
 }
 
 /**
- * Updates a queued mutation's status. `retryCount`/`lastError` are only written
- * when provided so a status flip alone doesn't wipe prior diagnostics.
+ * Updates a queued mutation's status. `retryCount`/`lastError`/`nextRetryAt`
+ * are only written when provided so a status flip alone doesn't wipe prior
+ * diagnostics.
  */
 export async function markStatus(
   companyId: string,
   clientMutationId: string,
   status: MutationStatus,
-  opts: { retryCount?: number; lastError?: string } = {},
+  opts: {
+    retryCount?: number;
+    lastError?: string;
+    nextRetryAt?: number;
+  } = {},
 ): Promise<void> {
   const changes: Partial<QueuedMutation> = {
     status,
     updatedAt: Date.now(),
     ...(opts.retryCount !== undefined ? { retryCount: opts.retryCount } : {}),
     ...(opts.lastError !== undefined ? { lastError: opts.lastError } : {}),
+    ...(opts.nextRetryAt !== undefined ? { nextRetryAt: opts.nextRetryAt } : {}),
   };
   await db.mutationQueue
     .where("[companyId+clientMutationId]")
@@ -152,6 +158,152 @@ export async function deleteEntriesForVisit(
     .equals(companyId)
     .filter((entry) => entry.visitId === visitId)
     .delete();
+}
+
+/** Options for a `getDue` sweep. */
+export interface DueOptions {
+  /** Reference "now" for the `nextRetryAt` check. Defaults to `Date.now()`. */
+  now?: number;
+  /** Bound the number of entries returned per sweep. */
+  limit?: number;
+}
+
+/**
+ * Returns the entries a queue sweep should attempt, FIFO by `createdAt`:
+ * every `pending` entry plus every `failed` entry whose `nextRetryAt` is due
+ * (or was never set — legacy entries from before backoff scheduling). Entries
+ * still inside their backoff window are excluded.
+ */
+export async function getDue(
+  companyId: string,
+  opts: DueOptions = {},
+): Promise<QueuedMutation[]> {
+  const { now = Date.now(), limit } = opts;
+  // Query via the `[companyId+status]` index rather than materializing the
+  // whole tenant queue: only `pending` and (possibly due) `failed` entries can
+  // be replayed.
+  const [pending, failed] = await Promise.all([
+    db.mutationQueue
+      .where("[companyId+status]")
+      .equals([companyId, "pending"])
+      .toArray(),
+    db.mutationQueue
+      .where("[companyId+status]")
+      .equals([companyId, "failed"])
+      .toArray(),
+  ]);
+  const due = [...pending, ...failed]
+    .filter(
+      (entry) =>
+        entry.nextRetryAt === undefined || entry.nextRetryAt <= now,
+    )
+    .sort((a, b) => a.createdAt - b.createdAt);
+  return limit !== undefined ? due.slice(0, limit) : due;
+}
+
+/** Returns a tenant's dead-lettered mutations (never replayed automatically). */
+export async function getDead(companyId: string): Promise<QueuedMutation[]> {
+  return db.mutationQueue
+    .where("[companyId+status]")
+    .equals([companyId, "dead"])
+    .sortBy("createdAt");
+}
+
+/** Returns a tenant's dead-lettered mutations for one visit, FIFO ordered. */
+export async function getDeadForVisit(
+  companyId: string,
+  visitId: string,
+): Promise<QueuedMutation[]> {
+  return db.mutationQueue
+    .where("[companyId+status]")
+    .equals([companyId, "dead"])
+    .filter((entry) => entry.visitId === visitId)
+    .sortBy("createdAt");
+}
+
+/**
+ * Counts every queued mutation for a visit regardless of status. Used by the
+ * success-cleanup invariant (a draft is dropped only once zero entries remain
+ * for the visit) — a `failed` or `dead` entry still holds unsynced local edits.
+ */
+export async function countEntriesForVisit(
+  companyId: string,
+  visitId: string,
+): Promise<number> {
+  return db.mutationQueue
+    .where("companyId")
+    .equals(companyId)
+    .filter((entry) => entry.visitId === visitId)
+    .count();
+}
+
+/**
+ * Deletes a visit's dead-lettered entries. Called after a re-save so a stale
+ * dead entry — whose payload the newer draft supersedes — is dropped instead of
+ * lingering in diagnostics.
+ */
+export async function deleteDeadForVisit(
+  companyId: string,
+  visitId: string,
+): Promise<void> {
+  await db.mutationQueue
+    .where("companyId")
+    .equals(companyId)
+    .filter((entry) => entry.visitId === visitId && entry.status === "dead")
+    .delete();
+}
+
+/**
+ * Retries a visit's dead-lettered entries: resets each to `pending` with a
+ * cleared retry budget and schedule so the queue processor re-attempts them on
+ * its next sweep.
+ */
+export async function retryDead(
+  companyId: string,
+  visitId: string,
+): Promise<void> {
+  await db.mutationQueue
+    .where("companyId")
+    .equals(companyId)
+    .filter((entry) => entry.visitId === visitId && entry.status === "dead")
+    .modify((entry) => {
+      entry.status = "pending";
+      entry.retryCount = 0;
+      delete entry.nextRetryAt;
+      delete entry.lastError;
+      entry.updatedAt = Date.now();
+    });
+}
+
+/** Per-status queue counts for a tenant — feeds the sync-status UI. */
+export interface QueueStats {
+  pending: number;
+  processing: number;
+  failed: number;
+  dead: number;
+}
+
+/** Returns a tenant's queue counts by status. */
+export async function getStats(companyId: string): Promise<QueueStats> {
+  const [pending, processing, failed, dead] = await Promise.all([
+    db.mutationQueue
+      .where("[companyId+status]")
+      .equals([companyId, "pending"])
+      .count(),
+    db.mutationQueue
+      .where("[companyId+status]")
+      .equals([companyId, "processing"])
+      .count(),
+    db.mutationQueue
+      .where("[companyId+status]")
+      .equals([companyId, "failed"])
+      .count(),
+    db.mutationQueue
+      .where("[companyId+status]")
+      .equals([companyId, "dead"])
+      .count(),
+  ]);
+  return { pending, processing, failed, dead };
 }
 
 /**

@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod/v4"
-import { Loader2, AlertTriangle, CheckCircle2, Minus, X } from "lucide-react"
+import { Loader2, AlertTriangle, CheckCircle2, Minus, RefreshCw, X } from "lucide-react"
 import type { Resolver } from "react-hook-form"
 import { toast } from "sonner"
 
@@ -33,10 +33,16 @@ import {
 } from "./actions"
 import type { VisitReadings, VisitChemical } from "@/lib/db/visits"
 import { deleteDraft, saveDraft, getDraft } from "@/lib/offline/draft-visits"
-import { deleteEntriesForVisit, enqueue } from "@/lib/offline/mutation-queue"
-import { flushPending } from "@/lib/offline/flush"
-import { createClientMutationId } from "@/lib/offline/types"
+import {
+  deleteEntriesForVisit,
+  deleteDeadForVisit,
+  enqueue,
+  getDeadForVisit,
+  retryDead,
+} from "@/lib/offline/mutation-queue"
+import { createClientMutationId, type QueuedMutation } from "@/lib/offline/types"
 import { useOnlineStatus } from "@/hooks/use-online-status"
+import { useQueueProcessor } from "@/hooks/use-queue-processor"
 
 const formSchema = z.object({
   readings: readingsSchema,
@@ -303,7 +309,66 @@ export function VisitForm({
 
   const [saving, setSaving] = useState<"draft" | "complete" | null>(null)
 
-  const { online, hydrated } = useOnlineStatus()
+  const { online } = useOnlineStatus()
+
+  // Dead-lettered entries for this visit, surfaced so the tech can re-save or
+  // retry instead of silently losing a failed sync.
+  const [deadCount, setDeadCount] = useState(0)
+  const refreshDeadCount = useCallback(() => {
+    void getDeadForVisit(companyId, visit.id).then((rows) =>
+      setDeadCount(rows.length),
+    )
+  }, [companyId, visit.id])
+
+  useEffect(() => {
+    if (completed || isOthersVisit) return
+    refreshDeadCount()
+  }, [completed, isOthersVisit, refreshDeadCount])
+
+  // Permanent failures (bad payload / deleted visit) dead-letter immediately
+  // instead of burning the retry budget; everything else is transient.
+  const classifyError = useCallback((err: unknown) => {
+    if (err instanceof z.ZodError) return true
+    if (err instanceof Error) {
+      const msg = err.message
+      // Server Action failures arrive serialized, so match on message rather
+      // than instance: a deleted visit, one claimed by another tech, or a
+      // completed/cancelled visit will never succeed on retry.
+      if (msg.includes("Visit not found")) return true
+      if (msg.includes("in progress by another tech")) return true
+      if (msg.includes("completed or cancelled")) return true
+      // Serialized zod validation error (readingsSchema.parse rejection).
+      if (msg.trim().startsWith("[") && msg.includes('"path"')) return true
+    }
+    return false
+  }, [])
+
+  // Only surface dead-letters for THIS visit — the queue processor drains the
+  // whole tenant queue, so another visit's entry must not toast here.
+  const handleDead = useCallback((entry: QueuedMutation) => {
+    if (entry.visitId !== visit.id) return
+    refreshDeadCount()
+    toast.error("Some changes couldn't be synced. Re-save or retry them.")
+  }, [refreshDeadCount, visit.id])
+
+  const { drain } = useQueueProcessor({
+    companyId,
+    replay: (entry) => saveDraftAction(entry.visitId, entry.payload),
+    classifyError,
+    onDead: handleDead,
+    enabled: !completed && !isOthersVisit,
+  })
+
+  const handleRetryDead = useCallback(async () => {
+    try {
+      await retryDead(companyId, visit.id)
+      refreshDeadCount()
+      drain()
+    } catch (e) {
+      console.error("Retry dead-lettered changes failed:", e)
+      toast.error(ERROR_MESSAGES.SAVE_FAILED)
+    }
+  }, [companyId, visit.id, refreshDeadCount, drain])
 
   const handleSaveDraft = useCallback(async () => {
     setSaving("draft")
@@ -314,10 +379,13 @@ export function VisitForm({
           const payload = buildPayload(data)
           // Write-through: persist locally first (instant Dexie write, no
           // network await), then enqueue the mutation for replay. The Server
-          // Action is only reached via the injected flush replay, never
+          // Action is only reached via the queue processor's replay, never
           // awaited here.
           await saveDraft(companyId, currentUser.id, visit.id, payload)
           await enqueue(companyId, "saveDraft", visit.id, payload)
+          // A re-save supersedes any stale dead-lettered entries for the visit.
+          await deleteDeadForVisit(companyId, visit.id)
+          refreshDeadCount()
         },
         () => {
           valid = false
@@ -332,51 +400,17 @@ export function VisitForm({
           ? "Saved locally"
           : "Saved offline — will sync when back online",
       )
-      if (online) {
-        // Drain the queue immediately while connected. Failures leave the
-        // entry pending (the `online` listener retries on reconnect) but are
-        // still surfaced so a flaky/expired write isn't silently dropped.
-        void flushPending(companyId, (entry) =>
-          saveDraftAction(entry.visitId, entry.payload),
-        )
-          .then((results) => {
-            const failed = results.filter((r) => r.status === "failed").length
-            if (failed > 0) {
-              toast.warning(
-                "Some changes are saved locally but haven't reached the server. They'll retry.",
-              )
-            }
-          })
-          .catch((e) => {
-            console.error("Offline flush failed:", e)
-          })
-      }
+      // Write-through: sweep immediately while connected. The processor gates
+      // on navigator.onLine, so this is a no-op when actually offline; retry/
+      // backoff/dead-letter state is the processor's job, not the form's.
+      drain()
     } catch (e) {
       console.error("Save draft failed:", e)
       toast.error(ERROR_MESSAGES.SAVE_FAILED)
     } finally {
       setSaving(null)
     }
-  }, [handleSubmit, buildPayload, visit.id, companyId, currentUser.id, online])
-
-  // Drain any mutations queued during an offline spell once connectivity
-  // returns, so a save made offline actually reaches the server (fulfills the
-  // "will sync when back online" toast). Queue processor/backoff is a later
-  // card; this covers the basic reconnect case.
-  //
-  // `hydrated` guards the optimistic first-paint snapshot: `online` reads `true`
-  // on mount even when the device is offline, and without this guard every
-  // offline page load would fire one failed flush. Once hydrated, `online` is
-  // the real `navigator.onLine` value, so an online load still drains a stale
-  // queue left over from a previous offline session.
-  useEffect(() => {
-    if (!online || !hydrated) return
-    void flushPending(companyId, (entry) =>
-      saveDraftAction(entry.visitId, entry.payload),
-    ).catch((e) => {
-      console.error("Offline flush failed:", e)
-    })
-  }, [online, hydrated, companyId])
+  }, [handleSubmit, buildPayload, visit.id, companyId, currentUser.id, online, drain, refreshDeadCount])
 
   // Restore a locally-persisted draft on load so an offline save survives a
   // reload. Hydrates the same state the tech was editing (readings, notes,
@@ -763,6 +797,24 @@ export function VisitForm({
       {/* Action Buttons */}
       {!completed && !isOthersVisit && (
         <div className="flex flex-col items-end gap-2">
+          {deadCount > 0 && (
+            <div className="flex w-full items-center justify-between gap-3 rounded-lg border border-destructive/30 bg-destructive/10 p-3">
+              <p className="text-xs text-destructive">
+                {deadCount} queued change{deadCount > 1 ? "s" : ""} couldn
+                &apos;t sync. Re-save or retry.
+              </p>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={handleRetryDead}
+                disabled={saving !== null}
+              >
+                <RefreshCw className="size-4" />
+                Retry
+              </Button>
+            </div>
+          )}
           <div className="flex gap-3">
             <Button
               type="button"
