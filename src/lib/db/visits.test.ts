@@ -11,6 +11,8 @@ const {
   getVisitById,
   createVisit,
   completeVisit,
+  claimReportNotification,
+  releaseReportNotification,
   saveDraftVisit,
   getVisitHistory,
   getLastVisitReadings,
@@ -245,12 +247,10 @@ describe("completeVisit", () => {
           status: "COMPLETED",
           notes: "All good",
           version: { increment: 1 },
-          reportNotifiedAt: expect.any(Date),
         }),
       }),
     );
     expect(result.visit!.status).toBe("COMPLETED");
-    expect(result.reportAlreadyNotified).toBe(false);
   });
 
   it("skips chemical creation when none are provided", async () => {
@@ -495,7 +495,6 @@ describe("completeVisit", () => {
     expect(result.applied).toBe(false);
     expect(prismaMock.$transaction).not.toHaveBeenCalled();
     expect(result.visit).toEqual(appliedVisit);
-    expect(result.reportAlreadyNotified).toBe(true);
   });
 
   it("applies a new clientMutationId, bumps version and stores the key", async () => {
@@ -592,7 +591,7 @@ describe("completeVisit", () => {
     expect(result.visit!.clientMutationId).toBe("mut-3");
   });
 
-  it("flags reportAlreadyNotified and keeps the original stamp when already notified", async () => {
+  it("does not write reportNotifiedAt in the completion tx", async () => {
     const firstNotifiedAt = new Date("2026-08-01T12:00:00");
     prismaMock.serviceVisit.findUnique.mockResolvedValue({
       id: visitId,
@@ -628,14 +627,49 @@ describe("completeVisit", () => {
 
     const result = await completeVisit(visitId, readings, []);
 
-    expect(result.reportAlreadyNotified).toBe(true);
+    expect(result.visit!.reportNotifiedAt).toBe(firstNotifiedAt);
     expect(txMock.serviceVisit.update).toHaveBeenCalledWith(
       expect.objectContaining({
-        data: expect.objectContaining({
-          reportNotifiedAt: firstNotifiedAt,
+        data: expect.not.objectContaining({
+          reportNotifiedAt: expect.anything(),
         }),
       }),
     );
+  });
+});
+
+describe("claimReportNotification", () => {
+  it("returns true and stamps the slot when it is still null", async () => {
+    prismaMock.serviceVisit.updateMany.mockResolvedValue({ count: 1 });
+
+    const won = await claimReportNotification(visitId, companyId);
+
+    expect(won).toBe(true);
+    expect(prismaMock.serviceVisit.updateMany).toHaveBeenCalledWith({
+      where: { id: visitId, pool: { companyId }, reportNotifiedAt: null },
+      data: { reportNotifiedAt: expect.any(Date) },
+    });
+  });
+
+  it("returns false when a concurrent retry already claimed the slot", async () => {
+    prismaMock.serviceVisit.updateMany.mockResolvedValue({ count: 0 });
+
+    const won = await claimReportNotification(visitId, companyId);
+
+    expect(won).toBe(false);
+  });
+});
+
+describe("releaseReportNotification", () => {
+  it("clears the claim so a later retry re-sends", async () => {
+    prismaMock.serviceVisit.updateMany.mockResolvedValue({ count: 1 });
+
+    await releaseReportNotification(visitId, companyId);
+
+    expect(prismaMock.serviceVisit.updateMany).toHaveBeenCalledWith({
+      where: { id: visitId, pool: { companyId } },
+      data: { reportNotifiedAt: null },
+    });
   });
 });
 

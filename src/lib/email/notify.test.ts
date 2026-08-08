@@ -156,6 +156,46 @@ describe("notifyReportAvailable", () => {
       }),
     );
   });
+
+  it("returns ok:true when the send succeeds", async () => {
+    vi.mocked(getVisitById).mockResolvedValue(mockVisit() as never);
+    vi.mocked(sendEmail).mockResolvedValue({ ok: true });
+
+    const result = await notifyReportAvailable({
+      companyId,
+      visitId,
+      to: "owner@example.com",
+    });
+
+    expect(result).toEqual({ ok: true });
+  });
+
+  it("returns ok:false with the error when the send fails", async () => {
+    vi.mocked(getVisitById).mockResolvedValue(mockVisit() as never);
+    vi.mocked(sendEmail).mockResolvedValue({ ok: false, error: "Resend down" });
+
+    const result = await notifyReportAvailable({
+      companyId,
+      visitId,
+      to: "owner@example.com",
+    });
+
+    expect(result).toEqual({ ok: false, error: "Resend down" });
+  });
+
+  it("returns ok:false when the send throws", async () => {
+    vi.mocked(getVisitById).mockResolvedValue(mockVisit() as never);
+    vi.mocked(sendEmail).mockRejectedValue(new Error("network error"));
+
+    const result = await notifyReportAvailable({
+      companyId,
+      visitId,
+      to: "owner@example.com",
+    });
+
+    expect(result.ok).toBe(false);
+    expect(result.error).toContain("network error");
+  });
 });
 
 describe("notifyInvitation", () => {

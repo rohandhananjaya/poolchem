@@ -192,12 +192,6 @@ export interface CompletedVisit {
   waterHealth: WaterHealthResult;
   /** Whether this call applied the write. `false` = already-applied replay. */
   applied: boolean;
-  /**
-   * Whether the visit's report email had already been sent before this call.
-   * The caller fires the report email only when this is `false` and the write
-   * applied, so a retried offline completion can never double-email.
-   */
-  reportAlreadyNotified: boolean;
 }
 
 /** The result of a save-draft write, with an idempotency flag. */
@@ -250,11 +244,16 @@ async function scheduleNextVisit(
  * all commit together or not at all.
  *
  * The write is idempotent: readings/chemicals are replaced (not appended), the
- * visit's `version` is bumped, an optional `clientMutationId` is stored so a
+ * visit's `version` is bumped, and an optional `clientMutationId` is stored so a
  * replayed offline mutation is a no-op (`applied: false`, no transaction, no
- * next-visit scheduling), and `reportNotifiedAt` is stamped once so a retried
- * offline completion can't double-send the report email (`reportAlreadyNotified`
- * tells the caller whether the email had already gone out).
+ * next-visit scheduling).
+ *
+ * `reportNotifiedAt` is deliberately NOT stamped here. The caller claims the
+ * report-email slot with `claimReportNotification` before sending and releases
+ * it with `releaseReportNotification` on a confirmed send failure — so a crash
+ * between commit and send can't silently skip the email. The stamp on the
+ * returned visit tells the caller whether the email had already gone out at
+ * write time.
  *
  * @throws {Error} If the visit does not exist.
  */
@@ -287,7 +286,6 @@ export async function completeVisit(
       ),
       waterHealth: getWaterHealthScore(replayReadings),
       applied: false,
-      reportAlreadyNotified: Boolean(existing.reportNotifiedAt),
     };
   }
 
@@ -306,9 +304,6 @@ export async function completeVisit(
             nextServiceDate !== undefined ? nextServiceDate : undefined,
           version: { increment: 1 },
           clientMutationId: opts.clientMutationId ?? undefined,
-          // Stamp the first notification only, so a re-completion can't reset
-          // the timestamp and re-open the duplicate-email window.
-          reportNotifiedAt: existing.reportNotifiedAt ?? new Date(),
         },
         include: {
           pool: true,
@@ -351,7 +346,6 @@ export async function completeVisit(
           ),
           waterHealth: getWaterHealthScore(replayReadings),
           applied: false,
-          reportAlreadyNotified: Boolean(current.reportNotifiedAt),
         };
       }
     }
@@ -363,8 +357,52 @@ export async function completeVisit(
     recommendations: getChemicalRecommendations(readings, existing.pool.volume),
     waterHealth: getWaterHealthScore(readings),
     applied: true,
-    reportAlreadyNotified: Boolean(existing.reportNotifiedAt),
   };
+}
+
+/**
+ * Atomically claims the report-email send slot for a completed visit.
+ *
+ * Returns `true` only when this caller wins the claim (the slot was still null)
+ * and therefore owns the send. A concurrent retry that races here sees
+ * `count === 0` and must skip sending, preserving at-most-once delivery.
+ *
+ * The claim stamps the slot as "attempted" before the email goes out. The stamp
+ * is cleared only by {@link releaseReportNotification}, called from the same
+ * in-flight request on a confirmed failure. A crash between claim and send
+ * leaves the stamp set permanently — the at-most-once tradeoff — because a later
+ * replay short-circuits on the non-null stamp and never reaches the release path.
+ *
+ * Scoped to `companyId` via the visit's pool; a visit outside the tenant can't
+ * be claimed.
+ */
+export async function claimReportNotification(
+  visitId: string,
+  companyId: string,
+): Promise<boolean> {
+  const { count } = await prisma.serviceVisit.updateMany({
+    where: { id: visitId, pool: { companyId }, reportNotifiedAt: null },
+    data: { reportNotifiedAt: new Date() },
+  });
+  return count === 1;
+}
+
+/**
+ * Releases a claimed report-email slot after a confirmed send failure so a later
+ * retry re-attempts delivery. Only the claim winner reaches this path, and only
+ * on failure, so a successful send's stamp is never cleared.
+ *
+ * Scoped to `companyId` via the visit's pool; a visit outside the tenant can't
+ * be released.
+ */
+export async function releaseReportNotification(
+  visitId: string,
+  companyId: string,
+): Promise<void> {
+  await prisma.serviceVisit.updateMany({
+    where: { id: visitId, pool: { companyId } },
+    data: { reportNotifiedAt: null },
+  });
 }
 
 /**

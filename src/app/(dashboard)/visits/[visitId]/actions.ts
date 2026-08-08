@@ -6,7 +6,9 @@ import { requireTech } from "@/lib/auth";
 import {
   assertVisitAccess,
   cancelVisit,
+  claimReportNotification,
   completeVisit,
+  releaseReportNotification,
   saveDraftVisit,
   startVisit,
   updateVisitStatus,
@@ -66,16 +68,31 @@ export async function completeVisitAction(
   );
 
   // Auto-send the shareable report to the pool's homeowner when one is set.
-  // Guarded by both the applied flag and a persisted reportNotifiedAt stamp so
-  // a retried offline completion — even one carrying a fresh clientMutationId —
-  // can never double-email.
+  // Claim-then-send: completeVisit no longer stamps reportNotifiedAt, so a crash
+  // between commit and a successful send no longer silences the email forever.
+  // Fire on any write — fresh or replayed — whose slot is still null, atomically
+  // claim it so a concurrent retry can't double-email, then release the claim on
+  // a confirmed send failure so a later retry re-attempts delivery.
   const homeownerEmail = completed.visit?.pool.homeownerEmail;
-  if (completed.applied && !completed.reportAlreadyNotified && homeownerEmail) {
-    await emailNotify.notifyReportAvailable({
-      companyId: user.companyId,
-      visitId,
-      to: homeownerEmail,
-    });
+  const alreadyNotified = Boolean(completed.visit?.reportNotifiedAt);
+  if (homeownerEmail && !alreadyNotified) {
+    const claimed = await claimReportNotification(visitId, user.companyId);
+    if (claimed) {
+      try {
+        const result = await emailNotify.notifyReportAvailable({
+          companyId: user.companyId,
+          visitId,
+          to: homeownerEmail,
+        });
+        if (!result.ok) {
+          await releaseReportNotification(visitId, user.companyId);
+        }
+      } catch {
+        // notifyReportAvailable's pre-send DB reads can throw before safeSend
+        // runs; a throw means no email went out, so release for a retry.
+        await releaseReportNotification(visitId, user.companyId);
+      }
+    }
   }
 
   revalidatePath(`/visits/${visitId}`);

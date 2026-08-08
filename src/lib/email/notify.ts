@@ -12,7 +12,7 @@ import "server-only";
 import { getCompanyById, getCompanyFromEmail } from "@/lib/db/company";
 import { getVisitById } from "@/lib/db/visits";
 import { logger } from "@/lib/log";
-import { sendEmail } from "@/lib/email";
+import { sendEmail, type SendEmailResult } from "@/lib/email";
 import {
   buildVisitAssignedEmail,
   buildVisitCancelledEmail,
@@ -41,12 +41,14 @@ function getPlatformFrom(): string {
 
 /**
  * Fire-and-forget delivery: sends the email, logs failures, and never
- * propagates. The `label` makes log lines greppable.
+ * propagates. The `label` makes log lines greppable. Returns the delivery
+ * outcome so a caller that needs to react to a failure (e.g. release a claim
+ * slot so a retry re-sends) can, without ever throwing.
  */
 async function safeSend(
   label: string,
   input: { to: string; from: string; subject: string; html: string },
-): Promise<void> {
+): Promise<SendEmailResult> {
   try {
     const result = await sendEmail(input);
     if (!result.ok) {
@@ -55,11 +57,14 @@ async function safeSend(
         metadata: { to: input.to, error: result.error },
       });
     }
+    return result;
   } catch (err) {
+    const message = err instanceof Error ? err.message : "Unknown error";
     logger.error(`Email "${label}" threw`, {
       context: "email.notify",
-      metadata: { to: input.to, error: String(err) },
+      metadata: { to: input.to, error: message },
     });
+    return { ok: false, error: message };
   }
 }
 
@@ -187,15 +192,16 @@ export async function notifyVisitCancelled(input: {
 
 /**
  * Sends a completed visit's shareable report to a homeowner. Resolves the
- * report link server-side so no caller has to build it.
+ * report link server-side so no caller has to build it. Returns the delivery
+ * outcome so the caller can release the claim slot on failure.
  */
 export async function notifyReportAvailable(input: {
   companyId: string;
   visitId: string;
   to: string;
-}): Promise<void> {
+}): Promise<SendEmailResult> {
   const visit = await getVisitById(input.visitId, input.companyId);
-  if (!visit) return;
+  if (!visit) return { ok: false, error: "Visit not found." };
 
   const company = await getCompanyById(input.companyId);
   const reportUrl = visit.publicToken
@@ -209,7 +215,7 @@ export async function notifyReportAvailable(input: {
     poolName: visit.pool.name,
     reportUrl,
   });
-  await safeSend("report_available", email);
+  return safeSend("report_available", email);
 }
 
 /** Sends a payment receipt after a successful payment or plan change. */

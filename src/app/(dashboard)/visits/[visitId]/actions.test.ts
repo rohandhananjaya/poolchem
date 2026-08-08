@@ -7,18 +7,20 @@ vi.mock("@/lib/db/visits", () => ({
   assertVisitAccess: vi.fn().mockResolvedValue("DRAFT"),
   saveDraftVisit: vi.fn(),
   completeVisit: vi.fn(),
+  claimReportNotification: vi.fn().mockResolvedValue(true),
+  releaseReportNotification: vi.fn(),
   startVisit: vi.fn(),
   updateVisitStatus: vi.fn(),
   cancelVisit: vi.fn(),
 }));
 vi.mock("@/lib/email/notify", () => ({
   notifyVisitCancelled: vi.fn(),
-  notifyReportAvailable: vi.fn(),
+  notifyReportAvailable: vi.fn().mockResolvedValue({ ok: true }),
 }));
 vi.mock("next/cache", () => ({
   revalidatePath: vi.fn(),
 }));
-const { saveDraftVisit, completeVisit, startVisit, updateVisitStatus, cancelVisit, assertVisitAccess } = await import("@/lib/db/visits");
+const { saveDraftVisit, completeVisit, claimReportNotification, releaseReportNotification, startVisit, updateVisitStatus, cancelVisit, assertVisitAccess } = await import("@/lib/db/visits");
 const { requireTech } = await import("@/lib/auth");
 const emailNotify = await import("@/lib/email/notify");
 const { revalidatePath } = await import("next/cache");
@@ -29,6 +31,8 @@ const visitId = "visit-1";
 
 beforeEach(() => {
   vi.clearAllMocks();
+  vi.mocked(claimReportNotification).mockResolvedValue(true);
+  vi.mocked(emailNotify.notifyReportAvailable).mockResolvedValue({ ok: true });
 });
 
 describe("saveDraftAction", () => {
@@ -125,15 +129,18 @@ describe("completeVisitAction", () => {
       { clientMutationId: undefined },
     );
     expect(emailNotify.notifyReportAvailable).not.toHaveBeenCalled();
+    expect(claimReportNotification).not.toHaveBeenCalled();
     expect(revalidatePath).toHaveBeenCalledWith(`/visits/${visitId}`);
   });
 
   it("auto-sends the report to the pool's homeowner when one is set", async () => {
     vi.mocked(requireTech).mockResolvedValue(mockUser as never);
     vi.mocked(completeVisit).mockResolvedValue({
-      visit: { pool: { homeownerEmail: "owner@example.com" } },
+      visit: {
+        pool: { homeownerEmail: "owner@example.com" },
+        reportNotifiedAt: null,
+      },
       applied: true,
-      reportAlreadyNotified: false,
     } as never);
 
     await completeVisitAction(visitId, {
@@ -149,19 +156,23 @@ describe("completeVisitAction", () => {
       notes: "",
     });
 
+    expect(claimReportNotification).toHaveBeenCalledWith(visitId, "company-1");
     expect(emailNotify.notifyReportAvailable).toHaveBeenCalledWith({
       companyId: "company-1",
       visitId,
       to: "owner@example.com",
     });
+    expect(releaseReportNotification).not.toHaveBeenCalled();
   });
 
-  it("skips the report email when the report was already notified, even on a fresh write", async () => {
+  it("skips the report email when the stamp is already set, even on a fresh write", async () => {
     vi.mocked(requireTech).mockResolvedValue(mockUser as never);
     vi.mocked(completeVisit).mockResolvedValue({
-      visit: { pool: { homeownerEmail: "owner@example.com" } },
+      visit: {
+        pool: { homeownerEmail: "owner@example.com" },
+        reportNotifiedAt: new Date("2026-08-01T12:00:00"),
+      },
       applied: true,
-      reportAlreadyNotified: true,
     } as never);
 
     await completeVisitAction(visitId, {
@@ -177,13 +188,17 @@ describe("completeVisitAction", () => {
       notes: "",
     });
 
+    expect(claimReportNotification).not.toHaveBeenCalled();
     expect(emailNotify.notifyReportAvailable).not.toHaveBeenCalled();
   });
 
-  it("skips the report email when completeVisit reports an idempotent replay", async () => {
+  it("sends the report on an idempotent replay whose stamp is still null", async () => {
     vi.mocked(requireTech).mockResolvedValue(mockUser as never);
     vi.mocked(completeVisit).mockResolvedValue({
-      visit: { pool: { homeownerEmail: "owner@example.com" } },
+      visit: {
+        pool: { homeownerEmail: "owner@example.com" },
+        reportNotifiedAt: null,
+      },
       applied: false,
     } as never);
 
@@ -200,7 +215,124 @@ describe("completeVisitAction", () => {
       notes: "",
     });
 
+    expect(claimReportNotification).toHaveBeenCalledWith(visitId, "company-1");
+    expect(emailNotify.notifyReportAvailable).toHaveBeenCalled();
+  });
+
+  it("skips the report email on a replay whose stamp is already set", async () => {
+    vi.mocked(requireTech).mockResolvedValue(mockUser as never);
+    vi.mocked(completeVisit).mockResolvedValue({
+      visit: {
+        pool: { homeownerEmail: "owner@example.com" },
+        reportNotifiedAt: new Date("2026-08-01T12:00:00"),
+      },
+      applied: false,
+    } as never);
+
+    await completeVisitAction(visitId, {
+      readings: {
+        ph: 7.5,
+        freeChlorine: 2,
+        totalAlkalinity: 100,
+        calciumHardness: 300,
+        cyanuricAcid: 40,
+        temperature: 80,
+      },
+      chemicals: [],
+      notes: "",
+    });
+
+    expect(claimReportNotification).not.toHaveBeenCalled();
     expect(emailNotify.notifyReportAvailable).not.toHaveBeenCalled();
+  });
+
+  it("skips sending when a concurrent retry wins the claim", async () => {
+    vi.mocked(requireTech).mockResolvedValue(mockUser as never);
+    vi.mocked(completeVisit).mockResolvedValue({
+      visit: {
+        pool: { homeownerEmail: "owner@example.com" },
+        reportNotifiedAt: null,
+      },
+      applied: true,
+    } as never);
+    vi.mocked(claimReportNotification).mockResolvedValue(false);
+
+    await completeVisitAction(visitId, {
+      readings: {
+        ph: 7.5,
+        freeChlorine: 2,
+        totalAlkalinity: 100,
+        calciumHardness: 300,
+        cyanuricAcid: 40,
+        temperature: 80,
+      },
+      chemicals: [],
+      notes: "",
+    });
+
+    expect(emailNotify.notifyReportAvailable).not.toHaveBeenCalled();
+    expect(releaseReportNotification).not.toHaveBeenCalled();
+  });
+
+  it("releases the claim when the email send fails", async () => {
+    vi.mocked(requireTech).mockResolvedValue(mockUser as never);
+    vi.mocked(completeVisit).mockResolvedValue({
+      visit: {
+        pool: { homeownerEmail: "owner@example.com" },
+        reportNotifiedAt: null,
+      },
+      applied: true,
+    } as never);
+    vi.mocked(emailNotify.notifyReportAvailable).mockResolvedValue({
+      ok: false,
+      error: "Resend down",
+    });
+
+    await completeVisitAction(visitId, {
+      readings: {
+        ph: 7.5,
+        freeChlorine: 2,
+        totalAlkalinity: 100,
+        calciumHardness: 300,
+        cyanuricAcid: 40,
+        temperature: 80,
+      },
+      chemicals: [],
+      notes: "",
+    });
+
+    expect(emailNotify.notifyReportAvailable).toHaveBeenCalled();
+    expect(releaseReportNotification).toHaveBeenCalledWith(visitId, "company-1");
+  });
+
+  it("releases the claim when the email send throws", async () => {
+    vi.mocked(requireTech).mockResolvedValue(mockUser as never);
+    vi.mocked(completeVisit).mockResolvedValue({
+      visit: {
+        pool: { homeownerEmail: "owner@example.com" },
+        reportNotifiedAt: null,
+      },
+      applied: true,
+    } as never);
+    vi.mocked(emailNotify.notifyReportAvailable).mockRejectedValue(
+      new Error("DB down"),
+    );
+
+    await completeVisitAction(visitId, {
+      readings: {
+        ph: 7.5,
+        freeChlorine: 2,
+        totalAlkalinity: 100,
+        calciumHardness: 300,
+        cyanuricAcid: 40,
+        temperature: 80,
+      },
+      chemicals: [],
+      notes: "",
+    });
+
+    expect(emailNotify.notifyReportAvailable).toHaveBeenCalled();
+    expect(releaseReportNotification).toHaveBeenCalledWith(visitId, "company-1");
   });
 
   it("passes clientMutationId through to completeVisit when provided", async () => {
