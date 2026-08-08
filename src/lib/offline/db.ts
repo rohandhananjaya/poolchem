@@ -5,11 +5,15 @@
  * Component or Server Action — IndexedDB exists only in the browser / Capacitor
  * WebView, never on the server.
  *
- * Schema: `poolbench-offline` v1
+ * Schema: `poolbench-offline`
  * - `draftVisits`   — one draft per visit per tenant (`&[companyId+visitId]`).
  * - `mutationQueue` — unique queue entry per tenant per clientMutationId
  *                     (`&[companyId+clientMutationId]`), FIFO-drainable via
  *                     `[companyId+status]` + `createdAt`.
+ *
+ * v2 adds `[companyId+visitId]` so per-visit queries (`getVisitStats`,
+ * `getPendingForVisit`, …) resolve via the index instead of scanning the whole
+ * tenant queue. Added indexes are backfilled automatically on upgrade.
  */
 import "client-only";
 
@@ -27,6 +31,11 @@ class PoolbenchOfflineDB extends Dexie {
       draftVisits: "++id, &[companyId+visitId], companyId, updatedAt",
       mutationQueue:
         "++id, &[companyId+clientMutationId], companyId, [companyId+status], createdAt",
+    });
+    this.version(2).stores({
+      draftVisits: "++id, &[companyId+visitId], companyId, updatedAt",
+      mutationQueue:
+        "++id, &[companyId+clientMutationId], companyId, [companyId+status], [companyId+visitId], createdAt",
     });
   }
 }

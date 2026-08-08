@@ -1,9 +1,10 @@
 "use client";
 
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import {
   drainOnce,
+  type DrainResult,
   type FlushReplay,
 } from "@/lib/offline/processor";
 import type { QueuedMutation } from "@/lib/offline/types";
@@ -18,6 +19,10 @@ export interface UseQueueProcessorOptions {
   classifyError?: (err: unknown, entry: QueuedMutation) => boolean;
   /** Fired when an entry dead-letters. */
   onDead?: (entry: QueuedMutation) => void;
+  /** Fired when an entry syncs successfully. */
+  onSynced?: (entry: QueuedMutation) => void;
+  /** Fired when an entry fails; `permanent` is true when dead-lettered. */
+  onFailed?: (entry: QueuedMutation, permanent: boolean) => void;
   /** Periodic sweep interval in ms. Default 5000. */
   sweepIntervalMs?: number;
   /**
@@ -28,6 +33,16 @@ export interface UseQueueProcessorOptions {
   enabled?: boolean;
 }
 
+export interface UseQueueProcessorResult {
+  /** Runs an immediate sweep; resolves with the per-entry outcomes. */
+  drain: () => Promise<DrainResult[]>;
+  /**
+   * Whether a sweep is currently in flight (tenant-wide — a sweep drains the
+   * whole tenant queue, not just one visit). Drives the "syncing" badge state.
+   */
+  inFlight: boolean;
+}
+
 /**
  * Wires the queue processor's triggers: drains when connectivity returns after
  * hydration, when the tab/WebView regains visibility (covers Capacitor resume
@@ -35,11 +50,14 @@ export interface UseQueueProcessorOptions {
  * just elapsed are retried. Gated on `useOnlineStatus` — an offline spell never
  * triggers a sweep, so retry budget is never consumed offline.
  *
- * Returns `drain` for callers to trigger an immediate sweep (e.g. after
- * `retryDead`). The single-flight guard in `drainOnce` prevents overlapping
- * sweeps from the various triggers.
+ * Returns `{ drain, inFlight }`: `drain` for callers to trigger an immediate
+ * sweep (e.g. after `retryDead`); `inFlight` reflects whether any sweep is
+ * currently running (all triggers flow through `drain`). The single-flight
+ * guard in `drainOnce` prevents overlapping sweeps from the various triggers.
  */
-export function useQueueProcessor(options: UseQueueProcessorOptions) {
+export function useQueueProcessor(
+  options: UseQueueProcessorOptions,
+): UseQueueProcessorResult {
   const { online, hydrated } = useOnlineStatus();
   const enabled = options.enabled !== false;
 
@@ -50,6 +68,12 @@ export function useQueueProcessor(options: UseQueueProcessorOptions) {
   const onlineRef = useRef(online);
   const hydratedRef = useRef(hydrated);
   const enabledRef = useRef(enabled);
+
+  // Track outstanding sweep calls so `inFlight` stays true while any drain is
+  // running — concurrent triggers (interval + visibility) would otherwise
+  // flicker the flag as the skipped sweep resolves before the real one.
+  const [inFlight, setInFlight] = useState(false);
+  const sweepCountRef = useRef(0);
 
   useEffect(() => {
     optsRef.current = options;
@@ -64,13 +88,33 @@ export function useQueueProcessor(options: UseQueueProcessorOptions) {
     enabledRef.current = enabled;
   });
 
-  const drain = useCallback(() => {
-    if (!enabledRef.current) return;
-    if (!onlineRef.current || !hydratedRef.current) return;
-    const { companyId, replay, classifyError, onDead } = optsRef.current;
-    void drainOnce(companyId, replay, { classifyError, onDead }).catch((e) => {
+  const drain = useCallback(async (): Promise<DrainResult[]> => {
+    if (!enabledRef.current) return [];
+    if (!onlineRef.current || !hydratedRef.current) return [];
+    const {
+      companyId,
+      replay,
+      classifyError,
+      onDead,
+      onSynced,
+      onFailed,
+    } = optsRef.current;
+    sweepCountRef.current += 1;
+    setInFlight(true);
+    try {
+      return await drainOnce(companyId, replay, {
+        classifyError,
+        onDead,
+        onSynced,
+        onFailed,
+      });
+    } catch (e) {
       console.error("Queue drain failed:", e);
-    });
+      return [];
+    } finally {
+      sweepCountRef.current -= 1;
+      if (sweepCountRef.current === 0) setInFlight(false);
+    }
   }, []);
 
   // Drain once connectivity returns (post-hydration, or on reconnect).
@@ -100,5 +144,5 @@ export function useQueueProcessor(options: UseQueueProcessorOptions) {
     return () => window.clearInterval(id);
   }, [enabled, options.sweepIntervalMs, drain]);
 
-  return { drain };
+  return { drain, inFlight };
 }

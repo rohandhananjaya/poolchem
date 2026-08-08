@@ -11,6 +11,7 @@
  * only persists and queries entries.
  */
 import { db } from "./db";
+import type { VisitSyncStats } from "./sync-status";
 import {
   createClientMutationId,
   type DraftVisitPayload,
@@ -304,6 +305,30 @@ export async function getStats(companyId: string): Promise<QueueStats> {
       .count(),
   ]);
   return { pending, processing, failed, dead };
+}
+
+/**
+ * Returns one visit's queue counts (`pending`, `failed`, `dead`) within a
+ * tenant — the per-visit stats the sync-status UI badges on. Resolved via the
+ * `[companyId+visitId]` index, so it never scans the whole tenant queue;
+ * `processing` is never persisted (the processor tracks it only in memory), so
+ * it is not tallied. `getStats` stays for any future tenant-level surface.
+ */
+export async function getVisitStats(
+  companyId: string,
+  visitId: string,
+): Promise<VisitSyncStats> {
+  const rows = await db.mutationQueue
+    .where("[companyId+visitId]")
+    .equals([companyId, visitId])
+    .toArray();
+  const stats: VisitSyncStats = { pending: 0, failed: 0, dead: 0 };
+  for (const entry of rows) {
+    if (entry.status === "pending") stats.pending += 1;
+    else if (entry.status === "failed") stats.failed += 1;
+    else if (entry.status === "dead") stats.dead += 1;
+  }
+  return stats;
 }
 
 /**

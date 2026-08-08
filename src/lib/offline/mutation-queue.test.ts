@@ -15,6 +15,7 @@ import {
   getDue,
   getPending,
   getStats,
+  getVisitStats,
   markStatus,
   retryDead,
 } from "./mutation-queue";
@@ -292,6 +293,57 @@ describe("queue sweeps and dead-letter state", () => {
       processing: 0,
       failed: 1,
       dead: 1,
+    });
+  });
+
+  it("getVisitStats tallies pending/failed/dead for one visit", async () => {
+    await enqueue("company-1", "saveDraft", "visit-1", payload());
+    const failed = await enqueue("company-1", "saveDraft", "visit-1", payload());
+    const dead = await enqueue("company-1", "saveDraft", "visit-1", payload());
+    await markStatus("company-1", failed.clientMutationId, "failed");
+    await markStatus("company-1", dead.clientMutationId, "dead");
+    // Another visit's entries must not leak into the tally.
+    await enqueue("company-1", "saveDraft", "visit-2", payload());
+
+    expect(await getVisitStats("company-1", "visit-1")).toEqual({
+      pending: 1,
+      failed: 1,
+      dead: 1,
+    });
+  });
+
+  it("getVisitStats is isolated per tenant", async () => {
+    await enqueue("company-1", "saveDraft", "visit-1", payload());
+    await enqueue("company-2", "saveDraft", "visit-1", payload());
+
+    expect(await getVisitStats("company-1", "visit-1")).toEqual({
+      pending: 1,
+      failed: 0,
+      dead: 0,
+    });
+    expect(await getVisitStats("company-2", "visit-1")).toEqual({
+      pending: 1,
+      failed: 0,
+      dead: 0,
+    });
+  });
+
+  it("getVisitStats ignores processing entries (never persisted anyway)", async () => {
+    const entry = await enqueue("company-1", "saveDraft", "visit-1", payload());
+    await markStatus("company-1", entry.clientMutationId, "processing");
+
+    expect(await getVisitStats("company-1", "visit-1")).toEqual({
+      pending: 0,
+      failed: 0,
+      dead: 0,
+    });
+  });
+
+  it("getVisitStats returns zeros for a visit with no entries", async () => {
+    expect(await getVisitStats("company-1", "missing")).toEqual({
+      pending: 0,
+      failed: 0,
+      dead: 0,
     });
   });
 });

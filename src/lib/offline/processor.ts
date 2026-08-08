@@ -74,6 +74,14 @@ export interface DrainOptions {
   replayTimeoutMs?: number;
   /** Fired when an entry transitions to `dead`. */
   onDead?: (entry: QueuedMutation) => void;
+  /** Fired when an entry syncs successfully (after the entry is deleted). */
+  onSynced?: (entry: QueuedMutation) => void;
+  /**
+   * Fired when an entry fails. `permanent` is `true` when the entry
+   * dead-lettered (never retried automatically), `false` when it was scheduled
+   * for a later retry (or reverted to `pending` in a one-shot drain).
+   */
+  onFailed?: (entry: QueuedMutation, permanent: boolean) => void;
 }
 
 // Single-flight guard: only one sweep per tab at a time. Reset by tests.
@@ -162,6 +170,8 @@ export async function drainOnce(
       scheduleRetry = true,
       replayTimeoutMs = 30000,
       onDead,
+      onSynced,
+      onFailed,
     } = opts;
     // Entries already being replayed in this tab are skipped; the DB status is
     // never flipped to `processing`, so a reload can always re-select them.
@@ -176,6 +186,7 @@ export async function drainOnce(
         try {
           await replayWithTimeout(replay, entry, replayTimeoutMs);
           await deleteEntryAndDraftIfIdle(companyId, entry);
+          onSynced?.(entry);
           results.push({ clientMutationId: entry.clientMutationId, status: "synced" });
         } catch (err) {
           const permanent = classifyError?.(err, entry) ?? false;
@@ -186,6 +197,7 @@ export async function drainOnce(
               lastError,
             });
             onDead?.(entry);
+            onFailed?.(entry, true);
             results.push({ clientMutationId: entry.clientMutationId, status: "dead" });
           } else if (scheduleRetry) {
             // Transient: schedule the next attempt with exponential backoff.
@@ -194,12 +206,14 @@ export async function drainOnce(
               lastError,
               nextRetryAt: computeNextRetryAt(now, entry.retryCount),
             });
+            onFailed?.(entry, false);
             results.push({ clientMutationId: entry.clientMutationId, status: "failed" });
           } else {
             // One-shot drain: revert to pending for a later scheduled sweep.
             await markStatus(companyId, entry.clientMutationId, "pending", {
               lastError,
             });
+            onFailed?.(entry, false);
             results.push({ clientMutationId: entry.clientMutationId, status: "failed" });
           }
         }

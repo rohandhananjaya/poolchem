@@ -78,6 +78,58 @@ describe("drainOnce", () => {
     await expect(getDraft("company-1", "visit-1")).resolves.toBeNull();
   });
 
+  it("fires onSynced after a successful replay", async () => {
+    const entry = await enqueue("company-1", "saveDraft", "visit-1", payload());
+    const replay = vi.fn().mockResolvedValue(undefined);
+    const onSynced = vi.fn();
+
+    await drainOnce("company-1", replay, { onSynced });
+
+    expect(onSynced).toHaveBeenCalledWith(
+      expect.objectContaining({ clientMutationId: entry.clientMutationId }),
+    );
+  });
+
+  it("fires onFailed with permanent=false on a scheduled transient failure", async () => {
+    const entry = await enqueue("company-1", "saveDraft", "visit-1", payload());
+    const replay = vi.fn().mockRejectedValue(new Error("offline"));
+    const onFailed = vi.fn();
+
+    await drainOnce("company-1", replay, { onFailed });
+
+    expect(onFailed).toHaveBeenCalledWith(
+      expect.objectContaining({ clientMutationId: entry.clientMutationId }),
+      false,
+    );
+  });
+
+  it("fires onFailed with permanent=true when an entry dead-letters", async () => {
+    const entry = await enqueue("company-1", "saveDraft", "visit-1", payload());
+    const classifyError = vi.fn(() => true);
+    const onFailed = vi.fn();
+    const replay = vi.fn().mockRejectedValue(new Error("Visit not found"));
+
+    await drainOnce("company-1", replay, { classifyError, onFailed });
+
+    expect(onFailed).toHaveBeenCalledWith(
+      expect.objectContaining({ clientMutationId: entry.clientMutationId }),
+      true,
+    );
+  });
+
+  it("fires onFailed with permanent=false on a one-shot (unscheduled) failure", async () => {
+    const entry = await enqueue("company-1", "saveDraft", "visit-1", payload());
+    const replay = vi.fn().mockRejectedValue(new Error("flaky"));
+    const onFailed = vi.fn();
+
+    await drainOnce("company-1", replay, { scheduleRetry: false, onFailed });
+
+    expect(onFailed).toHaveBeenCalledWith(
+      expect.objectContaining({ clientMutationId: entry.clientMutationId }),
+      false,
+    );
+  });
+
   it("schedules a transient failure with backoff and does not retry before due", async () => {
     const entry = await enqueue("company-1", "saveDraft", "visit-1", payload());
     const now = 1_000_000;

@@ -27,7 +27,6 @@ import { ChemicalRecommendations } from "@/components/visits/ChemicalRecommendat
 import { AddChemicalDialog } from "@/components/visits/AddChemicalDialog"
 import { VisitNotes } from "@/components/visits/VisitNotes"
 import {
-  saveDraftAction,
   completeVisitAction,
   type VisitFormValues,
 } from "./actions"
@@ -37,12 +36,11 @@ import {
   deleteEntriesForVisit,
   deleteDeadForVisit,
   enqueue,
-  getDeadForVisit,
-  retryDead,
 } from "@/lib/offline/mutation-queue"
-import { createClientMutationId, type QueuedMutation } from "@/lib/offline/types"
+import { createClientMutationId } from "@/lib/offline/types"
 import { useOnlineStatus } from "@/hooks/use-online-status"
-import { useQueueProcessor } from "@/hooks/use-queue-processor"
+import { useVisitSyncStatus } from "@/hooks/use-visit-sync-status"
+import { SyncStatusBadge } from "@/components/visits/SyncStatusBadge"
 
 const formSchema = z.object({
   readings: readingsSchema,
@@ -311,64 +309,11 @@ export function VisitForm({
 
   const { online } = useOnlineStatus()
 
-  // Dead-lettered entries for this visit, surfaced so the tech can re-save or
-  // retry instead of silently losing a failed sync.
-  const [deadCount, setDeadCount] = useState(0)
-  const refreshDeadCount = useCallback(() => {
-    void getDeadForVisit(companyId, visit.id).then((rows) =>
-      setDeadCount(rows.length),
-    )
-  }, [companyId, visit.id])
-
-  useEffect(() => {
-    if (completed || isOthersVisit) return
-    refreshDeadCount()
-  }, [completed, isOthersVisit, refreshDeadCount])
-
-  // Permanent failures (bad payload / deleted visit) dead-letter immediately
-  // instead of burning the retry budget; everything else is transient.
-  const classifyError = useCallback((err: unknown) => {
-    if (err instanceof z.ZodError) return true
-    if (err instanceof Error) {
-      const msg = err.message
-      // Server Action failures arrive serialized, so match on message rather
-      // than instance: a deleted visit, one claimed by another tech, or a
-      // completed/cancelled visit will never succeed on retry.
-      if (msg.includes("Visit not found")) return true
-      if (msg.includes("in progress by another tech")) return true
-      if (msg.includes("completed or cancelled")) return true
-      // Serialized zod validation error (readingsSchema.parse rejection).
-      if (msg.trim().startsWith("[") && msg.includes('"path"')) return true
-    }
-    return false
-  }, [])
-
-  // Only surface dead-letters for THIS visit — the queue processor drains the
-  // whole tenant queue, so another visit's entry must not toast here.
-  const handleDead = useCallback((entry: QueuedMutation) => {
-    if (entry.visitId !== visit.id) return
-    refreshDeadCount()
-    toast.error("Some changes couldn't be synced. Re-save or retry them.")
-  }, [refreshDeadCount, visit.id])
-
-  const { drain } = useQueueProcessor({
+  const sync = useVisitSyncStatus({
     companyId,
-    replay: (entry) => saveDraftAction(entry.visitId, entry.payload),
-    classifyError,
-    onDead: handleDead,
+    visitId: visit.id,
     enabled: !completed && !isOthersVisit,
   })
-
-  const handleRetryDead = useCallback(async () => {
-    try {
-      await retryDead(companyId, visit.id)
-      refreshDeadCount()
-      drain()
-    } catch (e) {
-      console.error("Retry dead-lettered changes failed:", e)
-      toast.error(ERROR_MESSAGES.SAVE_FAILED)
-    }
-  }, [companyId, visit.id, refreshDeadCount, drain])
 
   const handleSaveDraft = useCallback(async () => {
     setSaving("draft")
@@ -385,7 +330,6 @@ export function VisitForm({
           await enqueue(companyId, "saveDraft", visit.id, payload)
           // A re-save supersedes any stale dead-lettered entries for the visit.
           await deleteDeadForVisit(companyId, visit.id)
-          refreshDeadCount()
         },
         () => {
           valid = false
@@ -402,15 +346,16 @@ export function VisitForm({
       )
       // Write-through: sweep immediately while connected. The processor gates
       // on navigator.onLine, so this is a no-op when actually offline; retry/
-      // backoff/dead-letter state is the processor's job, not the form's.
-      drain()
+      // backoff/dead-letter state is the processor's job, not the form's. The
+      // flush outcome surfaces via the hook's transition toast.
+      sync.drain()
     } catch (e) {
       console.error("Save draft failed:", e)
       toast.error(ERROR_MESSAGES.SAVE_FAILED)
     } finally {
       setSaving(null)
     }
-  }, [handleSubmit, buildPayload, visit.id, companyId, currentUser.id, online, drain, refreshDeadCount])
+  }, [handleSubmit, buildPayload, visit.id, companyId, currentUser.id, online, sync.drain])
 
   // Restore a locally-persisted draft on load so an offline save survives a
   // reload. Hydrates the same state the tech was editing (readings, notes,
@@ -797,17 +742,18 @@ export function VisitForm({
       {/* Action Buttons */}
       {!completed && !isOthersVisit && (
         <div className="flex flex-col items-end gap-2">
-          {deadCount > 0 && (
+          <SyncStatusBadge status={sync.status} counts={sync.counts} />
+          {sync.counts.dead > 0 && (
             <div className="flex w-full items-center justify-between gap-3 rounded-lg border border-destructive/30 bg-destructive/10 p-3">
               <p className="text-xs text-destructive">
-                {deadCount} queued change{deadCount > 1 ? "s" : ""} couldn
+                {sync.counts.dead} queued change{sync.counts.dead > 1 ? "s" : ""} couldn
                 &apos;t sync. Re-save or retry.
               </p>
               <Button
                 type="button"
                 variant="outline"
                 size="sm"
-                onClick={handleRetryDead}
+                onClick={sync.retry}
                 disabled={saving !== null}
               >
                 <RefreshCw className="size-4" />
