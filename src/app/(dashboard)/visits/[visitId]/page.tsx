@@ -124,6 +124,7 @@ export default async function VisitPage({
 
       <VisitForm
         key={visit.id}
+        companyId={user.companyId}
         visit={JSON.parse(JSON.stringify(visit))}
         lastReadings={lastReadings ? JSON.parse(JSON.stringify(lastReadings)) : null}
         currentUser={{ id: user.id, name: user.name }}

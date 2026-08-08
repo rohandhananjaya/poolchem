@@ -15,18 +15,36 @@ import {
   type VisitReadings,
   type VisitChemical,
 } from "@/lib/db/visits";
-import { readingsSchema } from "@/lib/validation/visit-readings";
+import { readingsSchema, type ReadingsInput } from "@/lib/validation/visit-readings";
 import { ServiceVisitStatus } from "@/generated/prisma/client";
 import * as emailNotify from "@/lib/email/notify";
 
 export interface VisitFormValues {
-  readings: VisitReadings;
+  readings: ReadingsInput;
   chemicals: VisitChemical[];
   notes: string;
   /** YYYY-MM-DD string, or undefined to leave unset. */
   nextServiceDate?: string;
   /** Device-generated idempotency key for offline replay. Optional. */
   clientMutationId?: string;
+}
+
+/**
+ * Coerces the optional readings shape (`ReadingsInput`) into the required
+ * `VisitReadings` shape the db/ helpers persist. Blank fields on the form or a
+ * partially-filled offline draft are normalized to 0 here — at the server
+ * boundary — so online and replayed-offline behavior are identical and the
+ * local draft stays a faithful record of what the tech entered.
+ */
+function normalizeReadings(readings: ReadingsInput): VisitReadings {
+  return {
+    ph: readings.ph ?? 0,
+    freeChlorine: readings.freeChlorine ?? 0,
+    totalAlkalinity: readings.totalAlkalinity ?? 0,
+    calciumHardness: readings.calciumHardness ?? 0,
+    cyanuricAcid: readings.cyanuricAcid ?? 0,
+    temperature: readings.temperature ?? 0,
+  };
 }
 
 export async function saveDraftAction(
@@ -36,11 +54,12 @@ export async function saveDraftAction(
   const user = await requireTech();
   if (!user.companyId) throw new Error("No company affiliation.");
   readingsSchema.parse(data.readings);
+  const readings = normalizeReadings(data.readings);
 
   await assertVisitAccess(visitId, user.companyId, user.id);
   await saveDraftVisit(
     visitId,
-    data.readings,
+    readings,
     data.chemicals,
     data.notes || null,
     data.nextServiceDate ? new Date(`${data.nextServiceDate}T12:00:00`) : null,
@@ -56,11 +75,12 @@ export async function completeVisitAction(
   const user = await requireTech();
   if (!user.companyId) throw new Error("No company affiliation.");
   readingsSchema.parse(data.readings);
+  const readings = normalizeReadings(data.readings);
 
   await assertVisitAccess(visitId, user.companyId, user.id);
   const completed = await completeVisit(
     visitId,
-    data.readings,
+    readings,
     data.chemicals,
     data.notes || null,
     data.nextServiceDate ? new Date(`${data.nextServiceDate}T12:00:00`) : null,

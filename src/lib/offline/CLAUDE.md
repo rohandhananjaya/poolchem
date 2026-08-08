@@ -13,7 +13,8 @@ Capacitor Preferences has a ~1MB soft key cap; Dexie/IndexedDB has no practical 
   - `draftVisits: "++id, &[companyId+visitId], companyId, updatedAt"` — one draft per visit per tenant.
   - `mutationQueue: "++id, &[companyId+clientMutationId], companyId, [companyId+status], createdAt"` — unique queue entry per tenant; FIFO drain via `[companyId+status]` + `createdAt`.
 - `draft-visits.ts` — `saveDraft` (upsert by `[companyId+visitId]`), `getDraft`, `listDrafts` (newest first), `deleteDraft`.
-- `mutation-queue.ts` — `enqueue` (mints/reuses `clientMutationId`; drops duplicates), `getPending` (FIFO, optional limit), `getByClientMutationId`, `markStatus` (status + optional `retryCount`/`lastError`), `clearCompanyData` (drafts + queue, for sign-out/tenant switch).
+- `mutation-queue.ts` — `enqueue` (mints/reuses `clientMutationId`; drops duplicates), `getPending` (FIFO, optional limit), `getPendingForVisit` (pending entries for one visit), `getByClientMutationId`, `markStatus` (status + optional `retryCount`/`lastError`), `deleteEntry` (single-entry removal after a successful flush), `deleteEntriesForVisit` (all entries for a visit — used when a visit is completed/cancelled locally so stale `saveDraft` entries aren't replayed), `clearCompanyData` (drafts + queue, for sign-out/tenant switch).
+- `flush.ts` — `flushPending(companyId, replay, { limit? })` — client (`import "client-only"`), DIP (injected `replay` fn, no action imports). FIFO-drains `getPending`; per entry `replay(entry)` (success → `deleteEntry`; deletes the visit's draft only when no pending entries remain for that visit, so a draft replaced by a newer save mid-flush survives; failure → leaves entry `pending` for the queue processor). Returns `{clientMutationId, status:"synced"|"failed"}[]`. The visit form injects `replay = (entry) => saveDraftAction(entry.visitId, entry.payload)`.
 
 ## Tenancy
 
@@ -21,8 +22,8 @@ Same invariant as the server DB layer: every read/write is scoped by `companyId`
 
 ## Tests
 
-`draft-visits.test.ts` + `mutation-queue.test.ts` — use `fake-indexeddb` (happy-dom has no IndexedDB): `import "fake-indexeddb/auto"` then `db.delete()` + `db.open()` in `beforeEach`. No Prisma mocking.
+`draft-visits.test.ts` + `mutation-queue.test.ts` + `flush.test.ts` — use `fake-indexeddb` (happy-dom has no IndexedDB): `import "fake-indexeddb/auto"` then `db.delete()` + `db.open()` in `beforeEach`. No Prisma mocking.
 
 ## Status
 
-Storage only. Write-through wiring, queue processor/backoff, `useOnlineStatus`, SW/precache, sync-status UI, and conflict resolution are later cards.
+Write-through draft save is wired into `VisitForm` (`src/app/(dashboard)/visits/[visitId]/visit-form.tsx`): Save Draft persists to Dexie immediately (`saveDraft` + `enqueue`), flushes the queue when online, and drains it again on the browser `online` event; the Server Action is only invoked via the flush replay. Readings are optional in the payload and normalized to 0 at the server boundary (`actions.ts` `normalizeReadings`). Completing a visit clears its local draft + queued entries. Queue processor/backoff, `useOnlineStatus`, SW/precache, sync-status UI, and conflict resolution are later cards.

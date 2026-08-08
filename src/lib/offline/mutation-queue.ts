@@ -77,6 +77,18 @@ export async function getPending(
   return limit !== undefined ? pending.slice(0, limit) : pending;
 }
 
+/** Returns a tenant's pending mutations for a single visit, FIFO ordered. */
+export async function getPendingForVisit(
+  companyId: string,
+  visitId: string,
+): Promise<QueuedMutation[]> {
+  return db.mutationQueue
+    .where("[companyId+status]")
+    .equals([companyId, "pending"])
+    .filter((entry) => entry.visitId === visitId)
+    .sortBy("createdAt");
+}
+
 /** Returns a queued mutation by its clientMutationId, or `null`. */
 export async function getByClientMutationId(
   companyId: string,
@@ -110,6 +122,36 @@ export async function markStatus(
     .where("[companyId+clientMutationId]")
     .equals([companyId, clientMutationId])
     .modify(changes);
+}
+
+/**
+ * Removes a single queued mutation for a tenant. Used by the write-through
+ * flush path once a mutation has been replayed to the server successfully.
+ */
+export async function deleteEntry(
+  companyId: string,
+  clientMutationId: string,
+): Promise<void> {
+  await db.mutationQueue
+    .where("[companyId+clientMutationId]")
+    .equals([companyId, clientMutationId])
+    .delete();
+}
+
+/**
+ * Removes every queued mutation for a visit within a tenant. Used when a visit
+ * is completed or cancelled locally so stale `saveDraft` entries aren't
+ * replayed against a server visit that no longer accepts them.
+ */
+export async function deleteEntriesForVisit(
+  companyId: string,
+  visitId: string,
+): Promise<void> {
+  await db.mutationQueue
+    .where("companyId")
+    .equals(companyId)
+    .filter((entry) => entry.visitId === visitId)
+    .delete();
 }
 
 /**

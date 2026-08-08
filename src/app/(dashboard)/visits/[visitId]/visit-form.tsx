@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo, useCallback } from "react"
+import { useState, useMemo, useCallback, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
@@ -32,6 +32,10 @@ import {
   type VisitFormValues,
 } from "./actions"
 import type { VisitReadings, VisitChemical } from "@/lib/db/visits"
+import { deleteDraft, saveDraft, getDraft } from "@/lib/offline/draft-visits"
+import { deleteEntriesForVisit, enqueue } from "@/lib/offline/mutation-queue"
+import { flushPending } from "@/lib/offline/flush"
+import { createClientMutationId } from "@/lib/offline/types"
 
 const formSchema = z.object({
   readings: readingsSchema,
@@ -67,6 +71,7 @@ interface SerializedVisit {
 }
 
 interface VisitFormProps {
+  companyId: string
   visit: SerializedVisit
   lastReadings: VisitReadings | null
   currentUser: { id: string; name: string }
@@ -75,6 +80,7 @@ interface VisitFormProps {
 }
 
 export function VisitForm({
+  companyId,
   visit,
   lastReadings,
   currentUser,
@@ -266,31 +272,31 @@ export function VisitForm({
   const hasTemp = readings.temperature !== undefined && readings.temperature !== null
 
   const buildPayload = useCallback(
-    (data: FormData): VisitFormValues => ({
-      readings: {
-        ph: data.readings.ph ?? 0,
-        freeChlorine: data.readings.freeChlorine ?? 0,
-        totalAlkalinity: data.readings.totalAlkalinity ?? 0,
-        calciumHardness: data.readings.calciumHardness ?? 0,
-        cyanuricAcid: data.readings.cyanuricAcid ?? 0,
-        temperature: data.readings.temperature ?? 0,
-      },
-      chemicals: [
-        ...Object.entries(checkedChemicals)
-          .filter(([, checked]) => checked)
-          .map(([name]) => {
-            const rec = recommendations.find((r) => r.chemical === name)
-            return {
-              name,
-              amount: rec?.amount ?? 0,
-              unit: rec?.unit ?? "",
-            }
-          }),
-        ...manualChemicals,
-      ],
-      notes: data.notes ?? "",
-      nextServiceDate: nextServiceDate || undefined,
-    }),
+    (data: FormData): VisitFormValues => {
+      const payload: VisitFormValues = {
+        // Readings stay optional/faithful here — blank fields are coerced to 0
+        // at the server boundary (actions.ts normalizeReadings), so a local
+        // draft payload records exactly what the tech entered.
+        readings: { ...data.readings },
+        chemicals: [
+          ...Object.entries(checkedChemicals)
+            .filter(([, checked]) => checked)
+            .map(([name]) => {
+              const rec = recommendations.find((r) => r.chemical === name)
+              return {
+                name,
+                amount: rec?.amount ?? 0,
+                unit: rec?.unit ?? "",
+              }
+            }),
+          ...manualChemicals,
+        ],
+        notes: data.notes ?? "",
+        nextServiceDate: nextServiceDate || undefined,
+      }
+      payload.clientMutationId ??= createClientMutationId()
+      return payload
+    },
     [checkedChemicals, recommendations, manualChemicals, nextServiceDate],
   )
 
@@ -302,7 +308,13 @@ export function VisitForm({
       let valid = true
       await handleSubmit(
         async (data) => {
-          await saveDraftAction(visit.id, buildPayload(data))
+          const payload = buildPayload(data)
+          // Write-through: persist locally first (instant Dexie write, no
+          // network await), then enqueue the mutation for replay. The Server
+          // Action is only reached via the injected flush replay, never
+          // awaited here.
+          await saveDraft(companyId, currentUser.id, visit.id, payload)
+          await enqueue(companyId, "saveDraft", visit.id, payload)
         },
         () => {
           valid = false
@@ -312,14 +324,102 @@ export function VisitForm({
         toast.error("Please fix the highlighted fields before saving.")
         return
       }
-      toast.info("Visit saved as draft")
+      const online = typeof navigator !== "undefined" && navigator.onLine
+      toast.info(
+        online
+          ? "Saved locally"
+          : "Saved offline — will sync when back online",
+      )
+      if (online) {
+        // Drain the queue immediately while connected. Failures leave the
+        // entry pending (the `online` listener retries on reconnect) but are
+        // still surfaced so a flaky/expired write isn't silently dropped.
+        void flushPending(companyId, (entry) =>
+          saveDraftAction(entry.visitId, entry.payload),
+        )
+          .then((results) => {
+            const failed = results.filter((r) => r.status === "failed").length
+            if (failed > 0) {
+              toast.warning(
+                "Some changes are saved locally but haven't reached the server. They'll retry.",
+              )
+            }
+          })
+          .catch((e) => {
+            console.error("Offline flush failed:", e)
+          })
+      }
     } catch (e) {
       console.error("Save draft failed:", e)
       toast.error(ERROR_MESSAGES.SAVE_FAILED)
     } finally {
       setSaving(null)
     }
-  }, [handleSubmit, buildPayload, visit.id])
+  }, [handleSubmit, buildPayload, visit.id, companyId, currentUser.id])
+
+  // Drain any mutations queued during an offline spell once connectivity
+  // returns, so a save made offline actually reaches the server (fulfills the
+  // "will sync when back online" toast). Queue processor/backoff is a later
+  // card; this covers the basic reconnect case.
+  useEffect(() => {
+    if (typeof window === "undefined") return
+    const onOnline = () => {
+      void flushPending(companyId, (entry) =>
+        saveDraftAction(entry.visitId, entry.payload),
+      ).catch((e) => {
+        console.error("Offline flush failed:", e)
+      })
+    }
+    window.addEventListener("online", onOnline)
+    return () => window.removeEventListener("online", onOnline)
+  }, [companyId])
+
+  // Restore a locally-persisted draft on load so an offline save survives a
+  // reload. Hydrates the same state the tech was editing (readings, notes,
+  // next-service date, chemicals) using the completed-visit seed logic.
+  useEffect(() => {
+    let cancelled = false
+    void getDraft(companyId, visit.id).then((draft) => {
+      if (cancelled || !draft || completed || isOthersVisit) return
+      // Only restore a draft this tech authored — a visit reassigned to a
+      // second tech must not pull in the previous tech's unsaved edits.
+      if (draft.techId !== currentUser.id) return
+      const p = draft.payload
+      const r = p.readings
+      if (r.ph !== undefined) setValue("readings.ph", r.ph)
+      if (r.freeChlorine !== undefined) setValue("readings.freeChlorine", r.freeChlorine)
+      if (r.totalAlkalinity !== undefined) setValue("readings.totalAlkalinity", r.totalAlkalinity)
+      if (r.calciumHardness !== undefined) setValue("readings.calciumHardness", r.calciumHardness)
+      if (r.cyanuricAcid !== undefined) setValue("readings.cyanuricAcid", r.cyanuricAcid)
+      if (r.temperature !== undefined) setValue("readings.temperature", r.temperature)
+      setValue("notes", p.notes ?? "")
+      if (p.nextServiceDate) setNextServiceDate(p.nextServiceDate)
+
+      if (p.chemicals.length > 0) {
+        const restoredReadings = {
+          ph: r.ph ?? 0,
+          freeChlorine: r.freeChlorine ?? 0,
+          totalAlkalinity: r.totalAlkalinity ?? 0,
+          calciumHardness: r.calciumHardness ?? 0,
+          cyanuricAcid: r.cyanuricAcid ?? 0,
+          temperature: r.temperature ?? 0,
+        } as unknown as WaterReading
+        const recNames = new Set(
+          getChemicalRecommendations(restoredReadings, visit.pool.volume).map(
+            (rec) => rec.chemical,
+          ),
+        )
+        const manual = p.chemicals.filter((c) => !recNames.has(c.name))
+        setManualChemicals(manual)
+        const checked: Record<string, boolean> = {}
+        for (const c of p.chemicals) checked[c.name] = true
+        setCheckedChemicals(checked)
+      }
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [companyId, visit.id, setValue, completed, isOthersVisit, visit.pool.volume, currentUser.id])
 
   const handleComplete = useCallback(async () => {
     if (!allFieldsFilled) {
@@ -332,6 +432,16 @@ export function VisitForm({
       await handleSubmit(
         async (data) => {
           await completeVisitAction(visit.id, buildPayload(data))
+          // The visit is now complete server-side; drop any offline draft and
+          // queued saveDraft entries so a stale replay isn't retried against a
+          // visit that rejects draft writes. Best-effort: a local cleanup
+          // failure must not mask the successful server completion.
+          try {
+            await deleteDraft(companyId, visit.id)
+            await deleteEntriesForVisit(companyId, visit.id)
+          } catch (e) {
+            console.error("Failed to clear offline data for completed visit:", e)
+          }
         },
         () => {
           valid = false
@@ -349,7 +459,7 @@ export function VisitForm({
     } finally {
       setSaving(null)
     }
-  }, [handleSubmit, buildPayload, visit.id, allFieldsFilled, router])
+  }, [handleSubmit, buildPayload, visit.id, allFieldsFilled, router, companyId])
 
   return (
     <form className="mt-6 space-y-6">

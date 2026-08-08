@@ -97,6 +97,32 @@ describe("saveDraftAction", () => {
       saveDraftAction(visitId, {} as never),
     ).rejects.toThrow("Auth required");
   });
+
+  it("normalizes missing readings to 0 before calling saveDraftVisit", async () => {
+    vi.mocked(requireTech).mockResolvedValue(mockUser as never);
+
+    await saveDraftAction(visitId, {
+      readings: { ph: 7.5 },
+      chemicals: [],
+      notes: "",
+    });
+
+    expect(saveDraftVisit).toHaveBeenCalledWith(
+      visitId,
+      {
+        ph: 7.5,
+        freeChlorine: 0,
+        totalAlkalinity: 0,
+        calciumHardness: 0,
+        cyanuricAcid: 0,
+        temperature: 0,
+      },
+      [],
+      null,
+      null,
+      { clientMutationId: undefined },
+    );
+  });
 });
 
 describe("completeVisitAction", () => {

@@ -10,14 +10,19 @@
  * Pure types + `createClientMutationId()` only — no I/O.
  */
 
-/** A full set of water-test readings — mirrors `VisitReadings`. */
+/**
+ * A full set of water-test readings — mirrors the Server Action's optional
+ * `ReadingsInput` shape. Fields are optional so a local draft payload stays
+ * faithful to what the tech actually entered (a blank field is not coerced to
+ * 0 until the server boundary normalizes it). Replays verbatim.
+ */
 export interface OfflineReadings {
-  ph: number;
-  freeChlorine: number;
-  totalAlkalinity: number;
-  calciumHardness: number;
-  cyanuricAcid: number;
-  temperature: number;
+  ph?: number;
+  freeChlorine?: number;
+  totalAlkalinity?: number;
+  calciumHardness?: number;
+  cyanuricAcid?: number;
+  temperature?: number;
 }
 
 /** A single chemical the tech added during a visit — mirrors `VisitChemical`. */
