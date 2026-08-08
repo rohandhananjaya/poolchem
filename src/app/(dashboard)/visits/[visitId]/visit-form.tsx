@@ -36,6 +36,7 @@ import { deleteDraft, saveDraft, getDraft } from "@/lib/offline/draft-visits"
 import { deleteEntriesForVisit, enqueue } from "@/lib/offline/mutation-queue"
 import { flushPending } from "@/lib/offline/flush"
 import { createClientMutationId } from "@/lib/offline/types"
+import { useOnlineStatus } from "@/hooks/use-online-status"
 
 const formSchema = z.object({
   readings: readingsSchema,
@@ -302,6 +303,8 @@ export function VisitForm({
 
   const [saving, setSaving] = useState<"draft" | "complete" | null>(null)
 
+  const { online, hydrated } = useOnlineStatus()
+
   const handleSaveDraft = useCallback(async () => {
     setSaving("draft")
     try {
@@ -324,7 +327,6 @@ export function VisitForm({
         toast.error("Please fix the highlighted fields before saving.")
         return
       }
-      const online = typeof navigator !== "undefined" && navigator.onLine
       toast.info(
         online
           ? "Saved locally"
@@ -355,24 +357,26 @@ export function VisitForm({
     } finally {
       setSaving(null)
     }
-  }, [handleSubmit, buildPayload, visit.id, companyId, currentUser.id])
+  }, [handleSubmit, buildPayload, visit.id, companyId, currentUser.id, online])
 
   // Drain any mutations queued during an offline spell once connectivity
   // returns, so a save made offline actually reaches the server (fulfills the
   // "will sync when back online" toast). Queue processor/backoff is a later
   // card; this covers the basic reconnect case.
+  //
+  // `hydrated` guards the optimistic first-paint snapshot: `online` reads `true`
+  // on mount even when the device is offline, and without this guard every
+  // offline page load would fire one failed flush. Once hydrated, `online` is
+  // the real `navigator.onLine` value, so an online load still drains a stale
+  // queue left over from a previous offline session.
   useEffect(() => {
-    if (typeof window === "undefined") return
-    const onOnline = () => {
-      void flushPending(companyId, (entry) =>
-        saveDraftAction(entry.visitId, entry.payload),
-      ).catch((e) => {
-        console.error("Offline flush failed:", e)
-      })
-    }
-    window.addEventListener("online", onOnline)
-    return () => window.removeEventListener("online", onOnline)
-  }, [companyId])
+    if (!online || !hydrated) return
+    void flushPending(companyId, (entry) =>
+      saveDraftAction(entry.visitId, entry.payload),
+    ).catch((e) => {
+      console.error("Offline flush failed:", e)
+    })
+  }, [online, hydrated, companyId])
 
   // Restore a locally-persisted draft on load so an offline save survives a
   // reload. Hydrates the same state the tech was editing (readings, notes,
