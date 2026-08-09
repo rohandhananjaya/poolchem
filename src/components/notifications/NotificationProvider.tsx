@@ -31,7 +31,7 @@ export function NotificationProvider({
       {children}
 
       {newVisitAlert && (
-        <div className="fixed right-4 top-4 z-50 w-[calc(100%-2rem)] max-w-sm animate-in slide-in-from-right-5 fade-in duration-300">
+        <div className="fixed right-4 top-20 z-50 w-[calc(100%-2rem)] max-w-sm animate-in slide-in-from-right-5 fade-in duration-300">
           <Card className="border-l-4 border-l-brand-600">
             <CardContent className="flex items-start gap-3 p-4">
               <div className="min-w-0 flex-1">

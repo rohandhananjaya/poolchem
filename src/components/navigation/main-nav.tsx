@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import Link from "next/link"
-import { usePathname, useRouter } from "next/navigation"
+import { usePathname } from "next/navigation"
 import Image from "next/image"
 import {
   Activity,
@@ -10,28 +10,16 @@ import {
   Calendar,
   FileText,
   House,
-  LogOut,
   MessageSquare,
   Settings,
   Shield,
-  User,
   Users,
   Waves,
   type LucideIcon,
 } from "lucide-react"
 
-import { createClient } from "@/lib/supabase/client"
 import { PRIVACY_URL, TERMS_URL } from "@/lib/config"
 import { cn } from "@/lib/utils"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
 import type { UserRole } from "@/generated/prisma/client"
 
 interface NavItem {
@@ -56,24 +44,10 @@ const NAV_ITEMS: NavItem[] = [
   { href: "/settings", label: "Settings", icon: Settings },
 ]
 
-const ROLE_LABELS: Record<UserRole, string> = {
-  SUPER_ADMIN: "Platform Administrator",
-  OWNER: "Owner",
-  TECH: "Technician",
-}
-
 export interface MainNavProps {
   user: { name: string; email: string; role: UserRole; image?: string | null }
   company: { name: string; logo: string | null }
   companyPackage?: { package: { name: string } | null; status: string; trialEnd: Date | null; paidAt: Date | null }
-}
-
-/** Returns the first character(s) usable as an avatar/logo fallback. */
-function initials(value: string): string {
-  const parts = value.trim().split(/\s+/).filter(Boolean)
-  if (parts.length === 0) return "?"
-  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase()
-  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
 }
 
 /** A path is active when it matches exactly or is an ancestor of the pathname. */
@@ -125,8 +99,6 @@ function useTabLabelsFit(count: number) {
 
 export function MainNav({ user, company: _company, companyPackage }: MainNavProps) {
   const pathname = usePathname()
-  const router = useRouter()
-  const [signingOut, setSigningOut] = React.useState(false)
 
   const visibleItems = NAV_ITEMS.filter(
     (item) => !item.roles || item.roles.includes(user.role),
@@ -134,19 +106,11 @@ export function MainNav({ user, company: _company, companyPackage }: MainNavProp
 
   const { containerRef: tabBarRef, labelRefs, showLabels } = useTabLabelsFit(visibleItems.length)
 
-  async function handleSignOut() {
-    setSigningOut(true)
-    const supabase = createClient()
-    await supabase.auth.signOut()
-    router.push("/login")
-    router.refresh()
-  }
-
   return (
     <>
       {/* Desktop: left sidebar */}
       <aside className="fixed inset-y-0 left-0 z-30 hidden w-64 flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground md:flex print:hidden">
-        <div className="flex flex-col items-center border-b border-sidebar-border px-3 py-3" suppressHydrationWarning>
+        <div className="flex h-16 flex-col items-center justify-center border-b border-sidebar-border px-3 py-3" suppressHydrationWarning>
           <div className="w-fit">
             <Link href="/dashboard" className="flex items-center justify-center">
               <Image
@@ -184,14 +148,6 @@ export function MainNav({ user, company: _company, companyPackage }: MainNavProp
             )
           })}
         </nav>
-
-        <div className="border-t border-sidebar-border p-3" suppressHydrationWarning>
-          <UserMenu
-            user={user}
-            signingOut={signingOut}
-            onSignOut={handleSignOut}
-          />
-        </div>
 
         <div className="border-t border-sidebar-border px-3 py-2" suppressHydrationWarning>
           <div className="flex items-center justify-center gap-3 text-xs text-sidebar-foreground/50" suppressHydrationWarning>
@@ -244,69 +200,6 @@ export function MainNav({ user, company: _company, companyPackage }: MainNavProp
         })}
       </nav>
     </>
-  )
-}
-
-function UserMenu({
-  user,
-  signingOut,
-  onSignOut,
-}: {
-  user: { name: string; email: string; role: UserRole; image?: string | null }
-  signingOut: boolean
-  onSignOut: () => void
-}) {
-  return (
-    <DropdownMenu>
-      <DropdownMenuTrigger
-        className={cn(
-          "flex w-full cursor-pointer items-center gap-3 rounded-lg px-2 py-2 text-left text-sm outline-none transition-colors",
-          "hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
-          "focus-visible:ring-3 focus-visible:ring-sidebar-ring/50"
-        )}
-      >
-        <Avatar>
-          <AvatarImage src={user.image ?? undefined} alt={user.name} />
-          <AvatarFallback>{initials(user.name)}</AvatarFallback>
-        </Avatar>
-        <span className="flex min-w-0 flex-1 flex-col">
-          <span className="truncate font-medium">{user.name}</span>
-          <span className="truncate text-xs text-muted-foreground">
-            {user.email}
-          </span>
-        </span>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" side="top" className="w-56">
-        <DropdownMenuLabel className="flex flex-col">
-          <span className="truncate">{user.name}</span>
-          <span className="truncate text-xs font-normal text-muted-foreground">
-            {user.email}
-          </span>
-          <span className="mt-1 inline-flex w-fit items-center rounded-full border border-border bg-muted px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
-            {ROLE_LABELS[user.role]}
-          </span>
-        </DropdownMenuLabel>
-        <DropdownMenuSeparator />
-        <DropdownMenuItem asChild>
-          <Link href="/settings#profile" className="cursor-pointer">
-            <User />
-            Profile
-          </Link>
-        </DropdownMenuItem>
-        <DropdownMenuSeparator />
-        <DropdownMenuItem
-          variant="destructive"
-          disabled={signingOut}
-          onSelect={(event) => {
-            event.preventDefault()
-            onSignOut()
-          }}
-        >
-          <LogOut />
-          {signingOut ? "Signing out…" : "Sign out"}
-        </DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
   )
 }
 

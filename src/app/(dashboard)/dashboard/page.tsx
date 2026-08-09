@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation"
 import Link from "next/link"
 import { format } from "date-fns"
-import { Bell, LayoutDashboard } from "lucide-react"
+import { LayoutDashboard } from "lucide-react"
 
 import { requireActivePackage } from "@/lib/auth"
 import { getCompanyById } from "@/lib/db/company"
@@ -124,13 +124,6 @@ async function SuperAdminDashboard({ name }: { name: string }) {
         </div>
 
         <div className="flex shrink-0 items-center gap-2">
-          <button
-            type="button"
-            aria-label="Notifications"
-            className="inline-flex size-9 items-center justify-center rounded-lg border border-border bg-background text-foreground transition-colors hover:bg-muted focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none"
-          >
-            <Bell className="size-4" />
-          </button>
           <Link
             href="/admin"
             className="inline-flex size-9 items-center justify-center rounded-lg border border-border bg-background text-foreground transition-colors hover:bg-muted"

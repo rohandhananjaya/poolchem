@@ -79,7 +79,7 @@ function AppDownloadScreen({ progress }: { progress: number }) {
       </div>
       <div className="w-full max-w-xs">
         <p className="text-sm font-medium text-foreground">
-          Getting Poolbench ready for offline use…
+          Getting Poolbench ready…
         </p>
         <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-muted">
           <div
