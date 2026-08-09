@@ -11,6 +11,9 @@
  *                     (`&[companyId+clientMutationId]`), FIFO-drainable via
  *                     `[companyId+status]` + `createdAt`.
  * - `syncMeta`      — one last-synced bookmark per tenant (`&companyId`).
+ * - `poolCache`     — one last-observed `/pools` snapshot per tenant (`&companyId`).
+ * - `visitCache`    — one last-observed visit per tenant per visit
+ *                     (`&[companyId+visitId]`).
  *
  * v2 adds `[companyId+visitId]` so per-visit queries (`getVisitStats`,
  * `getPendingForVisit`, …) resolve via the index instead of scanning the whole
@@ -23,12 +26,17 @@
  * v4 adds the `poolCache` table (one last-observed `/pools` snapshot per
  * tenant) so the offline fallback can render cached pool rows instead of a
  * generic "You're offline" page.
+ *
+ * v5 adds the `visitCache` table (one last-observed visit per tenant per
+ * visit) so the offline fallback can render a cached visit instead of the
+ * generic copy.
  */
 import "client-only";
 
 import Dexie, { type EntityTable } from "dexie";
 
 import type {
+  CachedVisit,
   OfflineDraftVisit,
   PoolCacheSnapshot,
   QueuedMutation,
@@ -40,6 +48,7 @@ class PoolbenchOfflineDB extends Dexie {
   mutationQueue!: EntityTable<QueuedMutation, "id">;
   syncMeta!: EntityTable<SyncMeta, "companyId">;
   poolCache!: EntityTable<PoolCacheSnapshot, "companyId">;
+  visitCache!: EntityTable<CachedVisit, "id">;
 
   constructor() {
     super("poolbench-offline");
@@ -65,6 +74,14 @@ class PoolbenchOfflineDB extends Dexie {
         "++id, &[companyId+clientMutationId], companyId, [companyId+status], [companyId+visitId], createdAt",
       syncMeta: "&companyId, lastSyncedAt",
       poolCache: "&companyId, cachedAt",
+    });
+    this.version(5).stores({
+      draftVisits: "++id, &[companyId+visitId], companyId, updatedAt",
+      mutationQueue:
+        "++id, &[companyId+clientMutationId], companyId, [companyId+status], [companyId+visitId], createdAt",
+      syncMeta: "&companyId, lastSyncedAt",
+      poolCache: "&companyId, cachedAt",
+      visitCache: "++id, &[companyId+visitId], companyId, cachedAt",
     });
   }
 }

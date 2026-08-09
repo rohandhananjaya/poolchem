@@ -7,8 +7,11 @@ import { requireActivePackage } from "@/lib/auth"
 import { getVisitById, getLastVisitReadings } from "@/lib/db/visits"
 import { getCompanyPackage } from "@/lib/db/packages"
 import { getHealthScoringLevel } from "@/lib/package-features"
+import type { OfflineServiceVisitStatus } from "@/lib/offline/types"
+import type { CachedVisit } from "@/lib/offline/types"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
+import { VisitsCacheMirror } from "@/components/offline/visits-cache-mirror"
 import { VisitForm } from "./visit-form"
 import { StatusDropdown } from "./status-dropdown"
 
@@ -50,8 +53,41 @@ export default async function VisitPage({
         ? "Cancelled"
         : "Scheduled"
 
+  const currentReadings = visit.waterReadings[0] ?? lastReadings
+  const cachedVisit: CachedVisit = {
+    visitId: visit.id,
+    companyId: user.companyId,
+    pool: {
+      id: visit.pool.id,
+      name: visit.pool.name,
+      address: visit.pool.address,
+      volume: visit.pool.volume,
+      image: visit.pool.image,
+    },
+    status: visit.status as OfflineServiceVisitStatus,
+    cancellationReason: visit.cancellationReason,
+    scheduledAt: visit.scheduledAt ? visit.scheduledAt.toISOString() : null,
+    lastReadings: currentReadings
+      ? {
+          ph: currentReadings.ph,
+          freeChlorine: currentReadings.freeChlorine,
+          totalAlkalinity: currentReadings.totalAlkalinity,
+          calciumHardness: currentReadings.calciumHardness,
+          cyanuricAcid: currentReadings.cyanuricAcid,
+          temperature: currentReadings.temperature,
+        }
+      : null,
+    chemicals: visit.chemicalsAdded.map((c) => ({
+      name: c.name,
+      amount: c.amount,
+      unit: c.unit,
+    })),
+    notes: visit.notes,
+  }
+
   return (
     <div className="mx-auto w-full max-w-5xl px-4 py-6 md:px-6 md:py-8">
+      <VisitsCacheMirror visit={cachedVisit} />
       <Link
         href={from ?? "/dashboard"}
         className="mb-4 inline-flex size-8 items-center justify-center rounded-lg border border-border bg-background text-foreground transition-colors hover:bg-muted"

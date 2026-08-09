@@ -11,8 +11,8 @@ describe("sync-meta", () => {
     await db.open();
   });
 
-  it("runs against the v4 schema with syncMeta and poolCache tables", async () => {
-    expect(db.verno).toBe(4);
+  it("runs against the v5 schema with syncMeta, poolCache, and visitCache tables", async () => {
+    expect(db.verno).toBe(5);
     await setLastSyncedAt("c1", 1234);
     await expect(db.syncMeta.count()).resolves.toBe(1);
   });

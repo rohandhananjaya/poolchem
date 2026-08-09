@@ -323,6 +323,45 @@ export interface PoolCacheSnapshot {
   cachedAt: number;
 }
 
+/**
+ * A cached visit row for the offline `/visits/{id}` view — mirrors the rendered
+ * fields of `getVisitById` (`ServiceVisit` + `pool` + `waterReadings` +
+ * `chemicalsAdded` + `tech`) plus the pool's `lastReadings`. Stored per
+ * (tenant, visit) so the offline fallback can render the last-observed visit
+ * instead of the generic "You're offline" page. `scheduledAt` is an ISO string
+ * and `cachedAt` is epoch-ms so the snapshot stays JSON-safe in IndexedDB. Keep
+ * field names in sync with the server-side types.
+ */
+export interface CachedVisit {
+  /** Dexie auto-increment primary key (not part of the business key). */
+  id?: number;
+  /** Visit id — half of the compound unique key (with `companyId`). */
+  visitId: string;
+  /** Tenant id — the other half of the compound unique key. */
+  companyId: string;
+  /** The visit's pool — what the visit header renders. */
+  pool: {
+    id: string;
+    name: string;
+    address: string | null;
+    volume: number;
+    image: string | null;
+  };
+  status: OfflineServiceVisitStatus;
+  cancellationReason: string | null;
+  /** ISO string of the scheduled time, when the visit has one. */
+  scheduledAt: string | null;
+  /**
+   * The readings the form would show at snapshot time: the visit's own
+   * `waterReadings[0]` when present, else the pool's `lastReadings`.
+   */
+  lastReadings: OfflineReadings | null;
+  chemicals: OfflineChemical[];
+  notes: string | null;
+  /** Epoch-ms of when the snapshot was captured — stamped by `saveVisitCache`. */
+  cachedAt?: number;
+}
+
 /** Mints a client-side idempotency key (RFC 4122 v4 UUID). */
 export function createClientMutationId(): string {
   if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
