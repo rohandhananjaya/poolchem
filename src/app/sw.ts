@@ -4,6 +4,11 @@ import { defaultCache } from "@serwist/turbopack/worker";
 import type { PrecacheEntry, SerwistGlobalConfig } from "serwist";
 import { Serwist } from "serwist";
 
+import {
+  buildRuntimeCaching,
+  composePrecacheEntries,
+} from "../lib/offline/sw-policy";
+
 declare global {
   interface WorkerGlobalScope extends SerwistGlobalConfig {
     __SW_MANIFEST: (PrecacheEntry | string)[] | undefined;
@@ -13,11 +18,14 @@ declare global {
 declare const self: ServiceWorkerGlobalScope;
 
 const serwist = new Serwist({
-  precacheEntries: self.__SW_MANIFEST,
+  // Merge the auto-injected hashed bundle manifest with the stable public/
+  // shell assets, tolerating an absent manifest in dev.
+  precacheEntries: composePrecacheEntries(self.__SW_MANIFEST),
+  precacheOptions: { cleanupOutdatedCaches: true },
   skipWaiting: true,
   clientsClaim: true,
   navigationPreload: true,
-  runtimeCaching: defaultCache,
+  runtimeCaching: buildRuntimeCaching(defaultCache),
 });
 
 serwist.addEventListeners();
