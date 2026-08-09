@@ -16,6 +16,7 @@ import {
   type WaterReadingInput,
 } from "@/lib/pool-chemistry";
 import { prisma } from "@/lib/prisma";
+import { VisitVersionConflictError } from "@/lib/errors";
 import {
   Prisma,
   ServiceVisit,
@@ -44,8 +45,10 @@ export interface VisitWriteOpts {
    */
   clientMutationId?: string;
   /**
-   * Expected revision for a stale-write guard. Accepted now; strict mismatch
-   * rejection lands with the conflict-resolution work (deferred).
+   * Expected revision for the stale-write guard. `completeVisit` rejects with a
+   * {@link VisitVersionConflictError} when the stored visit's `version` differs
+   * (the visit was updated on another device); `saveDraftVisit` ignores it
+   * (drafts are last-write-wins). Omit for callers that don't track versions.
    */
   expectedVersion?: number;
 }
@@ -248,6 +251,14 @@ async function scheduleNextVisit(
  * replayed offline mutation is a no-op (`applied: false`, no transaction, no
  * next-visit scheduling).
  *
+ * When `opts.expectedVersion` is supplied, a stored `version` that no longer
+ * matches throws {@link VisitVersionConflictError} — a racing completion from
+ * another device must not be silently overwritten. The guard is enforced
+ * atomically: the write is a conditional `updateMany` filtered on the expected
+ * revision, so two devices that both read the same version can't both pass a
+ * check-then-write race. An already-applied replay (same `clientMutationId`)
+ * short-circuits before the guard and stays idempotent regardless of drift.
+ *
  * `reportNotifiedAt` is deliberately NOT stamped here. The caller claims the
  * report-email slot with `claimReportNotification` before sending and releases
  * it with `releaseReportNotification` on a confirmed send failure — so a crash
@@ -289,13 +300,34 @@ export async function completeVisit(
     };
   }
 
+  // Stale-write guard: completion is terminal (report + homeowner email), so a
+  // caller that knows the revision it wrote against rejects when another device
+  // bumped the visit first. Deliberately after the replay short-circuit — an
+  // already-applied replay must stay idempotent regardless of drift.
+  if (
+    opts.expectedVersion !== undefined &&
+    existing.version !== opts.expectedVersion
+  ) {
+    throw new VisitVersionConflictError();
+  }
+
   let visit: Awaited<ReturnType<typeof getVisitById>>;
   try {
     visit = await prisma.$transaction(async (tx) => {
       await replaceReadingsAndChemicals(tx, visitId, readings, chemicals);
 
-      const updated = await tx.serviceVisit.update({
-        where: { id: visitId },
+      // Atomic stale-write guard: the version filter below only matches when the
+      // stored revision still equals what the caller wrote against, so a
+      // concurrent completion that bumped the version between our read and this
+      // write is detected inside the transaction — the pre-check above is a fast
+      // path, not the guarantee.
+      const { count } = await tx.serviceVisit.updateMany({
+        where: {
+          id: visitId,
+          ...(opts.expectedVersion !== undefined
+            ? { version: opts.expectedVersion }
+            : {}),
+        },
         data: {
           status: ServiceVisitStatus.COMPLETED,
           // Leave existing notes untouched when none are supplied.
@@ -305,6 +337,17 @@ export async function completeVisit(
           version: { increment: 1 },
           clientMutationId: opts.clientMutationId ?? undefined,
         },
+      });
+
+      if (count === 0) {
+        if (opts.expectedVersion !== undefined) {
+          throw new VisitVersionConflictError();
+        }
+        throw new Error(`Visit "${visitId}" not found.`);
+      }
+
+      const updated = await tx.serviceVisit.findUnique({
+        where: { id: visitId },
         include: {
           pool: true,
           tech: true,
@@ -312,12 +355,15 @@ export async function completeVisit(
           chemicalsAdded: true,
         },
       });
+      if (!updated) {
+        throw new Error(`Visit "${visitId}" not found.`);
+      }
 
       if (nextServiceDate) {
         await scheduleNextVisit(
           tx,
-          existing.pool.id,
-          existing.techId,
+          updated.pool.id,
+          updated.techId,
           nextServiceDate,
           visitId,
         );

@@ -2,6 +2,7 @@ import { describe, expect, it, beforeEach, vi } from "vitest";
 
 import { Prisma } from "@/generated/prisma/client";
 import { prismaMock } from "@/test/prisma-mock";
+import { VisitVersionConflictError } from "@/lib/errors";
 
 vi.mock("server-only", () => ({}));
 vi.mock("@/lib/prisma", () => ({ prisma: prismaMock }));
@@ -207,9 +208,11 @@ describe("completeVisit", () => {
         createMany: vi.fn().mockResolvedValue({}),
       },
       serviceVisit: {
-        update: vi.fn().mockResolvedValue({
+        updateMany: vi.fn().mockResolvedValue({ count: 1 }),
+        findUnique: vi.fn().mockResolvedValue({
           id: visitId,
           status: "COMPLETED",
+          version: 1,
           pool: mockPool,
           tech: mockTech,
           waterReadings: [readings],
@@ -240,16 +243,18 @@ describe("completeVisit", () => {
     expect(txMock.chemicalAdded.createMany).toHaveBeenCalledWith({
       data: chemicals.map((c) => ({ visitId, ...c })),
     });
-    expect(txMock.serviceVisit.update).toHaveBeenCalledWith(
-      expect.objectContaining({
-        where: { id: visitId },
-        data: expect.objectContaining({
-          status: "COMPLETED",
-          notes: "All good",
-          version: { increment: 1 },
-        }),
+    expect(txMock.serviceVisit.updateMany).toHaveBeenCalledWith({
+      where: { id: visitId },
+      data: expect.objectContaining({
+        status: "COMPLETED",
+        notes: "All good",
+        version: { increment: 1 },
       }),
-    );
+    });
+    expect(txMock.serviceVisit.findUnique).toHaveBeenCalledWith({
+      where: { id: visitId },
+      include: { pool: true, tech: true, waterReadings: true, chemicalsAdded: true },
+    });
     expect(result.visit!.status).toBe("COMPLETED");
   });
 
@@ -270,9 +275,11 @@ describe("completeVisit", () => {
         createMany: vi.fn(),
       },
       serviceVisit: {
-        update: vi.fn().mockResolvedValue({
+        updateMany: vi.fn().mockResolvedValue({ count: 1 }),
+        findUnique: vi.fn().mockResolvedValue({
           id: visitId,
           status: "COMPLETED",
+          version: 1,
           pool: mockPool,
           tech: mockTech,
           waterReadings: [readings],
@@ -306,9 +313,11 @@ describe("completeVisit", () => {
         createMany: vi.fn(),
       },
       serviceVisit: {
-        update: vi.fn().mockResolvedValue({
+        updateMany: vi.fn().mockResolvedValue({ count: 1 }),
+        findUnique: vi.fn().mockResolvedValue({
           id: visitId,
           status: "COMPLETED",
+          version: 1,
           pool: mockPool,
           tech: mockTech,
           waterReadings: [readings],
@@ -346,9 +355,12 @@ describe("completeVisit", () => {
         createMany: vi.fn(),
       },
       serviceVisit: {
-        update: vi.fn().mockResolvedValue({
+        updateMany: vi.fn().mockResolvedValue({ count: 1 }),
+        findUnique: vi.fn().mockResolvedValue({
           id: visitId,
           status: "COMPLETED",
+          version: 1,
+          techId,
           pool: mockPool,
           tech: mockTech,
           waterReadings: [readings],
@@ -401,9 +413,11 @@ describe("completeVisit", () => {
         createMany: vi.fn(),
       },
       serviceVisit: {
-        update: vi.fn().mockResolvedValue({
+        updateMany: vi.fn().mockResolvedValue({ count: 1 }),
+        findUnique: vi.fn().mockResolvedValue({
           id: visitId,
           status: "COMPLETED",
+          version: 1,
           pool: mockPool,
           tech: mockTech,
           waterReadings: [readings],
@@ -446,9 +460,11 @@ describe("completeVisit", () => {
         createMany: vi.fn(),
       },
       serviceVisit: {
-        update: vi.fn().mockResolvedValue({
+        updateMany: vi.fn().mockResolvedValue({ count: 1 }),
+        findUnique: vi.fn().mockResolvedValue({
           id: visitId,
           status: "COMPLETED",
+          version: 1,
           pool: mockPool,
           tech: mockTech,
           waterReadings: [readings],
@@ -497,6 +513,185 @@ describe("completeVisit", () => {
     expect(result.visit).toEqual(appliedVisit);
   });
 
+  it("rejects with VisitVersionConflictError when the visit's version is stale", async () => {
+    prismaMock.serviceVisit.findUnique.mockResolvedValue({
+      id: visitId,
+      status: "IN_PROGRESS",
+      version: 3,
+      pool: { ...mockPool, volume: 10_000 },
+    });
+
+    await expect(
+      completeVisit(visitId, readings, chemicals, null, null, {
+        expectedVersion: 2,
+      }),
+    ).rejects.toThrow(VisitVersionConflictError);
+    // A rejected guard must not run the write transaction.
+    expect(prismaMock.$transaction).not.toHaveBeenCalled();
+  });
+
+  it("rejects atomically when a concurrent write bumps the version after the pre-check", async () => {
+    // The pre-check passes (stored version still matches), but the conditional
+    // write inside the transaction matches nothing — a concurrent completion
+    // won the race between our read and our write. The guard must catch it
+    // inside the transaction, not only before it.
+    prismaMock.serviceVisit.findUnique.mockResolvedValue({
+      id: visitId,
+      status: "IN_PROGRESS",
+      version: 2,
+      techId,
+      pool: { ...mockPool, volume: 10_000 },
+    });
+
+    const txMock = {
+      waterReading: {
+        deleteMany: vi.fn().mockResolvedValue({}),
+        create: vi.fn().mockResolvedValue({}),
+      },
+      chemicalAdded: {
+        deleteMany: vi.fn().mockResolvedValue({}),
+        createMany: vi.fn(),
+      },
+      serviceVisit: {
+        updateMany: vi.fn().mockResolvedValue({ count: 0 }),
+        findUnique: vi.fn(),
+      },
+    };
+    prismaMock.$transaction.mockImplementation(
+      (fn: (tx: typeof txMock) => unknown) => fn(txMock),
+    );
+
+    await expect(
+      completeVisit(visitId, readings, [], null, null, {
+        expectedVersion: 2,
+      }),
+    ).rejects.toThrow(VisitVersionConflictError);
+    expect(txMock.serviceVisit.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: visitId, version: 2 },
+      }),
+    );
+    // A conflicting write must not proceed to the re-read or next-visit
+    // scheduling.
+    expect(txMock.serviceVisit.findUnique).not.toHaveBeenCalled();
+  });
+
+  it("does not throw when expectedVersion is omitted, even with a stored version", async () => {
+    prismaMock.serviceVisit.findUnique.mockResolvedValue({
+      id: visitId,
+      status: "IN_PROGRESS",
+      version: 3,
+      techId,
+      pool: { ...mockPool, volume: 10_000 },
+    });
+    const txMock = {
+      waterReading: {
+        deleteMany: vi.fn().mockResolvedValue({}),
+        create: vi.fn().mockResolvedValue({}),
+      },
+      chemicalAdded: {
+        deleteMany: vi.fn().mockResolvedValue({}),
+        createMany: vi.fn().mockResolvedValue({}),
+      },
+      serviceVisit: {
+        updateMany: vi.fn().mockResolvedValue({ count: 1 }),
+        findUnique: vi.fn().mockResolvedValue({
+          id: visitId,
+          status: "COMPLETED",
+          version: 4,
+          pool: mockPool,
+          tech: mockTech,
+          waterReadings: [readings],
+          chemicalsAdded: [],
+        }),
+      },
+    };
+    prismaMock.$transaction.mockImplementation(
+      (fn: (tx: typeof txMock) => unknown) => fn(txMock),
+    );
+
+    const result = await completeVisit(visitId, readings, []);
+
+    expect(result.applied).toBe(true);
+    expect(prismaMock.$transaction).toHaveBeenCalled();
+  });
+
+  it("lets the replay-dedupe win over the version guard", async () => {
+    // Same clientMutationId already applied, but the caller's expectedVersion
+    // is stale — an already-applied replay must stay idempotent regardless of
+    // drift, so the guard is bypassed and no conflict is thrown.
+    prismaMock.serviceVisit.findUnique.mockResolvedValue({
+      id: visitId,
+      status: "COMPLETED",
+      version: 5,
+      clientMutationId: "mut-replay",
+      pool: { ...mockPool, volume: 10_000 },
+      tech: mockTech,
+      waterReadings: [readings],
+      chemicalsAdded: [],
+    });
+
+    const result = await completeVisit(
+      visitId,
+      readings,
+      chemicals,
+      null,
+      null,
+      { clientMutationId: "mut-replay", expectedVersion: 2 },
+    );
+
+    expect(result.applied).toBe(false);
+    expect(prismaMock.$transaction).not.toHaveBeenCalled();
+  });
+
+  it("returns the bumped version on the completed visit", async () => {
+    prismaMock.serviceVisit.findUnique.mockResolvedValue({
+      id: visitId,
+      status: "IN_PROGRESS",
+      version: 0,
+      techId,
+      pool: { ...mockPool, volume: 10_000 },
+    });
+    const txMock = {
+      waterReading: {
+        deleteMany: vi.fn().mockResolvedValue({}),
+        create: vi.fn().mockResolvedValue({}),
+      },
+      chemicalAdded: {
+        deleteMany: vi.fn().mockResolvedValue({}),
+        createMany: vi.fn().mockResolvedValue({}),
+      },
+      serviceVisit: {
+        updateMany: vi.fn().mockResolvedValue({ count: 1 }),
+        findUnique: vi.fn().mockResolvedValue({
+          id: visitId,
+          status: "COMPLETED",
+          version: 1,
+          pool: mockPool,
+          tech: mockTech,
+          waterReadings: [readings],
+          chemicalsAdded: [],
+        }),
+      },
+    };
+    prismaMock.$transaction.mockImplementation(
+      (fn: (tx: typeof txMock) => unknown) => fn(txMock),
+    );
+
+    const result = await completeVisit(visitId, readings, [], null, null, {
+      expectedVersion: 0,
+    });
+
+    expect(result.applied).toBe(true);
+    expect(result.visit?.version).toBe(1);
+    expect(txMock.serviceVisit.updateMany).toHaveBeenCalledWith({
+      where: { id: visitId, version: 0 },
+      data: expect.objectContaining({
+        version: { increment: 1 },
+      }),
+    });
+  });
+
   it("applies a new clientMutationId, bumps version and stores the key", async () => {
     prismaMock.serviceVisit.findUnique.mockResolvedValue({
       id: visitId,
@@ -516,7 +711,8 @@ describe("completeVisit", () => {
         createMany: vi.fn().mockResolvedValue({}),
       },
       serviceVisit: {
-        update: vi.fn().mockResolvedValue({
+        updateMany: vi.fn().mockResolvedValue({ count: 1 }),
+        findUnique: vi.fn().mockResolvedValue({
           id: visitId,
           status: "COMPLETED",
           version: 1,
@@ -544,7 +740,7 @@ describe("completeVisit", () => {
     );
 
     expect(result.applied).toBe(true);
-    expect(txMock.serviceVisit.update).toHaveBeenCalledWith(
+    expect(txMock.serviceVisit.updateMany).toHaveBeenCalledWith(
       expect.objectContaining({
         where: { id: visitId },
         data: expect.objectContaining({
@@ -610,7 +806,8 @@ describe("completeVisit", () => {
         createMany: vi.fn().mockResolvedValue({}),
       },
       serviceVisit: {
-        update: vi.fn().mockResolvedValue({
+        updateMany: vi.fn().mockResolvedValue({ count: 1 }),
+        findUnique: vi.fn().mockResolvedValue({
           id: visitId,
           status: "COMPLETED",
           reportNotifiedAt: firstNotifiedAt,
@@ -628,7 +825,7 @@ describe("completeVisit", () => {
     const result = await completeVisit(visitId, readings, []);
 
     expect(result.visit!.reportNotifiedAt).toBe(firstNotifiedAt);
-    expect(txMock.serviceVisit.update).toHaveBeenCalledWith(
+    expect(txMock.serviceVisit.updateMany).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.not.objectContaining({
           reportNotifiedAt: expect.anything(),

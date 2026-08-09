@@ -58,7 +58,7 @@ describe("saveDraftAction", () => {
       [],
       "test",
       null,
-      { clientMutationId: undefined },
+      { clientMutationId: undefined, expectedVersion: undefined },
     );
     expect(revalidatePath).toHaveBeenCalledWith(`/visits/${visitId}`);
   });
@@ -86,8 +86,33 @@ describe("saveDraftAction", () => {
       [],
       "test",
       null,
-      { clientMutationId: "mut-1" },
+      { clientMutationId: "mut-1", expectedVersion: undefined },
     );
+  });
+
+  it("forwards expectedVersion and returns the fresh version", async () => {
+    vi.mocked(requireTech).mockResolvedValue(mockUser as never);
+    vi.mocked(saveDraftVisit).mockResolvedValue({
+      visit: { version: 4 },
+      applied: true,
+    } as never);
+
+    const result = await saveDraftAction(visitId, {
+      readings: { ph: 7.5 },
+      chemicals: [],
+      notes: "",
+      expectedVersion: 3,
+    });
+
+    expect(saveDraftVisit).toHaveBeenCalledWith(
+      visitId,
+      expect.any(Object),
+      [],
+      null,
+      null,
+      { clientMutationId: undefined, expectedVersion: 3 },
+    );
+    expect(result).toEqual({ version: 4 });
   });
 
   it("throws when unauthenticated", async () => {
@@ -120,7 +145,7 @@ describe("saveDraftAction", () => {
       [],
       null,
       null,
-      { clientMutationId: undefined },
+      { clientMutationId: undefined, expectedVersion: undefined },
     );
   });
 });
@@ -152,7 +177,7 @@ describe("completeVisitAction", () => {
       [],
       null,
       null,
-      { clientMutationId: undefined },
+      { clientMutationId: undefined, expectedVersion: undefined },
     );
     expect(emailNotify.notifyReportAvailable).not.toHaveBeenCalled();
     expect(claimReportNotification).not.toHaveBeenCalled();
@@ -388,8 +413,51 @@ describe("completeVisitAction", () => {
       [],
       null,
       null,
-      { clientMutationId: "mut-2" },
+      { clientMutationId: "mut-2", expectedVersion: undefined },
     );
+  });
+
+  it("forwards expectedVersion and returns the fresh version", async () => {
+    vi.mocked(requireTech).mockResolvedValue(mockUser as never);
+    vi.mocked(completeVisit).mockResolvedValue({
+      visit: { version: 9, pool: { homeownerEmail: null } },
+      applied: true,
+    } as never);
+
+    const result = await completeVisitAction(visitId, {
+      readings: { ph: 7.5 },
+      chemicals: [],
+      notes: "",
+      expectedVersion: 8,
+    });
+
+    expect(completeVisit).toHaveBeenCalledWith(
+      visitId,
+      expect.any(Object),
+      [],
+      null,
+      null,
+      { clientMutationId: undefined, expectedVersion: 8 },
+    );
+    expect(result).toEqual({ version: 9 });
+  });
+
+  it("propagates a version-conflict rejection from completeVisit", async () => {
+    vi.mocked(requireTech).mockResolvedValue(mockUser as never);
+    vi.mocked(completeVisit).mockRejectedValue(
+      new Error(
+        "This visit was updated on another device. Refresh and re-apply your changes.",
+      ),
+    );
+
+    await expect(
+      completeVisitAction(visitId, {
+        readings: { ph: 7.5 },
+        chemicals: [],
+        notes: "",
+        expectedVersion: 2,
+      }),
+    ).rejects.toThrow("updated on another device");
   });
 
   it("throws when unauthenticated", async () => {

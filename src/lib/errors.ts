@@ -16,6 +16,8 @@ export const ERROR_MESSAGES = {
   GENERIC: "Something went wrong. Please try again.",
   SAVE_FAILED: "Failed to save. Please try again.",
   NETWORK: "We couldn't reach the server. Check your connection and try again.",
+  VERSION_CONFLICT:
+    "This visit was updated on another device. Refresh and re-apply your changes.",
 } as const
 
 export type ErrorCode =
@@ -24,6 +26,7 @@ export type ErrorCode =
   | "NOT_FOUND"
   | "VALIDATION"
   | "RATE_LIMITED"
+  | "CONFLICT"
   | "APP"
 
 export interface AppErrorOptions {
@@ -103,6 +106,21 @@ export class RateLimitError extends AppError {
     options: Omit<AppErrorOptions, "code" | "status"> = {},
   ) {
     super(message, { ...options, code: "RATE_LIMITED", status: 429 })
+  }
+}
+
+/**
+ * A terminal write was attempted against a stale revision of a visit. The
+ * visit was updated on another device after this client's known `version`, so
+ * applying the write would clobber newer state. Client matches on this message
+ * to show a "refresh and re-apply" recovery toast.
+ */
+export class VisitVersionConflictError extends AppError {
+  constructor(
+    message: string = ERROR_MESSAGES.VERSION_CONFLICT,
+    options: Omit<AppErrorOptions, "code" | "status"> = {},
+  ) {
+    super(message, { ...options, code: "CONFLICT", status: 409 })
   }
 }
 

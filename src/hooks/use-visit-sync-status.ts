@@ -57,6 +57,12 @@ export interface UseVisitSyncStatusOptions {
    * whatever counts remain (completed/other-tech pages). Default `true`.
    */
   enabled?: boolean;
+  /**
+   * Fired after a successful replay with the server's fresh `version` for the
+   * visit. The form re-bases its known revision from this so a later completion
+   * isn't falsely rejected as a conflict after its own save bumped the version.
+   */
+  onReplayApplied?: (version: number | undefined) => void;
 }
 
 export interface UseVisitSyncStatusResult {
@@ -103,6 +109,31 @@ export function useVisitSyncStatus(
 ): UseVisitSyncStatusResult {
   const { companyId, visitId, enabled = true } = options;
   const { online } = useOnlineStatus();
+
+  // Latest-value refs so the replay wrapper (stable identity) always calls the
+  // current underlying replay and forwards to the current onReplayApplied.
+  const replayRef = useRef(options.replay ?? DEFAULT_REPLAY);
+  const onReplayAppliedRef = useRef(options.onReplayApplied);
+  useEffect(() => {
+    replayRef.current = options.replay ?? DEFAULT_REPLAY;
+    onReplayAppliedRef.current = options.onReplayApplied;
+  }, [options.replay, options.onReplayApplied]);
+
+  /**
+   * Wraps the injected replay so the fresh `{ version }` each successful
+   * saveDraft replay returns is surfaced to `onReplayApplied` (the form's
+   * re-base hook). No processor change needed — the capture happens inside the
+   * replay closure.
+   */
+  const replayWithVersionCapture = useCallback(async (entry: QueuedMutation) => {
+    const result = await replayRef.current(entry);
+    // Server Actions serialize their return value; saveDraftAction returns
+    // `{ version }` on every applied write or replay.
+    if (result && typeof result === "object" && "version" in result) {
+      onReplayAppliedRef.current?.((result as { version?: number }).version);
+    }
+    return result;
+  }, []);
 
   const [counts, setCounts] = useState<VisitSyncStats>({
     pending: 0,
@@ -167,7 +198,7 @@ export function useVisitSyncStatus(
   // counts once per dead-letter instead of twice.
   const { drain: drainOnce, inFlight } = useQueueProcessor({
     companyId,
-    replay: options.replay ?? DEFAULT_REPLAY,
+    replay: replayWithVersionCapture,
     classifyError: options.classifyError ?? classifyVisitError,
     onSynced,
     onFailed,

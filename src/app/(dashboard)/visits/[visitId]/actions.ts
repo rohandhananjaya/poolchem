@@ -27,6 +27,11 @@ export interface VisitFormValues {
   nextServiceDate?: string;
   /** Device-generated idempotency key for offline replay. Optional. */
   clientMutationId?: string;
+  /**
+   * Revision the client believes it last wrote against. `completeVisitAction`
+   * forwards it so the server rejects a racing completion from another device.
+   */
+  expectedVersion?: number;
 }
 
 /**
@@ -57,15 +62,21 @@ export async function saveDraftAction(
   const readings = normalizeReadings(data.readings);
 
   await assertVisitAccess(visitId, user.companyId, user.id);
-  await saveDraftVisit(
+  const saved = await saveDraftVisit(
     visitId,
     readings,
     data.chemicals,
     data.notes || null,
     data.nextServiceDate ? new Date(`${data.nextServiceDate}T12:00:00`) : null,
-    { clientMutationId: data.clientMutationId },
+    {
+      clientMutationId: data.clientMutationId,
+      expectedVersion: data.expectedVersion,
+    },
   );
   revalidatePath(`/visits/${visitId}`);
+  // The client re-bases its known revision from this so a later completion
+  // (with the freshly-returned `expectedVersion`) isn't falsely rejected.
+  return { version: saved?.visit?.version };
 }
 
 export async function completeVisitAction(
@@ -84,7 +95,10 @@ export async function completeVisitAction(
     data.chemicals,
     data.notes || null,
     data.nextServiceDate ? new Date(`${data.nextServiceDate}T12:00:00`) : null,
-    { clientMutationId: data.clientMutationId },
+    {
+      clientMutationId: data.clientMutationId,
+      expectedVersion: data.expectedVersion,
+    },
   );
 
   // Auto-send the shareable report to the pool's homeowner when one is set.
@@ -117,6 +131,7 @@ export async function completeVisitAction(
 
   revalidatePath(`/visits/${visitId}`);
   revalidatePath("/schedule");
+  return { version: completed.visit?.version };
 }
 
 /**

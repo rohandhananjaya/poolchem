@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo, useCallback, useEffect } from "react"
+import { useState, useMemo, useCallback, useEffect, useRef } from "react"
 import { useRouter } from "next/navigation"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
@@ -54,6 +54,8 @@ interface SerializedVisit {
   status: string
   notes: string | null
   nextServiceDate: string | null
+  /** Monotonic revision — seeds `knownVersion` for the stale-write guard. */
+  version: number
   pool: {
     name: string
     address: string | null
@@ -159,6 +161,27 @@ export function VisitForm({
       ? new Date(visit.nextServiceDate).toISOString().split("T")[0]
       : "",
   )
+
+  // Revision this client last observed from the server. Seeded from the
+  // serialized visit and re-based from every successful saveDraft replay (via
+  // `onReplayApplied`) so the next completion isn't falsely rejected as a
+  // conflict after our own save bumped the version. A ref, not state: it is
+  // only read at submit time (buildPayload / saveDraft), and a `setState` read
+  // would observe a stale value the moment a just-returned drain replay
+  // re-based it.
+  const knownVersionRef = useRef<number>(visit.version)
+
+  // Re-seed the known revision whenever the serialized visit's version changes.
+  // `useRef` alone only captures the mount value, so a `router.refresh()` that
+  // follows a stale-write conflict — or a refresh reflecting a status change,
+  // reassignment, cancellation, or another device's draft save — would otherwise
+  // keep the old revision and loop: the conflict recovery tells the tech to
+  // re-apply, but the re-apply would fail again against the stale revision.
+  // Safe against `onReplayApplied`: the prop only changes on refresh/navigation,
+  // so this never clobbers a re-base that ran against an unchanged prop.
+  useEffect(() => {
+    knownVersionRef.current = visit.version
+  }, [visit.version])
 
   const initialChemicals: Record<string, boolean> = {}
   if (completed) {
@@ -300,6 +323,9 @@ export function VisitForm({
         nextServiceDate: nextServiceDate || undefined,
       }
       payload.clientMutationId ??= createClientMutationId()
+      // Guard the terminal completion against stale edits from another device;
+      // drafts are last-write-wins so saveDraft ignores this on the server.
+      payload.expectedVersion = knownVersionRef.current
       return payload
     },
     [checkedChemicals, recommendations, manualChemicals, nextServiceDate],
@@ -313,7 +339,23 @@ export function VisitForm({
     companyId,
     visitId: visit.id,
     enabled: !completed && !isOthersVisit,
+    // Re-base the known revision after each successful replay — the server
+    // bumped `version` for our own write, so a stale expectedVersion would
+    // otherwise falsely reject the next completion (false self-conflict). The
+    // ref write is synchronous so a completion that awaits the drain can read
+    // the fresh revision immediately.
+    onReplayApplied: (v) => {
+      if (v !== undefined) knownVersionRef.current = v
+    },
   })
+  // `drain` and `retry` are stable; destructuring avoids re-creating the
+  // handlers every render (`sync` itself is a fresh object each render).
+  const {
+    status: syncStatus,
+    counts: syncCounts,
+    retry: retryDead,
+    drain,
+  } = sync
 
   const handleSaveDraft = useCallback(async () => {
     setSaving("draft")
@@ -325,8 +367,15 @@ export function VisitForm({
           // Write-through: persist locally first (instant Dexie write, no
           // network await), then enqueue the mutation for replay. The Server
           // Action is only reached via the queue processor's replay, never
-          // awaited here.
-          await saveDraft(companyId, currentUser.id, visit.id, payload)
+          // awaited here. The known server revision rides along so the next
+          // completion is guarded against stale writes from another device.
+          await saveDraft(
+            companyId,
+            currentUser.id,
+            visit.id,
+            payload,
+            knownVersionRef.current,
+          )
           await enqueue(companyId, "saveDraft", visit.id, payload)
           // A re-save supersedes any stale dead-lettered entries for the visit.
           await deleteDeadForVisit(companyId, visit.id)
@@ -344,18 +393,21 @@ export function VisitForm({
           ? "Saved locally"
           : "Saved offline — will sync when back online",
       )
-      // Write-through: sweep immediately while connected. The processor gates
-      // on navigator.onLine, so this is a no-op when actually offline; retry/
+      // Write-through: flush the queue while connected. The processor gates on
+      // navigator.onLine, so this is a no-op when actually offline; retry/
       // backoff/dead-letter state is the processor's job, not the form's. The
-      // flush outcome surfaces via the hook's transition toast.
-      sync.drain()
+      // flush is awaited (not fire-and-forget) so the re-base from
+      // `onReplayApplied` lands before the button unlocks — a completion that
+      // followed an un-flushed save would otherwise false-conflict against the
+      // version the save's own replay just bumped.
+      await drain()
     } catch (e) {
       console.error("Save draft failed:", e)
       toast.error(ERROR_MESSAGES.SAVE_FAILED)
     } finally {
       setSaving(null)
     }
-  }, [handleSubmit, buildPayload, visit.id, companyId, currentUser.id, online, sync.drain])
+  }, [handleSubmit, buildPayload, visit.id, companyId, currentUser.id, online, drain])
 
   // Restore a locally-persisted draft on load so an offline save survives a
   // reload. Hydrates the same state the tech was editing (readings, notes,
@@ -411,6 +463,12 @@ export function VisitForm({
     }
     setSaving("complete")
     try {
+      // Flush any queued saveDraft replays first so `knownVersionRef` reflects
+      // the version those writes bumped — a completion sent with the stale
+      // pre-save revision would false-conflict against our own in-flight save.
+      // A skipped sweep (single-flight, or offline) leaves the queue untouched;
+      // the completion still goes out with the revision we have.
+      await drain()
       let valid = true
       await handleSubmit(
         async (data) => {
@@ -438,11 +496,20 @@ export function VisitForm({
       router.push(`/visits/${visit.id}`)
     } catch (e) {
       console.error("Complete visit failed:", e)
+      // Stale-write conflict: another device bumped the visit's version since we
+      // last synced, so our completion would clobber newer state. Surface the
+      // user-safe error copy and reload authoritative server state — the tech
+      // re-applies their edits against the fresh version.
+      if (e instanceof Error && e.message.includes("updated on another device")) {
+        toast.error(e.message)
+        router.refresh()
+        return
+      }
       toast.error(ERROR_MESSAGES.SAVE_FAILED)
     } finally {
       setSaving(null)
     }
-  }, [handleSubmit, buildPayload, visit.id, allFieldsFilled, router, companyId])
+  }, [handleSubmit, buildPayload, visit.id, allFieldsFilled, router, companyId, drain])
 
   return (
     <form className="mt-6 space-y-6">
@@ -742,18 +809,18 @@ export function VisitForm({
       {/* Action Buttons */}
       {!completed && !isOthersVisit && (
         <div className="flex flex-col items-end gap-2">
-          <SyncStatusBadge status={sync.status} counts={sync.counts} />
-          {sync.counts.dead > 0 && (
+          <SyncStatusBadge status={syncStatus} counts={syncCounts} />
+          {syncCounts.dead > 0 && (
             <div className="flex w-full items-center justify-between gap-3 rounded-lg border border-destructive/30 bg-destructive/10 p-3">
               <p className="text-xs text-destructive">
-                {sync.counts.dead} queued change{sync.counts.dead > 1 ? "s" : ""} couldn
+                {syncCounts.dead} queued change{syncCounts.dead > 1 ? "s" : ""} couldn
                 &apos;t sync. Re-save or retry.
               </p>
               <Button
                 type="button"
                 variant="outline"
                 size="sm"
-                onClick={sync.retry}
+                onClick={retryDead}
                 disabled={saving !== null}
               >
                 <RefreshCw className="size-4" />

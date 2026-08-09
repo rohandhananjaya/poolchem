@@ -45,6 +45,12 @@ export interface DraftVisitPayload {
   nextServiceDate?: string;
   /** Device-generated idempotency key for offline replay. Optional. */
   clientMutationId?: string;
+  /**
+   * Revision the client last observed from the server. Replayed with the payload
+   * so a replayed `completeVisit` is rejected (version conflict) instead of
+   * clobbering a visit updated on another device. Drafts stay last-write-wins.
+   */
+  expectedVersion?: number;
 }
 
 /** A locally stored draft of an in-progress visit (one per visit per tenant). */

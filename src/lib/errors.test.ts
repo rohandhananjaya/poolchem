@@ -7,6 +7,7 @@ import {
   NotFoundError,
   ValidationError,
   RateLimitError,
+  VisitVersionConflictError,
   isAppError,
   toUserMessage,
 } from "./errors";
@@ -71,6 +72,31 @@ describe("RateLimitError", () => {
     expect(error.code).toBe("RATE_LIMITED");
     expect(error.status).toBe(429);
     expect(error.message).toContain("Too many requests");
+  });
+});
+
+describe("VisitVersionConflictError", () => {
+  it("sets code=CONFLICT, status=409 and the stable conflict message", () => {
+    const error = new VisitVersionConflictError();
+    expect(error.code).toBe("CONFLICT");
+    expect(error.status).toBe(409);
+    expect(error.message).toContain("updated on another device");
+    // The message is the stable prefix the client matches on to show the
+    // "refresh and re-apply" recovery toast.
+    expect(error.message).toBe(
+      "This visit was updated on another device. Refresh and re-apply your changes.",
+    );
+  });
+
+  it("is an AppError and matches isAppError", () => {
+    const error = new VisitVersionConflictError();
+    expect(error).toBeInstanceOf(AppError);
+    expect(isAppError(error)).toBe(true);
+  });
+
+  it("accepts a custom message", () => {
+    const error = new VisitVersionConflictError("Custom conflict copy");
+    expect(error.message).toBe("Custom conflict copy");
   });
 });
 

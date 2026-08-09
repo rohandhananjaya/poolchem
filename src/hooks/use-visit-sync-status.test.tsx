@@ -165,6 +165,43 @@ describe("useVisitSyncStatus", () => {
     expect(toastError).not.toHaveBeenCalled();
   });
 
+  it("forwards the replayed { version } to onReplayApplied (re-base)", async () => {
+    await enqueue("c1", "saveDraft", "v1", payload());
+    const onReplayApplied = vi.fn();
+    const replay = vi.fn().mockResolvedValue({ version: 7 });
+
+    const { result } = renderHook(() =>
+      useVisitSyncStatus({
+        companyId: "c1",
+        visitId: "v1",
+        replay,
+        onReplayApplied,
+      }),
+    );
+
+    await waitFor(() => expect(replay).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(onReplayApplied).toHaveBeenCalledWith(7));
+    await waitFor(() => expect(result.current.status).toBe("synced"));
+  });
+
+  it("does not call onReplayApplied when the replay result carries no version", async () => {
+    await enqueue("c1", "saveDraft", "v1", payload());
+    const onReplayApplied = vi.fn();
+    const replay = vi.fn().mockResolvedValue(undefined);
+
+    const { result } = renderHook(() =>
+      useVisitSyncStatus({
+        companyId: "c1",
+        visitId: "v1",
+        replay,
+        onReplayApplied,
+      }),
+    );
+
+    await waitFor(() => expect(result.current.status).toBe("synced"));
+    expect(onReplayApplied).not.toHaveBeenCalled();
+  });
+
   it("derives status only from this visit's entries (drain is tenant-wide)", async () => {
     await enqueue("c1", "saveDraft", "v1", payload());
     await enqueue("c1", "saveDraft", "v2", payload());
