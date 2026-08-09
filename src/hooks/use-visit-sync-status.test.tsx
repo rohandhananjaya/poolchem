@@ -223,7 +223,7 @@ describe("useVisitSyncStatus", () => {
       await db.mutationQueue
         .where("companyId")
         .equals("c1")
-        .filter((e) => e.visitId === "v2")
+        .filter((e) => "visitId" in e && e.visitId === "v2")
         .count(),
     ).toBe(1);
     await waitFor(() =>

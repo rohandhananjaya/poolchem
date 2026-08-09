@@ -26,6 +26,11 @@ const RETRYING_COPY =
 async function saveDraftActionReplay(
   entry: QueuedMutation,
 ): Promise<unknown> {
+  // This hook only ever sees visit-form entries; anything else is a wiring bug
+  // (the action-typed payload union makes the mismatch impossible to hide).
+  if (entry.action !== "saveDraft" && entry.action !== "completeVisit") {
+    throw new Error(`Unsupported replay action: ${entry.action}`);
+  }
   // Lazy import keeps the server-action module out of the hook's module graph —
   // tests inject their own `replay` and never load it.
   const { saveDraftAction } = await import(
@@ -34,7 +39,12 @@ async function saveDraftActionReplay(
   return saveDraftAction(entry.visitId, entry.payload);
 }
 
-const DEFAULT_REPLAY: (entry: QueuedMutation) => Promise<unknown> =
+/**
+ * The visit-form replay wiring, shared with the `/offline` page's Retry button
+ * so both surfaces replay queued visit mutations against `saveDraftAction`
+ * (which accepts both `saveDraft` and `completeVisit` payloads).
+ */
+export const DEFAULT_REPLAY: (entry: QueuedMutation) => Promise<unknown> =
   saveDraftActionReplay;
 
 export interface UseVisitSyncStatusOptions {

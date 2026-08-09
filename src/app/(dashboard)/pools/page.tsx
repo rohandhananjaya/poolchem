@@ -12,6 +12,7 @@ import { PoolRow } from "@/components/pools/PoolRow"
 import { PoolsFilters } from "@/components/pools/PoolsFilters"
 import { ImportPoolsDialog } from "@/components/pools/ImportPoolsDialog"
 import { ExportPoolsButton } from "@/components/pools/ExportPoolsButton"
+import { PoolsCacheMirror } from "@/components/offline/pools-cache-mirror"
 import { EmptyState } from "@/components/ui/empty-state"
 import { Pagination } from "@/components/ui/pagination"
 import { buildQueryString } from "@/lib/url"
@@ -56,47 +57,65 @@ export default async function PoolsPage({
     `/pools?${buildQueryString(spForLinks, { page: String(page) })}`
 
   return (
-    <Shell title="Pools">
-      <div className="space-y-3">
-        {canManage && (
-          <div className="flex flex-wrap items-center justify-end gap-2">
-            <ExportPoolsButton canImportExport={canImportExport} />
-            <ImportPoolsDialog canImportExport={canImportExport} />
-            <AddPoolDialog />
-          </div>
-        )}
-
-        <div className="rounded-xl border border-border bg-card p-4">
-          <PoolsFilters />
-        </div>
-
-        <hr className="border-border" />
-
-        {pools.length === 0 ? (
-          <EmptyState
-            icon={<Waves className="size-8" />}
-            title={total === 0 ? "No pools yet." : "No pools match the current filters."}
-            description={total === 0 ? "Add a pool to start tracking water health." : "Try adjusting your filter criteria."}
-          />
-        ) : (
-          <>
-            <div className="space-y-3">
-              {pools.map((pool) => (
-                <PoolRow key={pool.id} pool={pool} canManage={canManage} />
-              ))}
+    <>
+      <Shell title="Pools">
+        <div className="space-y-3">
+          {canManage && (
+            <div className="flex flex-wrap items-center justify-end gap-2">
+              <ExportPoolsButton canImportExport={canImportExport} />
+              <ImportPoolsDialog canImportExport={canImportExport} />
+              <AddPoolDialog />
             </div>
+          )}
 
-            <Pagination
-              currentPage={currentPage}
-              totalPages={totalPages}
-              buildHref={buildHref}
-              itemLabel="pool"
-              total={total}
+          <div className="rounded-xl border border-border bg-card p-4">
+            <PoolsFilters />
+          </div>
+
+          <hr className="border-border" />
+
+          {pools.length === 0 ? (
+            <EmptyState
+              icon={<Waves className="size-8" />}
+              title={total === 0 ? "No pools yet." : "No pools match the current filters."}
+              description={total === 0 ? "Add a pool to start tracking water health." : "Try adjusting your filter criteria."}
             />
-          </>
-        )}
-      </div>
-    </Shell>
+          ) : (
+            <>
+              <div className="space-y-3">
+                {pools.map((pool) => (
+                  <PoolRow key={pool.id} pool={pool} canManage={canManage} />
+                ))}
+              </div>
+
+              <Pagination
+                currentPage={currentPage}
+                totalPages={totalPages}
+                buildHref={buildHref}
+                itemLabel="pool"
+                total={total}
+              />
+            </>
+          )}
+        </div>
+      </Shell>
+
+      <PoolsCacheMirror
+        companyId={user.companyId}
+        pools={pools.map((pool) => ({
+          id: pool.id,
+          name: pool.name,
+          volume: pool.volume,
+          address: pool.address,
+          homeownerEmail: pool.homeownerEmail,
+          homeownerPhone: pool.homeownerPhone,
+          notes: pool.notes,
+          isActive: pool.isActive,
+          lastVisitAt: pool.lastVisitAt ? pool.lastVisitAt.toISOString() : null,
+        }))}
+        total={total}
+      />
+    </>
   )
 }
 

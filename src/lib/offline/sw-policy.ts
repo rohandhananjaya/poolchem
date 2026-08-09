@@ -79,12 +79,52 @@ export function buildRuntimeCaching(baseRules: RuntimeCaching[] = []): RuntimeCa
 }
 
 /**
+ * The minimal request shape the offline-fallback matcher reads (a `Request`
+ * satisfies it). Kept structural so this module stays testable without a worker
+ * `Request` global.
+ */
+export interface FallbackMatchParam {
+  request?: { mode?: string };
+}
+
+/**
+ * Serwist offline fallbacks for runtime-caching failures. A single
+ * navigation-only entry serving the precached `/offline` page when a strategy
+ * can't produce a response (e.g. an uncached full document navigation while
+ * offline).
+ *
+ * Matching on `request.mode === "navigate"` is deliberate: only full document
+ * navigations (fresh loads / hard navigations) match. App Router RSC requests —
+ * which arrive with mode "cors" — never match, so a failed RSC request still
+ * surfaces to the React error boundary (offline-aware `error.tsx`) instead of
+ * being served HTML disguised as an RSC payload.
+ *
+ * Consumed by `src/app/sw.ts` via the `fallbacks` Serwist option; `/offline`
+ * must be precached (`APP_SHELL_PRECACHE`) because the fallback resolves via
+ * `matchPrecache`.
+ */
+export function buildFallbacks(): {
+  entries: { url: string; matcher: (param: FallbackMatchParam) => boolean }[];
+} {
+  return {
+    entries: [
+      {
+        url: "/offline",
+        matcher: (param) => param.request?.mode === "navigate",
+      },
+    ],
+  };
+}
+
+/**
  * Stable non-hashed assets the auto-injected manifest misses. The JS/CSS
  * bundle is already covered by `__SW_MANIFEST`; these fill the public-asset
- * gap. `revision: null` so serwist fetches-and-fingers them at install rather
- * than computing an integrity hash.
+ * gap plus the precached `/offline` page (the navigation fallback resolves via
+ * `matchPrecache`). `revision: null` so serwist fetches-and-fingers them at
+ * install rather than computing an integrity hash.
  */
 export const APP_SHELL_PRECACHE: PrecacheEntry[] = [
+  { url: "/offline", revision: null },
   { url: "/manifest.webmanifest", revision: null },
   { url: "/icons/icon-192.png", revision: null },
   { url: "/icons/icon-512.png", revision: null },

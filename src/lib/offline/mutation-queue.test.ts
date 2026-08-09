@@ -83,7 +83,9 @@ describe("mutation-queue", () => {
       .equals("company-1")
       .toArray();
     expect(rows).toHaveLength(1);
-    expect(rows[0].payload.notes).toBe("offline save");
+    const [row] = rows;
+    if (row.action !== "saveDraft") throw new Error("expected saveDraft");
+    expect(row.payload.notes).toBe("offline save");
   });
 
   it("getPending returns entries oldest-first", async () => {
@@ -167,11 +169,23 @@ describe("mutation-queue", () => {
     expect(updated!.lastError).toBeUndefined();
   });
 
-  it("clearCompanyData wipes drafts and queue for one tenant only", async () => {
+  it("clearCompanyData wipes drafts, queue, and pool cache for one tenant only", async () => {
     await saveDraft("company-1", "tech-1", "visit-1", payload());
     await saveDraft("company-2", "tech-9", "visit-2", payload());
     await enqueue("company-1", "saveDraft", "visit-1", payload());
     await enqueue("company-2", "saveDraft", "visit-2", payload());
+    await db.poolCache.put({
+      companyId: "company-1",
+      pools: [],
+      total: 0,
+      cachedAt: 1,
+    });
+    await db.poolCache.put({
+      companyId: "company-2",
+      pools: [],
+      total: 0,
+      cachedAt: 1,
+    });
 
     await clearCompanyData("company-1");
 
@@ -179,10 +193,12 @@ describe("mutation-queue", () => {
     expect(
       await db.mutationQueue.where("companyId").equals("company-1").count(),
     ).toBe(0);
+    expect(await db.poolCache.get("company-1")).toBeUndefined();
     expect(await db.draftVisits.where("companyId").equals("company-2").count()).toBe(1);
     expect(
       await db.mutationQueue.where("companyId").equals("company-2").count(),
     ).toBe(1);
+    expect(await db.poolCache.get("company-2")).not.toBeUndefined();
   });
 });
 

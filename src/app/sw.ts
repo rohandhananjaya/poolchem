@@ -5,6 +5,7 @@ import type { PrecacheEntry, SerwistGlobalConfig } from "serwist";
 import { Serwist } from "serwist";
 
 import {
+  buildFallbacks,
   buildRuntimeCaching,
   composePrecacheEntries,
 } from "../lib/offline/sw-policy";
@@ -26,6 +27,7 @@ const serwist = new Serwist({
   clientsClaim: true,
   navigationPreload: true,
   runtimeCaching: buildRuntimeCaching(defaultCache),
+  fallbacks: buildFallbacks(),
 });
 
 serwist.addEventListeners();

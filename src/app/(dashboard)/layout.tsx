@@ -7,6 +7,7 @@ import { createClient } from "@/lib/supabase/server"
 import { MainNav } from "@/components/navigation/main-nav"
 import { NotificationProvider } from "@/components/notifications/NotificationProvider"
 import { PushRegistration } from "@/components/notifications/PushRegistration"
+import { IdleRoutePrefetch } from "@/components/offline/idle-route-prefetch"
 import { TrialBanner } from "@/components/package/trial-banner"
 import type { UserRole } from "@/generated/prisma/client"
 import type { CompanyPackageInfo } from "@/lib/package-features"
@@ -49,6 +50,9 @@ export default async function DashboardLayout({
           {children}
         </NotificationProvider>
         <PushRegistration />
+        {/* Warms router/SW caches for nav routes while idle + mirrors the tenant
+            for the offline surfaces. */}
+        <IdleRoutePrefetch companyId={company?.id ?? null} />
       </main>
     </div>
   )

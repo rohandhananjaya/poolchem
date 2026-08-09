@@ -139,9 +139,13 @@ async function deleteEntryAndDraftIfIdle(
   entry: QueuedMutation,
 ): Promise<void> {
   await deleteEntry(companyId, entry.clientMutationId);
-  const remaining = await countEntriesForVisit(companyId, entry.visitId);
-  if (remaining === 0) {
-    await deleteDraft(companyId, entry.visitId);
+  // Drafts exist only for visit-scoped actions; `createVisit`/pool entries carry
+  // no visitId, so there is no draft to retire after they sync.
+  if ("visitId" in entry) {
+    const remaining = await countEntriesForVisit(companyId, entry.visitId);
+    if (remaining === 0) {
+      await deleteDraft(companyId, entry.visitId);
+    }
   }
 }
 

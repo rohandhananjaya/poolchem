@@ -3,14 +3,26 @@
 import { useEffect } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { ArrowLeft, Home, RefreshCw, TriangleAlert } from "lucide-react"
+import {
+  ArrowLeft,
+  Home,
+  RefreshCw,
+  TriangleAlert,
+} from "lucide-react"
 
 import { Button } from "@/components/ui/button"
+import { useOnlineStatus } from "@/hooks/use-online-status"
+import { OfflineRouteView } from "@/components/offline/offline-route-view"
 
 /**
  * App-level error boundary. Catches unhandled errors thrown anywhere below the
  * root layout that isn't covered by a nested `error.tsx`, and shows a friendly
  * recovery page with retry / go-back / go-home actions.
+ *
+ * When the device is offline, the failure is usually a dead network request
+ * (RSC navigations don't hit the SW's HTML navigation fallback), so it shows
+ * `<OfflineRouteView>` — the same unified offline fallback the `/offline` page
+ * uses, which renders the cached `/pools` snapshot when there is one.
  */
 export default function GlobalError({
   error,
@@ -20,11 +32,17 @@ export default function GlobalError({
   unstable_retry: () => void
 }) {
   const router = useRouter()
+  const { online, hydrated } = useOnlineStatus()
+  const offline = hydrated && !online
 
   useEffect(() => {
     // Log the error to an error reporting service.
     console.error(error)
   }, [error])
+
+  if (offline) {
+    return <OfflineRouteView />
+  }
 
   return (
     <div className="mx-auto flex min-h-svh w-full max-w-md flex-col items-center justify-center px-6 py-16 text-center">

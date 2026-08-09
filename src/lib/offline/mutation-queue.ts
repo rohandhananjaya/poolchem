@@ -14,10 +14,12 @@ import { db } from "./db";
 import type { VisitSyncStats } from "./sync-status";
 import {
   createClientMutationId,
-  type DraftVisitPayload,
+  type ActionPayloadMap,
   type MutationAction,
   type MutationStatus,
   type QueuedMutation,
+  type QueuedMutationByAction,
+  type VisitScopedAction,
 } from "./types";
 
 /**
@@ -26,15 +28,22 @@ import {
  * so re-enqueues of the same logical write stay idempotent; otherwise mints a
  * fresh key. A duplicate `[companyId+clientMutationId]` entry is ignored.
  *
- * @returns The stored entry, or the pre-existing entry when already queued.
+ * Generic on the action so the call site is type-checked end to end: visit-scoped
+ * actions require a `visitId` and a `DraftVisitPayload`-shaped payload; pool /
+ * `createVisit` actions take `undefined` for `visitId` and their own payload.
+ *
+ * @returns The stored entry (typed to the action), or the pre-existing entry
+ *          when already queued.
  */
-export async function enqueue(
+export async function enqueue<A extends MutationAction>(
   companyId: string,
-  action: MutationAction,
-  visitId: string,
-  payload: DraftVisitPayload,
-): Promise<QueuedMutation> {
-  const clientMutationId = payload.clientMutationId ?? createClientMutationId();
+  action: A,
+  visitId: A extends VisitScopedAction ? string : undefined,
+  payload: ActionPayloadMap[A],
+): Promise<QueuedMutationByAction[A]> {
+  const clientMutationId =
+    (payload as { clientMutationId?: string }).clientMutationId ??
+    createClientMutationId();
 
   // Check + insert in a single readwrite transaction so two concurrent
   // enqueues with the same `[companyId+clientMutationId]` can't both pass the
@@ -44,20 +53,24 @@ export async function enqueue(
       .where("[companyId+clientMutationId]")
       .equals([companyId, clientMutationId])
       .first();
-    if (existing) return existing;
+    if (existing) return existing as QueuedMutationByAction[A];
 
     const now = Date.now();
-    const entry: QueuedMutation = {
+    // The `action` discriminant is generic here, so TS can't derive the narrowed
+    // variant from the object literal; the action/payload pairing is enforced by
+    // the signature above and `enqueue` is the single persistence boundary, so a
+    // boundary cast is the right trade-off.
+    const entry = {
       companyId,
       action,
-      visitId,
+      ...(visitId !== undefined ? { visitId } : {}),
       payload,
       clientMutationId,
       status: "pending",
       retryCount: 0,
       createdAt: now,
       updatedAt: now,
-    };
+    } as QueuedMutationByAction[A];
     const id = await db.mutationQueue.add(entry);
     return { ...entry, id };
   });
@@ -86,7 +99,7 @@ export async function getPendingForVisit(
   return db.mutationQueue
     .where("[companyId+status]")
     .equals([companyId, "pending"])
-    .filter((entry) => entry.visitId === visitId)
+    .filter((entry) => "visitId" in entry && entry.visitId === visitId)
     .sortBy("createdAt");
 }
 
@@ -157,7 +170,7 @@ export async function deleteEntriesForVisit(
   await db.mutationQueue
     .where("companyId")
     .equals(companyId)
-    .filter((entry) => entry.visitId === visitId)
+    .filter((entry) => "visitId" in entry && entry.visitId === visitId)
     .delete();
 }
 
@@ -218,7 +231,7 @@ export async function getDeadForVisit(
   return db.mutationQueue
     .where("[companyId+status]")
     .equals([companyId, "dead"])
-    .filter((entry) => entry.visitId === visitId)
+    .filter((entry) => "visitId" in entry && entry.visitId === visitId)
     .sortBy("createdAt");
 }
 
@@ -234,7 +247,7 @@ export async function countEntriesForVisit(
   return db.mutationQueue
     .where("companyId")
     .equals(companyId)
-    .filter((entry) => entry.visitId === visitId)
+    .filter((entry) => "visitId" in entry && entry.visitId === visitId)
     .count();
 }
 
@@ -250,7 +263,10 @@ export async function deleteDeadForVisit(
   await db.mutationQueue
     .where("companyId")
     .equals(companyId)
-    .filter((entry) => entry.visitId === visitId && entry.status === "dead")
+    .filter(
+      (entry) =>
+        "visitId" in entry && entry.visitId === visitId && entry.status === "dead",
+    )
     .delete();
 }
 
@@ -266,7 +282,10 @@ export async function retryDead(
   await db.mutationQueue
     .where("companyId")
     .equals(companyId)
-    .filter((entry) => entry.visitId === visitId && entry.status === "dead")
+    .filter(
+      (entry) =>
+        "visitId" in entry && entry.visitId === visitId && entry.status === "dead",
+    )
     .modify((entry) => {
       entry.status = "pending";
       entry.retryCount = 0;
@@ -332,12 +351,20 @@ export async function getVisitStats(
 }
 
 /**
- * Removes all drafts and queued mutations for a tenant. Called on sign-out or
- * tenant switch so one company's data never leaks to the next session.
+ * Removes all drafts, queued mutations, and the pools snapshot for a tenant.
+ * Called on sign-out or tenant switch so one company's data never leaks to the
+ * next session.
  */
 export async function clearCompanyData(companyId: string): Promise<void> {
-  await db.transaction("rw", db.draftVisits, db.mutationQueue, async () => {
-    await db.draftVisits.where("companyId").equals(companyId).delete();
-    await db.mutationQueue.where("companyId").equals(companyId).delete();
-  });
+  await db.transaction(
+    "rw",
+    db.draftVisits,
+    db.mutationQueue,
+    db.poolCache,
+    async () => {
+      await db.draftVisits.where("companyId").equals(companyId).delete();
+      await db.mutationQueue.where("companyId").equals(companyId).delete();
+      await db.poolCache.delete(companyId);
+    },
+  );
 }

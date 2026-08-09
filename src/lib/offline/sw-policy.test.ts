@@ -6,6 +6,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   APP_SHELL_PRECACHE,
+  buildFallbacks,
   buildRuntimeCaching,
   buildServerActionRules,
   composePrecacheEntries,
@@ -120,6 +121,32 @@ describe("APP_SHELL_PRECACHE", () => {
       url: "/manifest.webmanifest",
       revision: null,
     });
+  });
+
+  it("precaches the /offline page (the navigation fallback target)", () => {
+    expect(APP_SHELL_PRECACHE).toContainEqual({
+      url: "/offline",
+      revision: null,
+    });
+  });
+});
+
+describe("buildFallbacks", () => {
+  it("serves /offline only for full document navigations", () => {
+    const { entries } = buildFallbacks();
+    expect(entries).toHaveLength(1);
+    const [fallback] = entries;
+    expect(fallback.url).toBe("/offline");
+    expect(fallback.matcher({ request: { mode: "navigate" } })).toBe(true);
+    // App Router RSC requests arrive with mode "cors" — they must never be
+    // served HTML disguised as an RSC payload (the error boundary handles them).
+    expect(fallback.matcher({ request: { mode: "cors" } })).toBe(false);
+    expect(fallback.matcher({ request: { mode: "no-cors" } })).toBe(false);
+  });
+
+  it("does not match a request with no mode", () => {
+    const { entries } = buildFallbacks();
+    expect(entries[0].matcher({})).toBe(false);
   });
 });
 
