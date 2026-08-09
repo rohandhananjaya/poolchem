@@ -6,6 +6,7 @@ import { requireTech } from "@/lib/auth";
 import { assertVisitAccess, cancelVisit, createVisit, updateVisit } from "@/lib/db/visits";
 import { notifyVisitAssigned } from "@/lib/push/notify";
 import * as emailNotify from "@/lib/email/notify";
+import type { CreateVisitPayload } from "@/lib/offline/types";
 
 /** Result returned to `useActionState` on the client. */
 export interface ScheduleFormState {
@@ -77,6 +78,68 @@ export async function scheduleVisitAction(
   } catch (e) {
     console.error("scheduleVisitAction:", e);
     return { ok: false, error: "Could not schedule the visit. Please try again." };
+  }
+}
+
+/**
+ * Result returned to the offline queue processor when replaying `createVisit`.
+ * JSON-shaped (not a `useActionState` state) because the processor calls it
+ * directly with the queued payload, not with `FormData`.
+ */
+export interface CreateVisitOfflineResult {
+  ok: boolean;
+  visitId?: string;
+  error?: string;
+}
+
+/**
+ * Creates a DRAFT visit from a replayed offline `createVisit` mutation. The
+ * write is idempotent via `clientMutationId`, so a replayed entry is a no-op
+ * server-side. TECH users are forced to self-assign; OWNER/SUPER_ADMIN may
+ * assign any company tech or leave the visit unassigned.
+ *
+ * Deliberately sends no `notifyVisitAssigned` push/email — the visit was
+ * started by the acting tech, so notifying themselves would be noise.
+ */
+export async function createVisitOfflineAction(
+  payload: CreateVisitPayload,
+): Promise<CreateVisitOfflineResult> {
+  const user = await requireTech();
+  if (!user.companyId) {
+    return { ok: false, error: "No company affiliation." };
+  }
+
+  if (typeof payload.poolId !== "string" || payload.poolId === "") {
+    return { ok: false, error: "Please choose a pool." };
+  }
+
+  let scheduledAt: Date | undefined;
+  if (payload.date) {
+    if (!DATE_PATTERN.test(payload.date)) {
+      return { ok: false, error: "Please choose a valid date." };
+    }
+    scheduledAt = new Date(`${payload.date}T12:00:00`);
+    if (Number.isNaN(scheduledAt.getTime())) {
+      return { ok: false, error: "Please choose a valid date." };
+    }
+  }
+
+  const techId =
+    user.role === "TECH"
+      ? user.id
+      : typeof payload.techId === "string" && payload.techId.length > 0
+        ? payload.techId
+        : null;
+
+  try {
+    const visit = await createVisit(payload.poolId, techId, user.companyId, scheduledAt, {
+      clientMutationId: payload.clientMutationId,
+    });
+    revalidatePath("/schedule");
+    return { ok: true, visitId: visit.id };
+  } catch (e) {
+    console.error("createVisitOfflineAction:", e);
+    return { ok: false, error: "Could not create the visit. Please try again." };
   }
 }
 

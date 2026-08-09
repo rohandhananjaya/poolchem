@@ -25,7 +25,12 @@ const { createVisit, cancelVisit, updateVisit, assertVisitAccess } = await impor
 const { notifyVisitAssigned } = await import("@/lib/push/notify");
 const emailNotify = await import("@/lib/email/notify");
 const { revalidatePath } = await import("next/cache");
-const { scheduleVisitAction, cancelVisitAction, updateVisitAction } = await import("./actions");
+const {
+  scheduleVisitAction,
+  cancelVisitAction,
+  updateVisitAction,
+  createVisitOfflineAction,
+} = await import("./actions");
 
 const mockUser = { id: "user-1", companyId: "company-1", role: "TECH" };
 
@@ -129,6 +134,121 @@ describe("scheduleVisitAction", () => {
     expect(result).toEqual({
       ok: false,
       error: "No company affiliation.",
+    });
+  });
+});
+
+describe("createVisitOfflineAction", () => {
+  it("self-assigns a TECH and creates an idempotent visit", async () => {
+    vi.mocked(requireTech).mockResolvedValue(mockUser as never);
+    vi.mocked(createVisit).mockResolvedValue({
+      id: "visit-1",
+      techId: "user-1",
+    } as never);
+
+    const result = await createVisitOfflineAction({
+      poolId: "pool-1",
+      date: "2026-07-15",
+      clientMutationId: "mut-1",
+    });
+
+    expect(result).toEqual({ ok: true, visitId: "visit-1" });
+    expect(createVisit).toHaveBeenCalledWith(
+      "pool-1",
+      "user-1",
+      "company-1",
+      expect.any(Date),
+      { clientMutationId: "mut-1" },
+    );
+    expect(notifyVisitAssigned).not.toHaveBeenCalled();
+    expect(emailNotify.notifyVisitAssigned).not.toHaveBeenCalled();
+    expect(revalidatePath).toHaveBeenCalledWith("/schedule");
+  });
+
+  it("creates an ad-hoc visit when date is omitted", async () => {
+    vi.mocked(requireTech).mockResolvedValue(mockUser as never);
+    vi.mocked(createVisit).mockResolvedValue({
+      id: "visit-1",
+      techId: "user-1",
+    } as never);
+
+    await createVisitOfflineAction({
+      poolId: "pool-1",
+      clientMutationId: "mut-2",
+    });
+
+    expect(createVisit).toHaveBeenCalledWith(
+      "pool-1",
+      "user-1",
+      "company-1",
+      undefined,
+      { clientMutationId: "mut-2" },
+    );
+  });
+
+  it("lets an OWNER assign any company tech", async () => {
+    vi.mocked(requireTech).mockResolvedValue({
+      ...mockUser,
+      role: "OWNER",
+    } as never);
+    vi.mocked(createVisit).mockResolvedValue({
+      id: "visit-1",
+      techId: "user-2",
+    } as never);
+
+    await createVisitOfflineAction({ poolId: "pool-1", techId: "user-2" });
+
+    expect(createVisit).toHaveBeenCalledWith(
+      "pool-1",
+      "user-2",
+      "company-1",
+      undefined,
+      { clientMutationId: undefined },
+    );
+  });
+
+  it("returns error when poolId is missing", async () => {
+    vi.mocked(requireTech).mockResolvedValue(mockUser as never);
+
+    const result = await createVisitOfflineAction({ poolId: "" } as never);
+
+    expect(result).toEqual({ ok: false, error: "Please choose a pool." });
+    expect(createVisit).not.toHaveBeenCalled();
+  });
+
+  it("returns error when date is invalid", async () => {
+    vi.mocked(requireTech).mockResolvedValue(mockUser as never);
+
+    const result = await createVisitOfflineAction({
+      poolId: "pool-1",
+      date: "not-a-date",
+    });
+
+    expect(result).toEqual({ ok: false, error: "Please choose a valid date." });
+    expect(createVisit).not.toHaveBeenCalled();
+  });
+
+  it("returns error when user has no company", async () => {
+    vi.mocked(requireTech).mockResolvedValue({
+      ...mockUser,
+      companyId: null,
+    } as never);
+
+    const result = await createVisitOfflineAction({ poolId: "pool-1" });
+
+    expect(result).toEqual({ ok: false, error: "No company affiliation." });
+    expect(createVisit).not.toHaveBeenCalled();
+  });
+
+  it("returns error when creation fails", async () => {
+    vi.mocked(requireTech).mockResolvedValue(mockUser as never);
+    vi.mocked(createVisit).mockRejectedValue(new Error("db down"));
+
+    const result = await createVisitOfflineAction({ poolId: "pool-1" });
+
+    expect(result).toEqual({
+      ok: false,
+      error: "Could not create the visit. Please try again.",
     });
   });
 });

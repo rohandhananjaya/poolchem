@@ -145,8 +145,8 @@ export interface UpdateVisitStatusPayload {
  */
 export interface CreateVisitPayload {
   poolId: string;
-  /** YYYY-MM-DD string; the server interprets it at local noon. */
-  date: string;
+  /** YYYY-MM-DD string; the server interprets it at local noon. Omit for ad-hoc visits (e.g. offline start), which have no scheduled time. */
+  date?: string;
   /** Tech to assign, or `null`/absent for unassigned (TECH users self-assign server-side). */
   techId?: string | null;
   clientMutationId?: string;

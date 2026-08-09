@@ -11,7 +11,7 @@
     },
     "playwright": {
       "type": "local",
-      "command": ["npx", "-y", "@playwright/mcp", "--headless"],
+      "command": ["npx", "-y", "@playwright/mcp", "--headless", "--browser", "chromium", "--executable-path", "C:\\Users\\rohan\\AppData\\Local\\ms-playwright\\chromium-1228\\chrome-win64\\chrome.exe"],
       "enabled": true
     },
     "trello": {

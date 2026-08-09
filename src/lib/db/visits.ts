@@ -153,6 +153,12 @@ export async function getVisitById(visitId: string, companyId: string) {
  * tech belongs to `companyId` before creating. Passing `null` creates an
  * unassigned visit (any tech can pick it up).
  *
+ * The write is idempotent for offline replay: when `opts.clientMutationId` is
+ * supplied and a visit with that key already exists (scoped via the pool's
+ * company), the existing visit is returned instead of creating a duplicate —
+ * mirrors `completeVisit`'s replay short-circuit. The key is stored on the
+ * created visit so a later replay is a no-op.
+ *
  * @param scheduledAt - When the visit is planned for. Omit for ad-hoc visits
  *   (e.g. a tech scanning a pool in the field), which have no scheduled time.
  * @throws {Error} If the pool is not found, or if a `techId` is given but does
@@ -163,10 +169,20 @@ export async function createVisit(
   techId: string | null,
   companyId: string,
   scheduledAt?: Date,
+  opts: VisitWriteOpts = {},
 ) {
   const pool = await prisma.pool.findFirst({ where: { id: poolId, companyId } });
   if (!pool) {
     throw new Error(`Pool "${poolId}" not found for company "${companyId}".`);
+  }
+
+  // Replay short-circuit: an already-applied `clientMutationId` returns the
+  // existing visit without re-verifying the tech (the mutation already landed).
+  if (opts.clientMutationId) {
+    const existing = await prisma.serviceVisit.findFirst({
+      where: { pool: { companyId }, clientMutationId: opts.clientMutationId },
+    });
+    if (existing) return existing;
   }
 
   if (techId) {
@@ -176,14 +192,28 @@ export async function createVisit(
     }
   }
 
-  return prisma.serviceVisit.create({
-    data: {
-      status: ServiceVisitStatus.DRAFT,
-      scheduledAt: scheduledAt ?? null,
-      poolId: poolId,
-      techId: techId,
-    },
-  });
+  try {
+    return await prisma.serviceVisit.create({
+      data: {
+        status: ServiceVisitStatus.DRAFT,
+        scheduledAt: scheduledAt ?? null,
+        poolId: poolId,
+        techId: techId,
+        clientMutationId: opts.clientMutationId ?? undefined,
+      },
+    });
+  } catch (error) {
+    // Two concurrent same-key replays both pass the short-circuit; the second
+    // hits the @unique on clientMutationId. Re-read and return the winner's
+    // visit as an already-applied replay.
+    if (isUniqueConstraintError(error) && opts.clientMutationId) {
+      const current = await prisma.serviceVisit.findFirst({
+        where: { pool: { companyId }, clientMutationId: opts.clientMutationId },
+      });
+      if (current) return current;
+    }
+    throw error;
+  }
 }
 
 /** The completed visit plus the chemistry engine's derived output. */

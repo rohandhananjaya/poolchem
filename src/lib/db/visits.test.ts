@@ -169,6 +169,62 @@ describe("createVisit", () => {
       data: expect.objectContaining({ scheduledAt }),
     });
   });
+
+  it("stores clientMutationId on creation", async () => {
+    prismaMock.pool.findFirst.mockResolvedValue(mockPool);
+    prismaMock.user.findFirst.mockResolvedValue(mockTech);
+    prismaMock.serviceVisit.create.mockResolvedValue({
+      id: visitId,
+      status: "DRAFT",
+      clientMutationId: "mut-1",
+    });
+
+    await createVisit(poolId, techId, companyId, undefined, {
+      clientMutationId: "mut-1",
+    });
+
+    expect(prismaMock.serviceVisit.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        status: "DRAFT",
+        clientMutationId: "mut-1",
+      }),
+    });
+  });
+
+  it("replays an already-applied clientMutationId without creating a duplicate", async () => {
+    prismaMock.pool.findFirst.mockResolvedValue(mockPool);
+    prismaMock.serviceVisit.findFirst.mockResolvedValue({
+      id: visitId,
+      clientMutationId: "mut-1",
+    });
+
+    const result = await createVisit(poolId, techId, companyId, undefined, {
+      clientMutationId: "mut-1",
+    });
+
+    expect(result).toEqual({ id: visitId, clientMutationId: "mut-1" });
+    expect(prismaMock.serviceVisit.create).not.toHaveBeenCalled();
+    expect(prismaMock.user.findFirst).not.toHaveBeenCalled();
+  });
+
+  it("returns the winner's visit when a concurrent replay hits the unique key", async () => {
+    prismaMock.pool.findFirst.mockResolvedValue(mockPool);
+    prismaMock.user.findFirst.mockResolvedValue(mockTech);
+    prismaMock.serviceVisit.findFirst
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce({ id: visitId, clientMutationId: "mut-2" });
+    const error = new Prisma.PrismaClientKnownRequestError("Unique constraint", {
+      code: "P2002",
+      clientVersion: "7",
+    });
+    prismaMock.serviceVisit.create.mockRejectedValue(error);
+
+    const result = await createVisit(poolId, techId, companyId, undefined, {
+      clientMutationId: "mut-2",
+    });
+
+    expect(result).toEqual({ id: visitId, clientMutationId: "mut-2" });
+  });
 });
 
 describe("completeVisit", () => {
