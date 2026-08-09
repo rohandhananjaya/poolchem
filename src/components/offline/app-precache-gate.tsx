@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Droplets } from "lucide-react";
+import Image from "next/image";
 
 import { useOnlineStatus } from "@/hooks/use-online-status";
 import { precacheRoutes } from "@/lib/offline/app-precache";
@@ -74,9 +74,13 @@ export function AppPrecacheGate({
 function AppDownloadScreen({ progress }: { progress: number }) {
   return (
     <div className="fixed inset-0 z-50 flex flex-col items-center justify-center gap-6 bg-background px-6 text-center">
-      <div className="flex size-16 items-center justify-center rounded-full bg-gradient-to-b from-sky-100 to-teal-200/60 text-teal-600 dark:from-sky-950/40 dark:to-teal-900/40 dark:text-teal-300">
-        <Droplets className="size-8" />
-      </div>
+      <Image
+        src="/images/POOLBENCH.png"
+        alt="Poolbench"
+        width={160}
+        height={48}
+        priority
+      />
       <div className="w-full max-w-xs">
         <p className="text-sm font-medium text-foreground">
           Getting Poolbench ready…

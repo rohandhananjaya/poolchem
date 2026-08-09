@@ -7,7 +7,6 @@ import { LogOut, User } from "lucide-react"
 
 import { createClient } from "@/lib/supabase/client"
 import { cn } from "@/lib/utils"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -22,14 +21,6 @@ const ROLE_LABELS: Record<UserRole, string> = {
   SUPER_ADMIN: "Platform Administrator",
   OWNER: "Owner",
   TECH: "Technician",
-}
-
-/** Returns the first character(s) usable as an avatar/logo fallback. */
-function initials(value: string): string {
-  const parts = value.trim().split(/\s+/).filter(Boolean)
-  if (parts.length === 0) return "?"
-  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase()
-  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
 }
 
 export interface UserMenuProps {
@@ -61,10 +52,7 @@ export function UserMenu({ user }: UserMenuProps) {
           "hover:bg-primary/90 focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none"
         )}
       >
-        <Avatar className="size-7">
-          <AvatarImage src={user.image ?? undefined} alt={user.name} />
-          <AvatarFallback className="text-[10px]">{initials(user.name)}</AvatarFallback>
-        </Avatar>
+        <User className="size-4" />
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-56">
         <DropdownMenuLabel className="flex flex-col">
