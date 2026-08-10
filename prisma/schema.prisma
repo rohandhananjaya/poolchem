@@ -70,6 +70,7 @@ model Company {
 
   users User[]
   pools Pool[]
+  properties Property[]
   invitations Invitation[]
   auditLogs AuditLog[]
   companyPackage CompanyPackage?
@@ -123,15 +124,39 @@ model Pool {
   notes            String?
   companyId        String
   isActive  Boolean  @default(true)
+  // Optional grouping of one or more pools at a physical location (multi-body).
+  // Null for single-pool customers — detaching (SetNull) on Property delete, so
+  // deleting a Property never cascades into its pools.
+  propertyId       String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  property Property? @relation(fields: [propertyId], references: [id], onDelete: SetNull)
 
   serviceVisits ServiceVisit[]
 
   @@index([companyId])
+  @@index([propertyId])
   @@map("pools")
+}
+
+/// A grouping of one or more pools at a physical location (multi-body). A pool
+/// may optionally belong to a Property; single-pool customers have none.
+model Property {
+  id        String   @id @default(cuid())
+  name      String
+  address   String?
+  notes     String?
+  companyId String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  pools   Pool[]
+
+  @@index([companyId])
+  @@map("properties")
 }
 
 model ServiceVisit {

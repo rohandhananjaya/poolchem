@@ -36,13 +36,21 @@ Get the tenant with `getCompanyId()` / `requireAuth()` from [../auth.ts](../auth
 - `getPoolsByCompany(companyId) → PoolWithLastVisit[]`
 - `getAllPoolsForExport(companyId) → Pool[]` — active + inactive, for CSV export
 - `getPoolById(poolId, companyId) → Pool | null`
-- `createPool(data: CreatePoolData, companyId) → Pool`
+- `createPool(data: CreatePoolData, companyId) → Pool` — `CreatePoolData` may include `propertyId?: string | null`; throws unless the property belongs to the same company (tenant-FK guard)
 - `createPoolsBulk(rows: CreatePoolData[], companyId) → { created: Pool[]; failed: { index, error }[] }` — per-row isolated, for CSV import
-- `updatePool(poolId, data: UpdatePoolData, companyId) → Pool`
+- `updatePool(poolId, data: UpdatePoolData, companyId) → Pool` — accepts optional `data.propertyId` (same-company guard as create)
 - `deletePool(poolId, companyId) → void`
 - `getPoolByQR(qrCode) → Pool | null`
 - `getPoolByPublicToken(publicToken, visitLimit)` — **public, unscoped**; homeowner share link
 - `generateQRCode(poolId) → string` — reissues a scan code; **unscoped**
+
+**properties.ts** — optional multi-body grouping of pools at a location. Every pool's `propertyId` is optional (single-pool customers have none); deleting a Property detaches its pools (`SetNull`), never cascades.
+- `getPropertiesByCompany(companyId) → PropertyWithPools[]` — each with its active `pools` (inactive excluded, like `getPoolsByCompany`)
+- `getPropertyById(propertyId, companyId) → Property | null`
+- `createProperty(data: CreatePropertyData, companyId) → Property`
+- `updateProperty(propertyId, data: UpdatePropertyData, companyId) → Property`
+- `deleteProperty(propertyId, companyId) → void` — pools detach (SetNull), no cascade
+- `setPoolProperty(poolId, propertyId | null, companyId) → Pool` — attach/detach a pool; the tenant-FK guard (property must resolve to the same company as the pool, else throws)
 
 **visits.ts** — a `ServiceVisit` has no `companyId`; it is scoped via `pool: { companyId }`.
 - `getTodayVisits(companyId)`
@@ -138,11 +146,11 @@ Get the tenant with `getCompanyId()` / `requireAuth()` from [../auth.ts](../auth
 - `getPaymentSettings() → PaymentSettings` — `{ stripeEnabled, paypalEnabled, paymentDevMode }`; upserts the row if missing
 - `updatePaymentSettings(data: Partial<PaymentSettings>) → PaymentSettings`
 
-## Tests (145+ tests across 10 files)
+## Tests (192 tests across 12 files)
 
 All DB tests mock `@/lib/prisma` and require `server-only` to be stubbed (handled by the Vitest config alias). Tests are in the same directory with `.test.ts` suffix:
-- `visits.test.ts` — 38 tests · `company.test.ts` — 12 · `pools.test.ts` — 20 · `packages.test.ts` — 27
-- `users.test.ts` — 14 · `reports.test.ts` — 3 · `schedule.test.ts` — 8 · `dashboard.test.ts` — 2 · `api-keys.test.ts` — 12 · `feedback.test.ts` — 9 · `push-devices.test.ts` — 5
+- `visits.test.ts` — 54 tests · `company.test.ts` — 12 · `pools.test.ts` — 29 · `packages.test.ts` — 31
+- `users.test.ts` — 14 · `reports.test.ts` — 3 · `schedule.test.ts` — 8 · `dashboard.test.ts` — 2 · `api-keys.test.ts` — 12 · `feedback.test.ts` — 9 · `push-devices.test.ts` — 5 · `properties.test.ts` — 13
 
 No tests yet for `admin-dashboard.ts`, `admin-audit.ts`, `admin-diagnostics.ts`, `payment-settings.ts`, or `invitations.ts` — a real coverage gap, not just a doc omission.
 

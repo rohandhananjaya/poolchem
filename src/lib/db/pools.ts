@@ -19,6 +19,7 @@ import { PAGE_SIZE } from "@/lib/config";
 import type { Pool } from "@/generated/prisma/client";
 import { Prisma, ServiceVisitStatus } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
+import { getPropertyById } from "@/lib/db/properties";
 
 /** Filters for the paginated pools list. */
 export interface PoolsFilters {
@@ -122,6 +123,8 @@ export interface CreatePoolData {
   notes?: string | null;
   homeownerEmail?: string | null;
   homeownerPhone?: string | null;
+  /** Optional multi-body grouping. Must belong to the same company, else throws. */
+  propertyId?: string | null;
 }
 
 /** Fields that may be changed on an existing pool. */
@@ -138,9 +141,34 @@ function isRecordNotFound(error: unknown): boolean {
   );
 }
 
+/** Returns true for Prisma's "foreign key constraint" error (P2003). */
+function isForeignKeyViolation(error: unknown): boolean {
+  return (
+    error instanceof Prisma.PrismaClientKnownRequestError &&
+    error.code === "P2003"
+  );
+}
+
 /** Mints a new globally-unique QR identifier for a pool. */
 function newQRCode(): string {
   return `POOL-${randomUUID()}`;
+}
+
+/**
+ * Tenant-FK guard for pool writes that reference a property: throws unless the
+ * property resolves to the same `companyId` the pool belongs to. A leaky FK
+ * here would let one tenant group a pool under another tenant's property.
+ */
+async function assertSameCompanyProperty(
+  propertyId: string,
+  companyId: string,
+): Promise<void> {
+  const property = await getPropertyById(propertyId, companyId);
+  if (!property) {
+    throw new Error(
+      `Property "${propertyId}" not found for company "${companyId}" (or not owned by it).`,
+    );
+  }
 }
 
 /**
@@ -185,19 +213,36 @@ export async function createPool(
   data: CreatePoolData,
   companyId: string,
 ): Promise<Pool> {
-  return prisma.pool.create({
-    data: {
-      name: data.name,
-      volume: data.volume,
-      address: data.address ?? null,
-      image: data.image ?? null,
-      notes: data.notes ?? null,
-      homeownerEmail: data.homeownerEmail ?? null,
-      homeownerPhone: data.homeownerPhone ?? null,
-      qrCode: newQRCode(),
-      company: { connect: { id: companyId } },
-    },
-  });
+  if (data.propertyId != null) {
+    await assertSameCompanyProperty(data.propertyId, companyId);
+  }
+
+  try {
+    return await prisma.pool.create({
+      data: {
+        name: data.name,
+        volume: data.volume,
+        address: data.address ?? null,
+        image: data.image ?? null,
+        notes: data.notes ?? null,
+        homeownerEmail: data.homeownerEmail ?? null,
+        homeownerPhone: data.homeownerPhone ?? null,
+        ...(data.propertyId != null
+          ? { property: { connect: { id: data.propertyId } } }
+          : {}),
+        qrCode: newQRCode(),
+        company: { connect: { id: companyId } },
+      },
+    });
+  } catch (error) {
+    if (isForeignKeyViolation(error)) {
+      // Property was deleted between the guard above and this write.
+      throw new Error(
+        `Property "${data.propertyId}" not found for company "${companyId}" (or not owned by it).`,
+      );
+    }
+    throw error;
+  }
 }
 
 /**
@@ -241,10 +286,25 @@ export async function updatePool(
   data: UpdatePoolData,
   companyId: string,
 ): Promise<Pool> {
-  const { count } = await prisma.pool.updateMany({
-    where: { id: poolId, companyId },
-    data,
-  });
+  if (data.propertyId != null) {
+    await assertSameCompanyProperty(data.propertyId, companyId);
+  }
+
+  let count: number;
+  try {
+    ({ count } = await prisma.pool.updateMany({
+      where: { id: poolId, companyId },
+      data,
+    }));
+  } catch (error) {
+    if (isForeignKeyViolation(error)) {
+      // Property was deleted between the guard above and this write.
+      throw new Error(
+        `Property "${data.propertyId}" not found for company "${companyId}" (or not owned by it).`,
+      );
+    }
+    throw error;
+  }
 
   if (count === 0) {
     throw new Error(
