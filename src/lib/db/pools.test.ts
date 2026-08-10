@@ -33,6 +33,17 @@ const mockPool = {
   notes: null,
   qrCode: "POOL-abc",
   publicToken: "tok_abc",
+  propertyId: null,
+  createdAt: new Date(),
+  updatedAt: new Date(),
+};
+
+const mockProperty = {
+  id: "property-1",
+  name: "Lake House",
+  address: "123 Pool St",
+  notes: null,
+  companyId,
   createdAt: new Date(),
   updatedAt: new Date(),
 };
@@ -94,7 +105,7 @@ describe("createPool", () => {
         name: "New Pool",
         volume: 15_000,
         qrCode: expect.stringMatching(/^POOL-/),
-        company: { connect: { id: companyId } },
+        companyId,
       }),
     });
     expect(result).toEqual(mockPool);
@@ -119,6 +130,32 @@ describe("createPool", () => {
         homeownerPhone: "555-1234",
       }),
     });
+  });
+
+  it("sets propertyId when the property belongs to the same company", async () => {
+    prismaMock.property.findFirst.mockResolvedValue(mockProperty);
+    prismaMock.pool.create.mockResolvedValue(mockPool);
+
+    await createPool(
+      { name: "New Pool", volume: 15_000, propertyId: "property-1" },
+      companyId,
+    );
+
+    expect(prismaMock.pool.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({ propertyId: "property-1" }),
+    });
+  });
+
+  it("throws when propertyId belongs to another company", async () => {
+    prismaMock.property.findFirst.mockResolvedValue(null);
+
+    await expect(
+      createPool(
+        { name: "New Pool", volume: 15_000, propertyId: "property-1" },
+        companyId,
+      ),
+    ).rejects.toThrow(/not found/i);
+    expect(prismaMock.pool.create).not.toHaveBeenCalled();
   });
 });
 
@@ -194,6 +231,45 @@ describe("updatePool", () => {
     await expect(
       updatePool(poolId, { name: "Updated" }, companyId),
     ).rejects.toThrow(/not found/i);
+  });
+
+  it("sets propertyId when the property belongs to the same company", async () => {
+    prismaMock.property.findFirst.mockResolvedValue(mockProperty);
+    prismaMock.pool.updateMany.mockResolvedValue({ count: 1 });
+    prismaMock.pool.findUniqueOrThrow.mockResolvedValue(mockPool);
+
+    await updatePool(
+      poolId,
+      { name: "Updated", propertyId: "property-1" },
+      companyId,
+    );
+
+    expect(prismaMock.pool.updateMany).toHaveBeenCalledWith({
+      where: { id: poolId, companyId },
+      data: { name: "Updated", propertyId: "property-1" },
+    });
+  });
+
+  it("clears propertyId when null is passed", async () => {
+    prismaMock.pool.updateMany.mockResolvedValue({ count: 1 });
+    prismaMock.pool.findUniqueOrThrow.mockResolvedValue(mockPool);
+
+    await updatePool(poolId, { propertyId: null }, companyId);
+
+    expect(prismaMock.property.findFirst).not.toHaveBeenCalled();
+    expect(prismaMock.pool.updateMany).toHaveBeenCalledWith({
+      where: { id: poolId, companyId },
+      data: { propertyId: null },
+    });
+  });
+
+  it("throws when propertyId belongs to another company", async () => {
+    prismaMock.property.findFirst.mockResolvedValue(null);
+
+    await expect(
+      updatePool(poolId, { propertyId: "property-1" }, companyId),
+    ).rejects.toThrow(/not found/i);
+    expect(prismaMock.pool.updateMany).not.toHaveBeenCalled();
   });
 });
 

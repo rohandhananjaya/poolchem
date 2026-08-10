@@ -36,13 +36,21 @@ Get the tenant with `getCompanyId()` / `requireAuth()` from [../auth.ts](../auth
 - `getPoolsByCompany(companyId) → PoolWithLastVisit[]`
 - `getAllPoolsForExport(companyId) → Pool[]` — active + inactive, for CSV export
 - `getPoolById(poolId, companyId) → Pool | null`
-- `createPool(data: CreatePoolData, companyId) → Pool`
+- `createPool(data: CreatePoolData, companyId) → Pool` — `CreatePoolData.propertyId?` sets the pool's Property; a propertyId from another company throws
 - `createPoolsBulk(rows: CreatePoolData[], companyId) → { created: Pool[]; failed: { index, error }[] }` — per-row isolated, for CSV import
-- `updatePool(poolId, data: UpdatePoolData, companyId) → Pool`
+- `updatePool(poolId, data: UpdatePoolData, companyId) → Pool` — `data.propertyId` may attach (`string`) or detach (`null`); a cross-company propertyId throws
 - `deletePool(poolId, companyId) → void`
 - `getPoolByQR(qrCode) → Pool | null`
 - `getPoolByPublicToken(publicToken, visitLimit)` — **public, unscoped**; homeowner share link
 - `generateQRCode(poolId) → string` — reissues a scan code; **unscoped**
+
+**properties.ts** — a Property is a physical location holding one or more pools (the multi-body grouping primitive). Same tenancy invariant as pools.ts: reads null on cross-tenant miss, writes throw.
+- `getPropertiesByCompany(companyId) → PropertyWithPools[]` — each with its attached pools
+- `getPropertyById(propertyId, companyId) → Property | null`
+- `createProperty(data: CreatePropertyData, companyId) → Property`
+- `updateProperty(propertyId, data, companyId) → Property`
+- `deleteProperty(propertyId, companyId) → void` — attached pools are **detached** (`pool.propertyId` → null), never deleted
+- `setPoolProperty(poolId, propertyId | null, companyId) → Pool` — attaches/detaches a pool; validates the Property belongs to the SAME company as the pool (tenant-FK guard)
 
 **visits.ts** — a `ServiceVisit` has no `companyId`; it is scoped via `pool: { companyId }`.
 - `getTodayVisits(companyId)`
@@ -143,6 +151,7 @@ Get the tenant with `getCompanyId()` / `requireAuth()` from [../auth.ts](../auth
 All DB tests mock `@/lib/prisma` and require `server-only` to be stubbed (handled by the Vitest config alias). Tests are in the same directory with `.test.ts` suffix:
 - `visits.test.ts` — 38 tests · `company.test.ts` — 12 · `pools.test.ts` — 20 · `packages.test.ts` — 27
 - `users.test.ts` — 14 · `reports.test.ts` — 3 · `schedule.test.ts` — 8 · `dashboard.test.ts` — 2 · `api-keys.test.ts` — 12 · `feedback.test.ts` — 9 · `push-devices.test.ts` — 5
+- `properties.test.ts` — new (2026-08-10), covers the `property` model + `setPoolProperty` tenant-FK guard
 
 No tests yet for `admin-dashboard.ts`, `admin-audit.ts`, `admin-diagnostics.ts`, `payment-settings.ts`, or `invitations.ts` — a real coverage gap, not just a doc omission.
 

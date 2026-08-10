@@ -19,6 +19,7 @@ import { PAGE_SIZE } from "@/lib/config";
 import type { Pool } from "@/generated/prisma/client";
 import { Prisma, ServiceVisitStatus } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
+import { getPropertyById } from "@/lib/db/properties";
 
 /** Filters for the paginated pools list. */
 export interface PoolsFilters {
@@ -122,6 +123,8 @@ export interface CreatePoolData {
   notes?: string | null;
   homeownerEmail?: string | null;
   homeownerPhone?: string | null;
+  /** Optional grouping: the Property this pool belongs to (multi-body). Must be owned by the same company. */
+  propertyId?: string | null;
 }
 
 /** Fields that may be changed on an existing pool. */
@@ -136,6 +139,23 @@ function isRecordNotFound(error: unknown): boolean {
     error instanceof Prisma.PrismaClientKnownRequestError &&
     error.code === "P2025"
   );
+}
+
+/**
+ * Throws unless the Property exists and is owned by `companyId`. Guard for a
+ * pool write carrying a `propertyId` — a pool must never link to another
+ * company's Property.
+ */
+async function assertPropertyInCompany(
+  propertyId: string,
+  companyId: string,
+): Promise<void> {
+  const property = await getPropertyById(propertyId, companyId);
+  if (!property) {
+    throw new Error(
+      `Property "${propertyId}" not found for company "${companyId}" (or not owned by it).`,
+    );
+  }
 }
 
 /** Mints a new globally-unique QR identifier for a pool. */
@@ -185,6 +205,10 @@ export async function createPool(
   data: CreatePoolData,
   companyId: string,
 ): Promise<Pool> {
+  if (data.propertyId != null) {
+    await assertPropertyInCompany(data.propertyId, companyId);
+  }
+
   return prisma.pool.create({
     data: {
       name: data.name,
@@ -194,8 +218,9 @@ export async function createPool(
       notes: data.notes ?? null,
       homeownerEmail: data.homeownerEmail ?? null,
       homeownerPhone: data.homeownerPhone ?? null,
+      propertyId: data.propertyId ?? null,
       qrCode: newQRCode(),
-      company: { connect: { id: companyId } },
+      companyId,
     },
   });
 }
@@ -241,6 +266,10 @@ export async function updatePool(
   data: UpdatePoolData,
   companyId: string,
 ): Promise<Pool> {
+  if (data.propertyId != null) {
+    await assertPropertyInCompany(data.propertyId, companyId);
+  }
+
   const { count } = await prisma.pool.updateMany({
     where: { id: poolId, companyId },
     data,

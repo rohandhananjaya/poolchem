@@ -70,6 +70,7 @@ model Company {
 
   users User[]
   pools Pool[]
+  properties Property[]
   invitations Invitation[]
   auditLogs AuditLog[]
   companyPackage CompanyPackage?
@@ -128,10 +129,35 @@ model Pool {
 
   company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
 
+  // Optional grouping: when set, this pool belongs to a Property (a physical
+  // location that can hold multiple bodies of water). Null for existing
+  // single-pool customers, so adding multi-body support doesn't disturb them.
+  propertyId String?
+  property   Property? @relation(fields: [propertyId], references: [id], onDelete: SetNull)
+
   serviceVisits ServiceVisit[]
 
   @@index([companyId])
+  @@index([propertyId])
   @@map("pools")
+}
+
+/// A physical location (e.g. a customer's home or business) that can hold one
+/// or more pools. Multi-tenant: every Property belongs to a Company.
+model Property {
+  id        String   @id @default(cuid())
+  name      String
+  address   String?
+  notes     String?
+  companyId String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  pools   Pool[]
+
+  @@index([companyId])
+  @@map("properties")
 }
 
 model ServiceVisit {
