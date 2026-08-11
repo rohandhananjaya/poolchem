@@ -71,6 +71,7 @@ model Company {
   users User[]
   pools Pool[]
   properties Property[]
+  serviceVisitPools ServiceVisitPool[]
   invitations Invitation[]
   auditLogs AuditLog[]
   companyPackage CompanyPackage?
@@ -135,6 +136,7 @@ model Pool {
   property Property? @relation(fields: [propertyId], references: [id], onDelete: SetNull)
 
   serviceVisits ServiceVisit[]
+  serviceVisitPools ServiceVisitPool[]
 
   @@index([companyId])
   @@index([propertyId])
@@ -199,6 +201,7 @@ model ServiceVisit {
 
   waterReadings   WaterReading[]
   chemicalsAdded  ChemicalAdded[]
+  serviceVisitPools ServiceVisitPool[]
 
   @@index([poolId])
   @@index([techId])
@@ -206,9 +209,40 @@ model ServiceVisit {
   @@map("service_visits")
 }
 
+/// A join row linking a ServiceVisit to one Pool (one body of water). One visit
+/// may serve multiple pools (multi-body); `@@unique([serviceVisitId, poolId])`
+/// enforces one pool per visit and dedupes replayed writes.
+///
+/// `companyId` is stored directly on the join (matching the Property/Pool
+/// precedent) so tenancy filters stay indexed. Invariant: a join row's
+/// `companyId` MUST equal its pool's `companyId` — enforced by
+/// `assertPoolsBelongToCompany` at write time.
+model ServiceVisitPool {
+  id            String   @id @default(cuid())
+  serviceVisitId String
+  poolId        String
+  companyId     String
+  createdAt     DateTime @default(now())
+
+  visit   ServiceVisit @relation(fields: [serviceVisitId], references: [id], onDelete: Cascade)
+  pool    Pool         @relation(fields: [poolId], references: [id], onDelete: Cascade)
+  company Company      @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  waterReadings  WaterReading[]
+  chemicalsAdded ChemicalAdded[]
+
+  @@unique([serviceVisitId, poolId])
+  @@index([poolId])
+  @@index([companyId])
+  @@map("service_visit_pools")
+}
+
 model WaterReading {
   id             String   @id @default(cuid())
   visitId        String
+  // Per-body-of-water keying (multi-body). Null for legacy rows written before
+  // the join landed; `visitId` stays required alongside until the rework card.
+  serviceVisitPoolId String?
   ph             Float
   freeChlorine   Float
   totalAlkalinity Float
@@ -218,22 +252,29 @@ model WaterReading {
   createdAt      DateTime @default(now())
 
   visit ServiceVisit @relation(fields: [visitId], references: [id], onDelete: Cascade)
+  serviceVisitPool ServiceVisitPool? @relation(fields: [serviceVisitPoolId], references: [id], onDelete: Cascade)
 
   @@index([visitId])
+  @@index([serviceVisitPoolId])
   @@map("water_readings")
 }
 
 model ChemicalAdded {
   id        String   @id @default(cuid())
   visitId   String
+  // Per-body-of-water keying (multi-body). Null for legacy rows; `visitId` stays
+  // required alongside until the rework card.
+  serviceVisitPoolId String?
   name      String
   amount    Float
   unit      String
   createdAt DateTime @default(now())
 
   visit ServiceVisit @relation(fields: [visitId], references: [id], onDelete: Cascade)
+  serviceVisitPool ServiceVisitPool? @relation(fields: [serviceVisitPoolId], references: [id], onDelete: Cascade)
 
   @@index([visitId])
+  @@index([serviceVisitPoolId])
   @@map("chemicals_added")
 }
 

@@ -52,7 +52,13 @@ Get the tenant with `getCompanyId()` / `requireAuth()` from [../auth.ts](../auth
 - `deleteProperty(propertyId, companyId) → void` — pools detach (SetNull), no cascade
 - `setPoolProperty(poolId, propertyId | null, companyId) → Pool` — attach/detach a pool; the tenant-FK guard (property must resolve to the same company as the pool, else throws)
 
-**visits.ts** — a `ServiceVisit` has no `companyId`; it is scoped via `pool: { companyId }`.
+**service-visit-pools.ts** — the `ServiceVisitPool` join rows linking a visit to each pool (body of water) it serves. `companyId` is stored directly on the join so tenancy filters stay indexed; a join row's `companyId` MUST equal its pool's `companyId` (write-time invariant, see `assertPoolsBelongToCompany`). Read + guard only — join-row creation lands in the createVisit rework card.
+- `getServiceVisitPoolsByVisit(visitId, companyId) → ServiceVisitPoolWithPool[]` — join rows with `pool` attached; `[]` on a cross-tenant visit id
+- `getPoolsByVisit(visitId, companyId) → Pool[]` — convenience wrapper (the "bodies" of a visit)
+- `getVisitsByPool(poolId, companyId, limit?) → ServiceVisit[]` — multi-body-safe pool-scoped history (join-row scoped), newest first; swap-in target for the getVisitHistory rework
+- `assertPoolsBelongToCompany(poolIds, companyId) → void` — tenant-FK guard; throws unless EVERY pool resolves to `companyId`, and on an empty `poolIds`
+
+**visits.ts** — a `ServiceVisit` has no `companyId`; it is scoped via `pool: { companyId }`. `poolId` (on the visit) and `visitId` (on readings/chemicals) keying stays in place until the Multi-Body rework cards land — `ServiceVisitPool` join rows are additive alongside them (`service-visit-pools.ts`).
 - `getTodayVisits(companyId)`
 - `getVisitById(visitId, companyId)`
 - `createVisit(poolId, techId\|null, companyId, scheduledAt?)`
