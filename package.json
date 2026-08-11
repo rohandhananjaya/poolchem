@@ -15,6 +15,7 @@
     "db:migrate": "prisma migrate deploy",
     "db:push:postgres": "node scripts/prepare-postgres-schema.mjs && prisma db push",
     "db:seed": "tsx scripts/seed.ts",
+    "db:backfill:service-visit-pools": "tsx scripts/backfill-service-visit-pools.ts",
     "cap:sync": "npx cap sync",
     "cap:android": "npx cap open android",
     "cap:ios": "npx cap open ios",

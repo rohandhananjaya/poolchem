@@ -26,6 +26,7 @@ npm run test:e2e     # Playwright e2e tests
 npm run test:e2e:ui  # Playwright e2e tests, headed
 npm run db:migrate   # prisma migrate deploy (production migrations)
 npm run db:seed      # tsx scripts/seed.ts
+npm run db:backfill:service-visit-pools  # legacy poolId → ServiceVisitPool backfill (dry-run default; --apply to write. MUST run before the Multi-Body createVisit/completeVisit rework cards deploy). PowerShell doesn't forward `npm run … -- --apply` — use `cmd /c "npm run db:backfill:service-visit-pools -- --apply"` or `npx tsx scripts/backfill-service-visit-pools.ts --apply`
 npm run cap:sync     # Capacitor: copy web assets + bake config into android/ & ios/
 npm run cap:android  # Capacitor: open the Android project in Android Studio
 npm run cap:ios      # Capacitor: open the iOS project in Xcode (requires macOS)
