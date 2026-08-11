@@ -34,7 +34,7 @@ This section previously listed a `(public)/` route group (blog, about-us, servic
   `actions.ts`: `saveDraftAction`, `completeVisitAction`, `startVisitAction`, `updateVisitStatusAction`
   - `VisitFormValues` accepts `expectedVersion` (the revision the client last observed) and both `saveDraftAction`/`completeVisitAction` return `{ version }` so the client re-bases its known revision after each write/replay. `completeVisitAction` forwards `expectedVersion` to the db helper's stale-write guard — a racing completion throws `VisitVersionConflictError`, which the form surfaces as a dedicated toast + `router.refresh()`.
   - `report/` — generated service report. `page.tsx` uses `generateServiceReport`; `report-actions.tsx` (mailto send + external QR — both MVP placeholders, see [../../to-do.md](../../to-do.md))
-- `schedule/` — upcoming visits; `getScheduleData`. `actions.ts`: `scheduleVisitAction` — also fires `notifyVisitAssigned` (native push) after creating/updating a visit
+- `schedule/` — upcoming visits; `getScheduleData`. `actions.ts`: `scheduleVisitAction` — accepts one or more `poolId` values (multi-pool visits via `createVisit(poolIds[])`); also fires `notifyVisitAssigned` (native push) after creating/updating a visit
 - `push/` — no page; `actions.ts`: `registerPushDeviceAction` / `unregisterPushDeviceAction` — called from the native app's `<PushRegistration>` (via `@capacitor/push-notifications`) to persist/clear the platform token
 - `reports/` — water-health report history; `getCompanyReportData`
 - `settings/` — account + company settings. `actions.ts`: `updateAccountAction`, `updateCompanyAction`

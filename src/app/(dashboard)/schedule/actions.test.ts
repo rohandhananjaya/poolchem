@@ -74,8 +74,33 @@ describe("scheduleVisitAction", () => {
     expect(revalidatePath).toHaveBeenCalledWith("/schedule");
   });
 
-  it("does not push when the visit is unassigned", async () => {
+  it("schedules a visit for multiple pools and notifies once", async () => {
     vi.mocked(requireTech).mockResolvedValue(mockUser as never);
+    vi.mocked(createVisit).mockResolvedValue({
+      id: "visit-1",
+      techId: "user-1",
+    } as never);
+
+    const fd = new FormData();
+    fd.append("poolId", "pool-1");
+    fd.append("poolId", "pool-2");
+    fd.append("date", "2026-07-15");
+
+    const result = await scheduleVisitAction({ ok: false }, fd);
+
+    expect(result).toEqual({ ok: true });
+    expect(createVisit).toHaveBeenCalledWith(
+      ["pool-1", "pool-2"],
+      "user-1",
+      "company-1",
+      expect.any(Date),
+    );
+    expect(notifyVisitAssigned).toHaveBeenCalledTimes(1);
+    expect(emailNotify.notifyVisitAssigned).toHaveBeenCalledTimes(1);
+    expect(revalidatePath).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not push when the visit is unassigned", async () => {    vi.mocked(requireTech).mockResolvedValue(mockUser as never);
     vi.mocked(createVisit).mockResolvedValue({
       id: "visit-1",
       techId: null,

@@ -10,6 +10,7 @@ import {
   type ScheduleFilters,
 } from "@/lib/db/schedule"
 import { getPoolsByCompany } from "@/lib/db/pools"
+import { getPropertiesByCompany } from "@/lib/db/properties"
 import { getCompanyTechs } from "@/lib/db/users"
 import { Shell } from "@/components/ui/shell"
 import { RealtimeVisitsRefresh } from "@/components/shared/RealtimeVisitsRefresh"
@@ -132,10 +133,11 @@ export default async function SchedulePage({
   if (sp.fromDate) spForLinks.set("fromDate", sp.fromDate)
   if (sp.toDate) spForLinks.set("toDate", sp.toDate)
 
-  const [{ visits, total }, pools, techs] = await Promise.all([
+  const [{ visits, total }, pools, techs, properties] = await Promise.all([
     getScheduleData(user.companyId, currentPage, filters),
     getPoolsByCompany(user.companyId),
     getCompanyTechs(user.companyId),
+    getPropertiesByCompany(user.companyId),
   ])
 
   const totalPages = Math.ceil(total / SCHEDULE_PAGE_SIZE)
@@ -152,7 +154,14 @@ export default async function SchedulePage({
       <div className="space-y-3">
         <div className="flex items-center justify-end">
           <ScheduleVisitForm
-            pools={pools.map((pool) => ({ id: pool.id, name: pool.name }))}
+            pools={pools
+              .filter((pool) => !pool.propertyId)
+              .map((pool) => ({ id: pool.id, name: pool.name }))}
+            properties={properties.map((property) => ({
+              id: property.id,
+              name: property.name,
+              pools: property.pools.map((pool) => ({ id: pool.id, name: pool.name })),
+            }))}
             techs={techs}
             userRole={user.role}
           />

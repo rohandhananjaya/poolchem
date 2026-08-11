@@ -22,7 +22,7 @@ Feature components grouped by domain; shadcn/ui primitives in [ui/](ui/) (style 
 `ReportRow` · `ScoreSparkline` (inline SVG water-health trend) · `WaterHealthSummary` (gauge + at-a-glance callout, used by both report pages) · `ReportsFilters` (pool/date-range filter bar)
 
 ## schedule/
-`ScheduleVisitForm` (Dialog popup with pool/date/tech-search; posts to `schedule/actions.ts`) · `ScheduleFilters` (pool filter bar)
+`ScheduleVisitForm` (Dialog popup with property-aware multi-pool selection — Location select + pool checkboxes when Properties exist, falling back to the current single-pool select over ungrouped pools — plus date/tech-search; posts to `schedule/actions.ts`) · `ScheduleFilters` (pool filter bar)
 ## profile/
 
 `ProfileForms` (account + company forms, posts to `settings/actions.ts`) — links out to `/account/api-keys` for owners · `SignOutButton` (signs out via Supabase + redirects to `/login`; on native only, unregisters the device push token first via `unregisterPushDeviceAction`)

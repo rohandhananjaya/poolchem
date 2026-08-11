@@ -17,7 +17,7 @@ export interface ScheduleFormState {
 const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 
 /**
- * Schedules a new DRAFT visit for a pool on a chosen day.
+ * Schedules a new DRAFT visit for one or more pools on a chosen day.
  *
  * - OWNER / SUPER_ADMIN: techId from the form (or `null` for unassigned).
  * - TECH: always self-assigned (form value is ignored — security hardening).
@@ -31,10 +31,12 @@ export async function scheduleVisitAction(
     return { ok: false, error: "No company affiliation." };
   }
 
-  const poolId = formData.get("poolId");
+  const poolIds = formData
+    .getAll("poolId")
+    .filter((value): value is string => typeof value === "string" && value.length > 0);
   const date = formData.get("date");
 
-  if (typeof poolId !== "string" || poolId === "") {
+  if (poolIds.length === 0) {
     return { ok: false, error: "Please choose a pool." };
   }
   if (typeof date !== "string" || !DATE_PATTERN.test(date)) {
@@ -59,7 +61,7 @@ export async function scheduleVisitAction(
         : null;
 
   try {
-    const visit = await createVisit([poolId], techId, user.companyId, scheduledAt);
+    const visit = await createVisit(poolIds, techId, user.companyId, scheduledAt);
     if (visit.techId) {
       await notifyVisitAssigned({
         companyId: user.companyId,
