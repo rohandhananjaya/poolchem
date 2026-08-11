@@ -14,14 +14,25 @@ import {
   updateVisitStatus,
   type VisitReadings,
   type VisitChemical,
+  type VisitBodyWrite,
 } from "@/lib/db/visits";
 import { readingsSchema, type ReadingsInput } from "@/lib/validation/visit-readings";
 import { ServiceVisitStatus } from "@/generated/prisma/client";
 import * as emailNotify from "@/lib/email/notify";
 
-export interface VisitFormValues {
+/**
+ * One body of water's form state — the readings and chemicals entered for a
+ * single `ServiceVisitPool` join row of the visit.
+ */
+export interface VisitBodyFormValues {
+  serviceVisitPoolId: string;
   readings: ReadingsInput;
   chemicals: VisitChemical[];
+}
+
+export interface VisitFormValues {
+  /** One entry per body of water the visit serves, keyed by join-row id. */
+  bodies: VisitBodyFormValues[];
   notes: string;
   /** YYYY-MM-DD string, or undefined to leave unset. */
   nextServiceDate?: string;
@@ -52,20 +63,38 @@ function normalizeReadings(readings: ReadingsInput): VisitReadings {
   };
 }
 
+/**
+ * Validates the form's per-body payload and normalizes it into the per-body
+ * write shape the db/ helpers persist. Every body's readings must pass
+ * `readingsSchema`; a visit with no bodies is rejected (a body can never be
+ * silently dropped between form and write).
+ */
+function toBodies(data: Pick<VisitFormValues, "bodies">): VisitBodyWrite[] {
+  if (data.bodies.length === 0) {
+    throw new Error("A visit must have at least one body of water.");
+  }
+  for (const body of data.bodies) {
+    readingsSchema.parse(body.readings);
+  }
+  return data.bodies.map((body) => ({
+    serviceVisitPoolId: body.serviceVisitPoolId,
+    readings: normalizeReadings(body.readings),
+    chemicals: body.chemicals,
+  }));
+}
+
 export async function saveDraftAction(
   visitId: string,
   data: VisitFormValues,
 ) {
   const user = await requireTech();
   if (!user.companyId) throw new Error("No company affiliation.");
-  readingsSchema.parse(data.readings);
-  const readings = normalizeReadings(data.readings);
+  const bodies = toBodies(data);
 
   await assertVisitAccess(visitId, user.companyId, user.id);
   const saved = await saveDraftVisit(
     visitId,
-    readings,
-    data.chemicals,
+    bodies,
     data.notes || null,
     data.nextServiceDate ? new Date(`${data.nextServiceDate}T12:00:00`) : null,
     {
@@ -85,14 +114,12 @@ export async function completeVisitAction(
 ) {
   const user = await requireTech();
   if (!user.companyId) throw new Error("No company affiliation.");
-  readingsSchema.parse(data.readings);
-  const readings = normalizeReadings(data.readings);
+  const bodies = toBodies(data);
 
   await assertVisitAccess(visitId, user.companyId, user.id);
   const completed = await completeVisit(
     visitId,
-    readings,
-    data.chemicals,
+    bodies,
     data.notes || null,
     data.nextServiceDate ? new Date(`${data.nextServiceDate}T12:00:00`) : null,
     {

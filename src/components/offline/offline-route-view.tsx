@@ -16,6 +16,7 @@ import type {
   OfflineChemical,
   OfflineDraftVisit,
   OfflineReadings,
+  OfflineVisitBody,
   PoolCacheSnapshot,
 } from "@/lib/offline/types";
 
@@ -176,6 +177,21 @@ const READING_ROWS: Array<{ key: keyof OfflineReadings; label: string }> = [
 ];
 
 /**
+ * The draft's single-body payload, mirroring how the offline view renders a
+ * legacy single-body visit header. Returns the first body's write when the
+ * draft uses the per-body payload, falling back to a pre-rework legacy draft's
+ * top-level `readings`/`chemicals`.
+ */
+function firstDraftBody(
+  draft: OfflineDraftVisit | null,
+): OfflineVisitBody | null {
+  if (!draft) return null;
+  const bodies = draft.payload.bodies;
+  if (bodies && bodies.length > 0) return bodies[0];
+  return null;
+}
+
+/**
  * Merges the cached visit's readings with any local draft edits so the offline
  * view shows the tech's latest entered values (draft wins per field).
  */
@@ -183,7 +199,10 @@ function mergedReadings(
   cached: CachedVisit,
   draft: OfflineDraftVisit | null,
 ): OfflineReadings {
-  const local = draft?.payload.readings ?? {};
+  const local =
+    firstDraftBody(draft)?.readings ??
+    (draft?.payload as { readings?: OfflineReadings }).readings ??
+    {};
   const saved = cached.lastReadings ?? {};
   const merged: OfflineReadings = {};
   for (const { key } of READING_ROWS) {
@@ -211,8 +230,12 @@ function CachedVisitView({
 }) {
   const readings = mergedReadings(snapshot, draft);
   const hasReadings = READING_ROWS.some(({ key }) => readings[key] != null);
+  const draftChemicals =
+    firstDraftBody(draft)?.chemicals ??
+    (draft?.payload as { chemicals?: OfflineChemical[] }).chemicals ??
+    [];
   const chemicals: OfflineChemical[] =
-    draft?.payload.chemicals.length ? draft.payload.chemicals : snapshot.chemicals;
+    draftChemicals.length ? draftChemicals : snapshot.chemicals;
   const notes = draft?.payload.notes?.trim() ? draft.payload.notes : snapshot.notes;
   const status = visitStatusMeta(snapshot.status);
 

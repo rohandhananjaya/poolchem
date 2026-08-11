@@ -20,15 +20,20 @@ const toastError = vi.mocked(toast.error);
 
 function payload(overrides: Partial<DraftVisitPayload> = {}): DraftVisitPayload {
   return {
-    readings: {
-      ph: 7.2,
-      freeChlorine: 1.5,
-      totalAlkalinity: 90,
-      calciumHardness: 250,
-      cyanuricAcid: 30,
-      temperature: 78,
-    },
-    chemicals: [],
+    bodies: [
+      {
+        serviceVisitPoolId: "join-1",
+        readings: {
+          ph: 7.2,
+          freeChlorine: 1.5,
+          totalAlkalinity: 90,
+          calciumHardness: 250,
+          cyanuricAcid: 30,
+          temperature: 78,
+        },
+        chemicals: [],
+      },
+    ],
     notes: "offline save",
     ...overrides,
   };

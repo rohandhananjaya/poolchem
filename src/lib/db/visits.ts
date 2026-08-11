@@ -17,7 +17,10 @@ import {
 } from "@/lib/pool-chemistry";
 import { prisma } from "@/lib/prisma";
 import { VisitVersionConflictError } from "@/lib/errors";
-import { assertPoolsBelongToCompany } from "@/lib/db/service-visit-pools";
+import {
+  assertPoolsBelongToCompany,
+  type ServiceVisitPoolWithPool,
+} from "@/lib/db/service-visit-pools";
 import {
   Prisma,
   ServiceVisit,
@@ -35,6 +38,29 @@ export interface VisitChemical {
   name: string;
   amount: number;
   unit: string;
+}
+
+/**
+ * Readings and chemicals keyed to one body of water (a `ServiceVisitPool` join
+ * row). A visit's children are replaced whole-visit: one `VisitBodyWrite` per
+ * join row, in the same order as `ServiceVisitPool[]`.
+ */
+export interface VisitBodyWrite {
+  serviceVisitPoolId: string;
+  readings: VisitReadings;
+  chemicals: VisitChemical[];
+}
+
+/** The chemistry engine's per-body output for a completed visit. */
+export interface VisitBodyResult {
+  /** The join row this body's readings/chemicals were recorded against. */
+  body: ServiceVisitPoolWithPool;
+  /** The readings persisted for this body. */
+  readings: VisitReadings;
+  /** Doses recommended for this body, computed from its own readings + volume. */
+  recommendations: ChemicalRecommendation[];
+  /** Water-health assessment for this body's readings. */
+  waterHealth: WaterHealthResult;
 }
 
 /** Options controlling an idempotent visit write (offline replay support). */
@@ -55,24 +81,39 @@ export interface VisitWriteOpts {
 }
 
 /**
- * Replaces a visit's child rows inside a transaction: deleteMany then recreate.
+ * Replaces a visit's child rows inside a transaction: deleteMany then recreate,
+ * keying each new row to its body's `serviceVisitPoolId` alongside the visit.
  * Running this twice with the same input converges to the same state rather than
  * duplicating WaterReading/ChemicalAdded rows — the basis for idempotent saves.
+ * The whole-visit `deleteMany({ where: { visitId } })` also cleans any legacy
+ * pre-backfill `serviceVisitPoolId: null` orphans on write.
  */
 async function replaceReadingsAndChemicals(
   tx: Prisma.TransactionClient,
   visitId: string,
-  readings: VisitReadings,
-  chemicals: VisitChemical[],
+  bodies: VisitBodyWrite[],
 ): Promise<void> {
   await tx.waterReading.deleteMany({ where: { visitId } });
-  await tx.waterReading.create({ data: { visitId, ...readings } });
+  for (const body of bodies) {
+    await tx.waterReading.create({
+      data: {
+        visitId,
+        serviceVisitPoolId: body.serviceVisitPoolId,
+        ...body.readings,
+      },
+    });
+  }
 
   await tx.chemicalAdded.deleteMany({ where: { visitId } });
-  if (chemicals.length > 0) {
-    await tx.chemicalAdded.createMany({
-      data: chemicals.map((c) => ({ visitId, ...c })),
-    });
+  const chemicalRows = bodies.flatMap((body) =>
+    body.chemicals.map((c) => ({
+      visitId,
+      serviceVisitPoolId: body.serviceVisitPoolId,
+      ...c,
+    })),
+  );
+  if (chemicalRows.length > 0) {
+    await tx.chemicalAdded.createMany({ data: chemicalRows });
   }
 }
 
@@ -145,6 +186,7 @@ export async function getVisitById(visitId: string, companyId: string) {
       tech: true,
       waterReadings: true,
       chemicalsAdded: true,
+      serviceVisitPools: { include: { pool: true } },
     },
   });
 }
@@ -206,13 +248,15 @@ export async function createVisit(
   });
 }
 
-/** The completed visit plus the chemistry engine's derived output. */
+/** The completed visit plus the chemistry engine's per-body derived output. */
 export interface CompletedVisit {
   visit: Awaited<ReturnType<typeof getVisitById>>;
-  /** Doses recommended to correct the water, computed from the readings. */
-  recommendations: ChemicalRecommendation[];
-  /** Overall water-health assessment for the recorded readings. */
-  waterHealth: WaterHealthResult;
+  /**
+   * One entry per body of water the visit serves (each `ServiceVisitPool` join
+   * row), carrying that body's persisted readings, its own recommendations
+   * (computed from that body's readings + volume) and water-health assessment.
+   */
+  bodies: VisitBodyResult[];
   /** Whether this call applied the write. `false` = already-applied replay. */
   applied: boolean;
 }
@@ -222,6 +266,89 @@ export interface SavedVisit {
   visit: Awaited<ReturnType<typeof getVisitById>>;
   /** Whether this call applied the write. `false` = already-applied replay. */
   applied: boolean;
+}
+
+/** Zero-filled readings — the fallback when a body has no stored reading. */
+function zeroReadings(): VisitReadings {
+  return {
+    ph: 0,
+    freeChlorine: 0,
+    totalAlkalinity: 0,
+    calciumHardness: 0,
+    cyanuricAcid: 0,
+    temperature: 0,
+  };
+}
+
+/** The stored WaterReading fields a visit read carries. */
+type StoredWaterReading = ReturnType<typeof toVisitReadings> & {
+  serviceVisitPoolId: string | null;
+};
+
+/**
+ * Validates a per-body write payload against the visit's join rows: non-empty,
+ * every `serviceVisitPoolId` must be one of the visit's join rows, no body may
+ * appear twice, and every join row must be covered exactly once. Throws
+ * otherwise — a half-covered multi-body visit must never silently drop a body.
+ */
+function assertBodiesCoverVisit(
+  visitId: string,
+  bodies: VisitBodyWrite[],
+  joinRows: { id: string }[],
+): void {
+  if (bodies.length === 0) {
+    throw new Error(`Visit "${visitId}" must have at least one body of water.`);
+  }
+  const joinIds = new Set(joinRows.map((join) => join.id));
+  const seen = new Set<string>();
+  for (const body of bodies) {
+    if (seen.has(body.serviceVisitPoolId)) {
+      throw new Error(
+        `Duplicate body "${body.serviceVisitPoolId}" in visit "${visitId}".`,
+      );
+    }
+    seen.add(body.serviceVisitPoolId);
+    if (!joinIds.has(body.serviceVisitPoolId)) {
+      throw new Error(
+        `Body "${body.serviceVisitPoolId}" is not served by visit "${visitId}".`,
+      );
+    }
+  }
+  const uncovered = joinRows
+    .filter((join) => !seen.has(join.id))
+    .map((join) => join.id);
+  if (uncovered.length > 0) {
+    throw new Error(
+      `Visit "${visitId}" is missing bodies: ${uncovered.join(", ")}.`,
+    );
+  }
+}
+
+/**
+ * Assembles the per-body result list for a visit: each join row's stored
+ * reading (falling back to `fallbackReadings` when none was persisted — e.g. a
+ * replay raced before its rows were written), plus that body's own
+ * recommendations and water-health score derived from its own volume.
+ */
+function buildBodies(
+  visit: {
+    serviceVisitPools: ServiceVisitPoolWithPool[];
+    waterReadings: StoredWaterReading[];
+  },
+  fallbackReadings: (joinId: string) => VisitReadings,
+): VisitBodyResult[] {
+  return visit.serviceVisitPools.map((body) => {
+    const stored = visit.waterReadings.find(
+      (reading) => reading.serviceVisitPoolId === body.id,
+    );
+    const readings = stored ? toVisitReadings(stored) : fallbackReadings(body.id);
+    return {
+      body,
+      readings,
+      recommendations: getChemicalRecommendations(readings, body.pool.volume),
+      waterHealth: getWaterHealthScore(readings),
+    };
+  });
 }
 
 /**
@@ -258,9 +385,14 @@ async function scheduleNextVisit(
 }
 
 /**
- * Completes a visit: persists its water readings and chemical additions, marks
- * it COMPLETED, then computes (but does not persist) chemical recommendations
- * and a water-health score from the readings for the caller to display.
+ * Completes a visit: persists each body's water readings and chemical additions,
+ * marks the visit COMPLETED, then computes (but does not persist) per-body
+ * chemical recommendations and water-health scores from each body's own
+ * readings for the caller to display.
+ *
+ * `bodies` must contain exactly one {@link VisitBodyWrite} per `ServiceVisitPool`
+ * join row of the visit — the visit's children are replaced whole-visit. A
+ * half-covered multi-body visit throws rather than silently dropping a body.
  *
  * The write is transactional — readings, chemicals, the status change, and
  * (when a next-service date is set) auto-scheduling the pool's next visit
@@ -287,35 +419,45 @@ async function scheduleNextVisit(
  * write time.
  *
  * @throws {Error} If the visit does not exist.
+ * @throws {Error} If `bodies` does not cover every join row of the visit exactly
+ *   once.
  */
 export async function completeVisit(
   visitId: string,
-  readings: VisitReadings,
-  chemicals: VisitChemical[],
+  bodies: VisitBodyWrite[],
   notes?: string | null,
   nextServiceDate?: Date | null,
   opts: VisitWriteOpts = {},
 ): Promise<CompletedVisit> {
   const existing = await prisma.serviceVisit.findUnique({
     where: { id: visitId },
-    include: { pool: true, tech: true, waterReadings: true, chemicalsAdded: true },
+    include: {
+      pool: true,
+      tech: true,
+      waterReadings: true,
+      chemicalsAdded: true,
+      serviceVisitPools: { include: { pool: true } },
+    },
   });
 
   if (!existing) {
     throw new Error(`Visit "${visitId}" not found.`);
   }
 
+  assertBodiesCoverVisit(visitId, bodies, existing.serviceVisitPools ?? []);
+
+  // Fallback per-body readings: the body's write payload, used only when a join
+  // row has no stored reading (e.g. a replay raced before its rows were written).
+  const bodyByJoinId = new Map(
+    bodies.map((body) => [body.serviceVisitPoolId, body]),
+  );
+  const fallbackReadings = (joinId: string): VisitReadings =>
+    bodyByJoinId.get(joinId)?.readings ?? zeroReadings();
+
   if (opts.clientMutationId && existing.clientMutationId === opts.clientMutationId) {
-    const replayReadings = existing.waterReadings[0]
-      ? toVisitReadings(existing.waterReadings[0])
-      : readings;
     return {
       visit: existing,
-      recommendations: getChemicalRecommendations(
-        replayReadings,
-        existing.pool.volume,
-      ),
-      waterHealth: getWaterHealthScore(replayReadings),
+      bodies: buildBodies(existing, fallbackReadings),
       applied: false,
     };
   }
@@ -334,7 +476,7 @@ export async function completeVisit(
   let visit: Awaited<ReturnType<typeof getVisitById>>;
   try {
     visit = await prisma.$transaction(async (tx) => {
-      await replaceReadingsAndChemicals(tx, visitId, readings, chemicals);
+      await replaceReadingsAndChemicals(tx, visitId, bodies);
 
       // Atomic stale-write guard: the version filter below only matches when the
       // stored revision still equals what the caller wrote against, so a
@@ -373,6 +515,7 @@ export async function completeVisit(
           tech: true,
           waterReadings: true,
           chemicalsAdded: true,
+          serviceVisitPools: { include: { pool: true } },
         },
       });
       if (!updated) {
@@ -398,19 +541,18 @@ export async function completeVisit(
     if (isUniqueConstraintError(error) && opts.clientMutationId) {
       const current = await prisma.serviceVisit.findUnique({
         where: { id: visitId },
-        include: { pool: true, tech: true, waterReadings: true, chemicalsAdded: true },
+        include: {
+          pool: true,
+          tech: true,
+          waterReadings: true,
+          chemicalsAdded: true,
+          serviceVisitPools: { include: { pool: true } },
+        },
       });
       if (current) {
-        const replayReadings = current.waterReadings[0]
-          ? toVisitReadings(current.waterReadings[0])
-          : readings;
         return {
           visit: current,
-          recommendations: getChemicalRecommendations(
-            replayReadings,
-            current.pool.volume,
-          ),
-          waterHealth: getWaterHealthScore(replayReadings),
+          bodies: buildBodies(current, fallbackReadings),
           applied: false,
         };
       }
@@ -420,8 +562,7 @@ export async function completeVisit(
 
   return {
     visit,
-    recommendations: getChemicalRecommendations(readings, existing.pool.volume),
-    waterHealth: getWaterHealthScore(readings),
+    bodies: buildBodies(visit, fallbackReadings),
     applied: true,
   };
 }
@@ -704,8 +845,12 @@ export async function updateVisit(
 }
 
 /**
- * Saves a draft visit: persists (replaces) water readings and chemicals, updates
- * notes, but keeps the visit status as DRAFT.
+ * Saves a draft visit: persists (replaces) each body's water readings and
+ * chemicals, updates notes, but keeps the visit status as DRAFT.
+ *
+ * `bodies` must contain exactly one {@link VisitBodyWrite} per `ServiceVisitPool`
+ * join row of the visit — the visit's children are replaced whole-visit. A
+ * half-covered multi-body visit throws rather than silently dropping a body.
  *
  * Uses a transaction so that readings, chemicals, and notes all update together.
  *
@@ -714,18 +859,25 @@ export async function updateVisit(
  * draft can never clobber a finished visit.
  *
  * @throws {Error} If the visit does not exist, or is COMPLETED or CANCELLED.
+ * @throws {Error} If `bodies` does not cover every join row of the visit exactly
+ *   once.
  */
 export async function saveDraftVisit(
   visitId: string,
-  readings: VisitReadings,
-  chemicals: VisitChemical[],
+  bodies: VisitBodyWrite[],
   notes?: string | null,
   nextServiceDate?: Date | null,
   opts: VisitWriteOpts = {},
 ): Promise<SavedVisit> {
   const existing = await prisma.serviceVisit.findUnique({
     where: { id: visitId },
-    include: { pool: true, tech: true, waterReadings: true, chemicalsAdded: true },
+    include: {
+      pool: true,
+      tech: true,
+      waterReadings: true,
+      chemicalsAdded: true,
+      serviceVisitPools: { include: { pool: true } },
+    },
   });
 
   if (!existing) {
@@ -739,6 +891,8 @@ export async function saveDraftVisit(
     throw new Error("Cannot save a draft for a completed or cancelled visit.");
   }
 
+  assertBodiesCoverVisit(visitId, bodies, existing.serviceVisitPools ?? []);
+
   if (opts.clientMutationId && existing.clientMutationId === opts.clientMutationId) {
     return { visit: existing, applied: false };
   }
@@ -746,7 +900,7 @@ export async function saveDraftVisit(
   let visit: Awaited<ReturnType<typeof getVisitById>>;
   try {
     visit = await prisma.$transaction(async (tx) => {
-      await replaceReadingsAndChemicals(tx, visitId, readings, chemicals);
+      await replaceReadingsAndChemicals(tx, visitId, bodies);
 
       return tx.serviceVisit.update({
         where: { id: visitId },
@@ -762,6 +916,7 @@ export async function saveDraftVisit(
           tech: true,
           waterReadings: true,
           chemicalsAdded: true,
+          serviceVisitPools: { include: { pool: true } },
         },
       });
     });
@@ -769,7 +924,13 @@ export async function saveDraftVisit(
     if (isUniqueConstraintError(error) && opts.clientMutationId) {
       const current = await prisma.serviceVisit.findUnique({
         where: { id: visitId },
-        include: { pool: true, tech: true, waterReadings: true, chemicalsAdded: true },
+        include: {
+          pool: true,
+          tech: true,
+          waterReadings: true,
+          chemicalsAdded: true,
+          serviceVisitPools: { include: { pool: true } },
+        },
       });
       if (current) return { visit: current, applied: false };
     }

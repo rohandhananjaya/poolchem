@@ -21,6 +21,7 @@ const { getCompanyById } = await import("@/lib/db/company");
 const { getCompanyPackage } = await import("@/lib/db/packages");
 const { headers } = await import("next/headers");
 const { generateServiceReport } = await import("./generate-report");
+import { ServiceVisitStatus, UserRole } from "@/generated/prisma/client";
 
 const companyId = "company-1";
 const visitId = "visit-1";
@@ -30,7 +31,17 @@ const mockPool = {
   name: "Test Pool",
   address: "123 Pool St",
   volume: 10_000,
+  image: null,
+  qrCode: "POOL-abc",
   publicToken: "tok_abc",
+  homeownerEmail: null,
+  homeownerPhone: null,
+  notes: null,
+  companyId,
+  isActive: true,
+  propertyId: null,
+  createdAt: new Date("2026-07-01T00:00:00Z"),
+  updatedAt: new Date("2026-07-11T10:00:00Z"),
 };
 
 const mockCompany = {
@@ -51,29 +62,79 @@ const mockCompany = {
   updatedAt: new Date(),
 };
 
+const joinId = "join-1";
+
 const mockReadings = [
   {
+    id: "reading-1",
+    visitId,
+    serviceVisitPoolId: joinId,
     ph: 7.5,
     freeChlorine: 2,
     totalAlkalinity: 100,
     calciumHardness: 300,
     cyanuricAcid: 40,
     temperature: 80,
+    createdAt: new Date("2026-07-11T10:00:00Z"),
   },
 ];
 
+const mockChemicals = [
+  {
+    id: "chem-1",
+    visitId,
+    serviceVisitPoolId: joinId,
+    name: "Chlorine",
+    amount: 1,
+    unit: "gal",
+    createdAt: new Date("2026-07-11T10:00:00Z"),
+  },
+];
+
+const mockServiceVisitPools = [
+  {
+    id: joinId,
+    serviceVisitId: visitId,
+    poolId: mockPool.id,
+    companyId,
+    createdAt: new Date("2026-07-01T00:00:00Z"),
+    pool: mockPool,
+  },
+];
+
+const mockTech = {
+  id: "tech-1",
+  email: "tech@test.com",
+  supabaseId: "sb-1",
+  name: "Tech 1",
+  phone: null,
+  role: UserRole.TECH,
+  companyId,
+  createdAt: new Date("2026-01-01T00:00:00Z"),
+  updatedAt: new Date("2026-01-01T00:00:00Z"),
+};
+
 const mockVisit = {
   id: visitId,
-  pool: mockPool,
-  tech: { name: "Tech 1" },
-  waterReadings: mockReadings,
-  chemicalsAdded: [{ name: "Chlorine", amount: 1, unit: "gal" }],
-  status: "COMPLETED",
-  notes: "All good",
-  createdAt: new Date("2026-07-11T10:00:00Z"),
   poolId: mockPool.id,
+  techId: mockTech.id,
+  notes: "All good",
+  status: ServiceVisitStatus.COMPLETED,
+  weatherNotes: null,
+  cancellationReason: null,
   publicToken: "report_tok_123",
+  scheduledAt: null,
   nextServiceDate: null,
+  version: 1,
+  clientMutationId: null,
+  reportNotifiedAt: null,
+  createdAt: new Date("2026-07-11T10:00:00Z"),
+  updatedAt: new Date("2026-07-11T10:00:00Z"),
+  pool: mockPool,
+  tech: mockTech,
+  waterReadings: mockReadings,
+  chemicalsAdded: mockChemicals,
+  serviceVisitPools: mockServiceVisitPools,
 };
 
 const mockCompanyPackage = (healthScoring: "basic" | "advanced+lsi") => ({
@@ -112,15 +173,17 @@ beforeEach(() => {
   );
 });
 
+/** A getVisitHistory row (full visit + relations) for the given completion date. */
+function historyVisit(createdAt: Date) {
+  return { ...mockVisit, createdAt };
+}
+
 describe("generateServiceReport", () => {
   it("returns a fully populated report when all data exists", async () => {
     vi.mocked(getVisitById).mockResolvedValue(mockVisit);
     vi.mocked(getCompanyById).mockResolvedValue(mockCompany);
     vi.mocked(getVisitHistory).mockResolvedValue([
-      {
-        createdAt: new Date("2026-07-04"),
-        waterReadings: mockReadings,
-      },
+      historyVisit(new Date("2026-07-04")),
     ]);
     vi.mocked(getPoolNextScheduledVisit).mockResolvedValue(null);
     vi.mocked(headers).mockResolvedValue(
@@ -160,6 +223,7 @@ describe("generateServiceReport", () => {
     vi.mocked(getVisitById).mockResolvedValue({
       ...mockVisit,
       waterReadings: [],
+      chemicalsAdded: [],
     });
     vi.mocked(getCompanyById).mockResolvedValue(mockCompany);
     vi.mocked(getVisitHistory).mockResolvedValue([]);
@@ -199,14 +263,8 @@ describe("generateServiceReport", () => {
     vi.mocked(getVisitById).mockResolvedValue(mockVisit);
     vi.mocked(getCompanyById).mockResolvedValue(mockCompany);
     vi.mocked(getVisitHistory).mockResolvedValue([
-      {
-        createdAt: new Date("2026-07-10"), // newest
-        waterReadings: mockReadings,
-      },
-      {
-        createdAt: new Date("2026-07-04"), // oldest
-        waterReadings: mockReadings,
-      },
+      historyVisit(new Date("2026-07-10")), // newest
+      historyVisit(new Date("2026-07-04")), // oldest
     ]);
     vi.mocked(getPoolNextScheduledVisit).mockResolvedValue(null);
     vi.mocked(headers).mockResolvedValue(
@@ -225,12 +283,16 @@ describe("generateServiceReport", () => {
       ...mockVisit,
       waterReadings: [
         {
+          id: "reading-2",
+          visitId,
+          serviceVisitPoolId: joinId,
           ph: 8.2,
           freeChlorine: 0,
           totalAlkalinity: 200,
           calciumHardness: 500,
           cyanuricAcid: 100,
           temperature: 90,
+          createdAt: new Date("2026-07-11T10:00:00Z"),
         },
       ],
     });

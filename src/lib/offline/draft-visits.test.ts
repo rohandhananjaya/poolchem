@@ -13,15 +13,20 @@ import type { DraftVisitPayload } from "./types";
 
 function payload(overrides: Partial<DraftVisitPayload> = {}): DraftVisitPayload {
   return {
-    readings: {
-      ph: 7.2,
-      freeChlorine: 1.5,
-      totalAlkalinity: 90,
-      calciumHardness: 250,
-      cyanuricAcid: 30,
-      temperature: 78,
-    },
-    chemicals: [{ name: "Chlorine", amount: 1.0, unit: "lb" }],
+    bodies: [
+      {
+        serviceVisitPoolId: "join-1",
+        readings: {
+          ph: 7.2,
+          freeChlorine: 1.5,
+          totalAlkalinity: 90,
+          calciumHardness: 250,
+          cyanuricAcid: 30,
+          temperature: 78,
+        },
+        chemicals: [{ name: "Chlorine", amount: 1.0, unit: "lb" }],
+      },
+    ],
     notes: "field notes",
     ...overrides,
   };
@@ -42,8 +47,8 @@ describe("draft-visits", () => {
     expect(draft!.visitId).toBe("visit-1");
     expect(draft!.techId).toBe("tech-1");
     expect(draft!.companyId).toBe("company-1");
-    expect(draft!.payload.readings.ph).toBe(7.2);
-    expect(draft!.payload.chemicals).toHaveLength(1);
+    expect(draft!.payload.bodies[0].readings.ph).toBe(7.2);
+    expect(draft!.payload.bodies[0].chemicals).toHaveLength(1);
   });
 
   it("returns null when no draft exists for a visit", async () => {

@@ -17,8 +17,13 @@ function draftPayload(
   overrides: Partial<DraftVisitPayload> = {},
 ): DraftVisitPayload {
   return {
-    readings: { ph: 7.2 },
-    chemicals: [{ name: "Chlorine", amount: 1, unit: "lb" }],
+    bodies: [
+      {
+        serviceVisitPoolId: "join-1",
+        readings: { ph: 7.2 },
+        chemicals: [{ name: "Chlorine", amount: 1, unit: "lb" }],
+      },
+    ],
     notes: "offline",
     clientMutationId: "cm-1",
     ...overrides,

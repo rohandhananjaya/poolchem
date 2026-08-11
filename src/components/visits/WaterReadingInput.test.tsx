@@ -17,7 +17,9 @@ function renderWithForm(
     const { control } = useForm({ defaultValues: { ph: undefined } });
     return (
       <>
-        {React.cloneElement(children as React.ReactElement, { control })}
+        {React.cloneElement(children as React.ReactElement<{ control?: unknown }>, {
+          control,
+        })}
       </>
     );
   }

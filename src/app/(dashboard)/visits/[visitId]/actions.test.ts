@@ -28,6 +28,27 @@ const { saveDraftAction, completeVisitAction, startVisitAction, updateVisitStatu
 
 const mockUser = { id: "user-1", companyId: "company-1", role: "TECH" };
 const visitId = "visit-1";
+const joinId = "join-1";
+
+const fullReadings = {
+  ph: 7.5,
+  freeChlorine: 2,
+  totalAlkalinity: 100,
+  calciumHardness: 300,
+  cyanuricAcid: 40,
+  temperature: 80,
+};
+
+const bodyFixture = {
+  serviceVisitPoolId: joinId,
+  readings: fullReadings,
+  chemicals: [],
+};
+
+/** Matches any per-body write (the action normalizes readings before the db call). */
+const bodiesAny = [
+  { serviceVisitPoolId: joinId, readings: expect.any(Object), chemicals: [] },
+];
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -40,22 +61,13 @@ describe("saveDraftAction", () => {
     vi.mocked(requireTech).mockResolvedValue(mockUser as never);
 
     await saveDraftAction(visitId, {
-      readings: {
-        ph: 7.5,
-        freeChlorine: 2,
-        totalAlkalinity: 100,
-        calciumHardness: 300,
-        cyanuricAcid: 40,
-        temperature: 80,
-      },
-      chemicals: [],
+      bodies: [bodyFixture],
       notes: "test",
     });
 
     expect(saveDraftVisit).toHaveBeenCalledWith(
       visitId,
-      expect.any(Object),
-      [],
+      bodiesAny,
       "test",
       null,
       { clientMutationId: undefined, expectedVersion: undefined },
@@ -67,23 +79,14 @@ describe("saveDraftAction", () => {
     vi.mocked(requireTech).mockResolvedValue(mockUser as never);
 
     await saveDraftAction(visitId, {
-      readings: {
-        ph: 7.5,
-        freeChlorine: 2,
-        totalAlkalinity: 100,
-        calciumHardness: 300,
-        cyanuricAcid: 40,
-        temperature: 80,
-      },
-      chemicals: [],
+      bodies: [bodyFixture],
       notes: "test",
       clientMutationId: "mut-1",
     });
 
     expect(saveDraftVisit).toHaveBeenCalledWith(
       visitId,
-      expect.any(Object),
-      [],
+      bodiesAny,
       "test",
       null,
       { clientMutationId: "mut-1", expectedVersion: undefined },
@@ -98,16 +101,33 @@ describe("saveDraftAction", () => {
     } as never);
 
     const result = await saveDraftAction(visitId, {
-      readings: { ph: 7.5 },
-      chemicals: [],
+      bodies: [
+        {
+          serviceVisitPoolId: joinId,
+          readings: { ph: 7.5 },
+          chemicals: [],
+        },
+      ],
       notes: "",
       expectedVersion: 3,
     });
 
     expect(saveDraftVisit).toHaveBeenCalledWith(
       visitId,
-      expect.any(Object),
-      [],
+      [
+        {
+          serviceVisitPoolId: joinId,
+          readings: {
+            ph: 7.5,
+            freeChlorine: 0,
+            totalAlkalinity: 0,
+            calciumHardness: 0,
+            cyanuricAcid: 0,
+            temperature: 0,
+          },
+          chemicals: [],
+        },
+      ],
       null,
       null,
       { clientMutationId: undefined, expectedVersion: 3 },
@@ -127,22 +147,32 @@ describe("saveDraftAction", () => {
     vi.mocked(requireTech).mockResolvedValue(mockUser as never);
 
     await saveDraftAction(visitId, {
-      readings: { ph: 7.5 },
-      chemicals: [],
+      bodies: [
+        {
+          serviceVisitPoolId: joinId,
+          readings: { ph: 7.5 },
+          chemicals: [],
+        },
+      ],
       notes: "",
     });
 
     expect(saveDraftVisit).toHaveBeenCalledWith(
       visitId,
-      {
-        ph: 7.5,
-        freeChlorine: 0,
-        totalAlkalinity: 0,
-        calciumHardness: 0,
-        cyanuricAcid: 0,
-        temperature: 0,
-      },
-      [],
+      [
+        {
+          serviceVisitPoolId: joinId,
+          readings: {
+            ph: 7.5,
+            freeChlorine: 0,
+            totalAlkalinity: 0,
+            calciumHardness: 0,
+            cyanuricAcid: 0,
+            temperature: 0,
+          },
+          chemicals: [],
+        },
+      ],
       null,
       null,
       { clientMutationId: undefined, expectedVersion: undefined },
@@ -159,22 +189,13 @@ describe("completeVisitAction", () => {
     } as never);
 
     await completeVisitAction(visitId, {
-      readings: {
-        ph: 7.5,
-        freeChlorine: 2,
-        totalAlkalinity: 100,
-        calciumHardness: 300,
-        cyanuricAcid: 40,
-        temperature: 80,
-      },
-      chemicals: [],
+      bodies: [bodyFixture],
       notes: "",
     });
 
     expect(completeVisit).toHaveBeenCalledWith(
       visitId,
-      expect.any(Object),
-      [],
+      bodiesAny,
       null,
       null,
       { clientMutationId: undefined, expectedVersion: undefined },
@@ -195,15 +216,7 @@ describe("completeVisitAction", () => {
     } as never);
 
     await completeVisitAction(visitId, {
-      readings: {
-        ph: 7.5,
-        freeChlorine: 2,
-        totalAlkalinity: 100,
-        calciumHardness: 300,
-        cyanuricAcid: 40,
-        temperature: 80,
-      },
-      chemicals: [],
+      bodies: [bodyFixture],
       notes: "",
     });
 
@@ -227,15 +240,7 @@ describe("completeVisitAction", () => {
     } as never);
 
     await completeVisitAction(visitId, {
-      readings: {
-        ph: 7.5,
-        freeChlorine: 2,
-        totalAlkalinity: 100,
-        calciumHardness: 300,
-        cyanuricAcid: 40,
-        temperature: 80,
-      },
-      chemicals: [],
+      bodies: [bodyFixture],
       notes: "",
     });
 
@@ -254,15 +259,7 @@ describe("completeVisitAction", () => {
     } as never);
 
     await completeVisitAction(visitId, {
-      readings: {
-        ph: 7.5,
-        freeChlorine: 2,
-        totalAlkalinity: 100,
-        calciumHardness: 300,
-        cyanuricAcid: 40,
-        temperature: 80,
-      },
-      chemicals: [],
+      bodies: [bodyFixture],
       notes: "",
     });
 
@@ -281,15 +278,7 @@ describe("completeVisitAction", () => {
     } as never);
 
     await completeVisitAction(visitId, {
-      readings: {
-        ph: 7.5,
-        freeChlorine: 2,
-        totalAlkalinity: 100,
-        calciumHardness: 300,
-        cyanuricAcid: 40,
-        temperature: 80,
-      },
-      chemicals: [],
+      bodies: [bodyFixture],
       notes: "",
     });
 
@@ -309,15 +298,7 @@ describe("completeVisitAction", () => {
     vi.mocked(claimReportNotification).mockResolvedValue(false);
 
     await completeVisitAction(visitId, {
-      readings: {
-        ph: 7.5,
-        freeChlorine: 2,
-        totalAlkalinity: 100,
-        calciumHardness: 300,
-        cyanuricAcid: 40,
-        temperature: 80,
-      },
-      chemicals: [],
+      bodies: [bodyFixture],
       notes: "",
     });
 
@@ -340,15 +321,7 @@ describe("completeVisitAction", () => {
     });
 
     await completeVisitAction(visitId, {
-      readings: {
-        ph: 7.5,
-        freeChlorine: 2,
-        totalAlkalinity: 100,
-        calciumHardness: 300,
-        cyanuricAcid: 40,
-        temperature: 80,
-      },
-      chemicals: [],
+      bodies: [bodyFixture],
       notes: "",
     });
 
@@ -370,15 +343,7 @@ describe("completeVisitAction", () => {
     );
 
     await completeVisitAction(visitId, {
-      readings: {
-        ph: 7.5,
-        freeChlorine: 2,
-        totalAlkalinity: 100,
-        calciumHardness: 300,
-        cyanuricAcid: 40,
-        temperature: 80,
-      },
-      chemicals: [],
+      bodies: [bodyFixture],
       notes: "",
     });
 
@@ -394,23 +359,14 @@ describe("completeVisitAction", () => {
     } as never);
 
     await completeVisitAction(visitId, {
-      readings: {
-        ph: 7.5,
-        freeChlorine: 2,
-        totalAlkalinity: 100,
-        calciumHardness: 300,
-        cyanuricAcid: 40,
-        temperature: 80,
-      },
-      chemicals: [],
+      bodies: [bodyFixture],
       notes: "",
       clientMutationId: "mut-2",
     });
 
     expect(completeVisit).toHaveBeenCalledWith(
       visitId,
-      expect.any(Object),
-      [],
+      bodiesAny,
       null,
       null,
       { clientMutationId: "mut-2", expectedVersion: undefined },
@@ -425,16 +381,33 @@ describe("completeVisitAction", () => {
     } as never);
 
     const result = await completeVisitAction(visitId, {
-      readings: { ph: 7.5 },
-      chemicals: [],
+      bodies: [
+        {
+          serviceVisitPoolId: joinId,
+          readings: { ph: 7.5 },
+          chemicals: [],
+        },
+      ],
       notes: "",
       expectedVersion: 8,
     });
 
     expect(completeVisit).toHaveBeenCalledWith(
       visitId,
-      expect.any(Object),
-      [],
+      [
+        {
+          serviceVisitPoolId: joinId,
+          readings: {
+            ph: 7.5,
+            freeChlorine: 0,
+            totalAlkalinity: 0,
+            calciumHardness: 0,
+            cyanuricAcid: 0,
+            temperature: 0,
+          },
+          chemicals: [],
+        },
+      ],
       null,
       null,
       { clientMutationId: undefined, expectedVersion: 8 },
@@ -452,8 +425,13 @@ describe("completeVisitAction", () => {
 
     await expect(
       completeVisitAction(visitId, {
-        readings: { ph: 7.5 },
-        chemicals: [],
+        bodies: [
+          {
+            serviceVisitPoolId: joinId,
+            readings: { ph: 7.5 },
+            chemicals: [],
+          },
+        ],
         notes: "",
         expectedVersion: 2,
       }),

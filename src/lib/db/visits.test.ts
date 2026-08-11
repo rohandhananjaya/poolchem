@@ -103,7 +103,13 @@ describe("getVisitById", () => {
 
     expect(prismaMock.serviceVisit.findFirst).toHaveBeenCalledWith({
       where: { id: visitId, pool: { companyId } },
-      include: { pool: true, tech: true, waterReadings: true, chemicalsAdded: true },
+      include: {
+        pool: true,
+        tech: true,
+        waterReadings: true,
+        chemicalsAdded: true,
+        serviceVisitPools: { include: { pool: true } },
+      },
     });
     expect(result).toEqual(mockVisit);
   });
@@ -249,6 +255,7 @@ describe("createVisit", () => {
 });
 
 describe("completeVisit", () => {
+  const joinId = "join-1";
   const readings = {
     ph: 7.5,
     freeChlorine: 2,
@@ -260,11 +267,18 @@ describe("completeVisit", () => {
 
   const chemicals = [{ name: "Chlorine", amount: 1, unit: "gal" }];
 
+  const bodies = [{ serviceVisitPoolId: joinId, readings, chemicals }];
+
+  const emptyBodies = [{ serviceVisitPoolId: joinId, readings, chemicals: [] }];
+
+  /** One join row per body — required by `assertBodiesCoverVisit`. */
+  const serviceVisitPools = [{ id: joinId, pool: { ...mockPool, volume: 10_000 } }];
+
   it("throws when visit is not found", async () => {
     prismaMock.serviceVisit.findUnique.mockResolvedValue(null);
 
     await expect(
-      completeVisit(visitId, readings, chemicals),
+      completeVisit(visitId, bodies),
     ).rejects.toThrow(/not found/i);
   });
 
@@ -272,6 +286,7 @@ describe("completeVisit", () => {
     const existingVisit = {
       id: visitId,
       pool: { ...mockPool, volume: 10_000 },
+      serviceVisitPools,
     };
     prismaMock.serviceVisit.findUnique.mockResolvedValue(existingVisit);
 
@@ -292,8 +307,9 @@ describe("completeVisit", () => {
           version: 1,
           pool: mockPool,
           tech: mockTech,
-          waterReadings: [readings],
+          waterReadings: [{ serviceVisitPoolId: joinId, ...readings }],
           chemicalsAdded: chemicals,
+          serviceVisitPools,
         }),
       },
     };
@@ -303,8 +319,7 @@ describe("completeVisit", () => {
 
     const result = await completeVisit(
       visitId,
-      readings,
-      chemicals,
+      bodies,
       "All good",
     );
 
@@ -312,13 +327,13 @@ describe("completeVisit", () => {
       where: { visitId },
     });
     expect(txMock.waterReading.create).toHaveBeenCalledWith({
-      data: { visitId, ...readings },
+      data: { visitId, serviceVisitPoolId: joinId, ...readings },
     });
     expect(txMock.chemicalAdded.deleteMany).toHaveBeenCalledWith({
       where: { visitId },
     });
     expect(txMock.chemicalAdded.createMany).toHaveBeenCalledWith({
-      data: chemicals.map((c) => ({ visitId, ...c })),
+      data: chemicals.map((c) => ({ visitId, serviceVisitPoolId: joinId, ...c })),
     });
     expect(txMock.serviceVisit.updateMany).toHaveBeenCalledWith({
       where: { id: visitId },
@@ -330,7 +345,13 @@ describe("completeVisit", () => {
     });
     expect(txMock.serviceVisit.findUnique).toHaveBeenCalledWith({
       where: { id: visitId },
-      include: { pool: true, tech: true, waterReadings: true, chemicalsAdded: true },
+      include: {
+        pool: true,
+        tech: true,
+        waterReadings: true,
+        chemicalsAdded: true,
+        serviceVisitPools: { include: { pool: true } },
+      },
     });
     expect(result.visit!.status).toBe("COMPLETED");
   });
@@ -339,6 +360,7 @@ describe("completeVisit", () => {
     const existingVisit = {
       id: visitId,
       pool: { ...mockPool, volume: 10_000 },
+      serviceVisitPools,
     };
     prismaMock.serviceVisit.findUnique.mockResolvedValue(existingVisit);
 
@@ -359,8 +381,9 @@ describe("completeVisit", () => {
           version: 1,
           pool: mockPool,
           tech: mockTech,
-          waterReadings: [readings],
+          waterReadings: [{ serviceVisitPoolId: joinId, ...readings }],
           chemicalsAdded: [],
+          serviceVisitPools,
         }),
       },
     };
@@ -368,15 +391,16 @@ describe("completeVisit", () => {
       (fn: (tx: typeof txMock) => unknown) => fn(txMock),
     );
 
-    await completeVisit(visitId, readings, []);
+    await completeVisit(visitId, emptyBodies);
 
     expect(txMock.chemicalAdded.createMany).not.toHaveBeenCalled();
   });
 
-  it("returns recommendations and water health from chemistry engine", async () => {
+  it("returns per-body recommendations and water health from chemistry engine", async () => {
     const existingVisit = {
       id: visitId,
       pool: { ...mockPool, volume: 10_000 },
+      serviceVisitPools,
     };
     prismaMock.serviceVisit.findUnique.mockResolvedValue(existingVisit);
 
@@ -397,8 +421,9 @@ describe("completeVisit", () => {
           version: 1,
           pool: mockPool,
           tech: mockTech,
-          waterReadings: [readings],
+          waterReadings: [{ serviceVisitPoolId: joinId, ...readings }],
           chemicalsAdded: [],
+          serviceVisitPools,
         }),
       },
     };
@@ -406,11 +431,11 @@ describe("completeVisit", () => {
       (fn: (tx: typeof txMock) => unknown) => fn(txMock),
     );
 
-    const result = await completeVisit(visitId, readings, []);
+    const result = await completeVisit(visitId, emptyBodies);
 
-    expect(result.recommendations).toEqual([]); // ideal readings
-    expect(result.waterHealth.score).toBe(100);
-    expect(result.waterHealth.status).toBe("EXCELLENT");
+    expect(result.bodies[0].recommendations).toEqual([]); // ideal readings
+    expect(result.bodies[0].waterHealth.score).toBe(100);
+    expect(result.bodies[0].waterHealth.status).toBe("EXCELLENT");
   });
 
   it("auto-schedules a DRAFT next visit inheriting the tech when nextServiceDate is set and none is upcoming", async () => {
@@ -418,6 +443,7 @@ describe("completeVisit", () => {
       id: visitId,
       techId,
       pool: { ...mockPool, volume: 10_000 },
+      serviceVisitPools,
     };
     prismaMock.serviceVisit.findUnique.mockResolvedValue(existingVisit);
 
@@ -440,8 +466,9 @@ describe("completeVisit", () => {
           techId,
           pool: mockPool,
           tech: mockTech,
-          waterReadings: [readings],
+          waterReadings: [{ serviceVisitPoolId: joinId, ...readings }],
           chemicalsAdded: [],
+          serviceVisitPools,
         }),
         findFirst: vi.fn().mockResolvedValue(null),
         create: vi.fn().mockResolvedValue({}),
@@ -451,7 +478,7 @@ describe("completeVisit", () => {
       (fn: (tx: typeof txMock) => unknown) => fn(txMock),
     );
 
-    await completeVisit(visitId, readings, [], null, nextServiceDate);
+    await completeVisit(visitId, emptyBodies, null, nextServiceDate);
 
     expect(txMock.serviceVisit.findFirst).toHaveBeenCalledWith({
       where: {
@@ -477,6 +504,7 @@ describe("completeVisit", () => {
       id: visitId,
       techId,
       pool: { ...mockPool, volume: 10_000 },
+      serviceVisitPools,
     };
     prismaMock.serviceVisit.findUnique.mockResolvedValue(existingVisit);
 
@@ -497,8 +525,9 @@ describe("completeVisit", () => {
           version: 1,
           pool: mockPool,
           tech: mockTech,
-          waterReadings: [readings],
+          waterReadings: [{ serviceVisitPoolId: joinId, ...readings }],
           chemicalsAdded: [],
+          serviceVisitPools,
         }),
         findFirst: vi.fn().mockResolvedValue({ id: "other-visit" }),
         create: vi.fn(),
@@ -510,8 +539,7 @@ describe("completeVisit", () => {
 
     await completeVisit(
       visitId,
-      readings,
-      [],
+      emptyBodies,
       null,
       new Date("2026-08-15T12:00:00"),
     );
@@ -524,6 +552,7 @@ describe("completeVisit", () => {
       id: visitId,
       techId,
       pool: { ...mockPool, volume: 10_000 },
+      serviceVisitPools,
     };
     prismaMock.serviceVisit.findUnique.mockResolvedValue(existingVisit);
 
@@ -544,8 +573,9 @@ describe("completeVisit", () => {
           version: 1,
           pool: mockPool,
           tech: mockTech,
-          waterReadings: [readings],
+          waterReadings: [{ serviceVisitPoolId: joinId, ...readings }],
           chemicalsAdded: [],
+          serviceVisitPools,
         }),
         findFirst: vi.fn(),
         create: vi.fn(),
@@ -555,7 +585,7 @@ describe("completeVisit", () => {
       (fn: (tx: typeof txMock) => unknown) => fn(txMock),
     );
 
-    await completeVisit(visitId, readings, []);
+    await completeVisit(visitId, emptyBodies);
 
     expect(txMock.serviceVisit.findFirst).not.toHaveBeenCalled();
     expect(txMock.serviceVisit.create).not.toHaveBeenCalled();
@@ -571,15 +601,15 @@ describe("completeVisit", () => {
       techId,
       pool: { ...mockPool, volume: 10_000 },
       tech: mockTech,
-      waterReadings: [readings],
+      waterReadings: [{ serviceVisitPoolId: joinId, ...readings }],
       chemicalsAdded: chemicals,
+      serviceVisitPools,
     };
     prismaMock.serviceVisit.findUnique.mockResolvedValue(appliedVisit);
 
     const result = await completeVisit(
       visitId,
-      readings,
-      chemicals,
+      bodies,
       null,
       new Date("2026-08-15T12:00:00"),
       { clientMutationId: "mut-1" },
@@ -596,10 +626,11 @@ describe("completeVisit", () => {
       status: "IN_PROGRESS",
       version: 3,
       pool: { ...mockPool, volume: 10_000 },
+      serviceVisitPools,
     });
 
     await expect(
-      completeVisit(visitId, readings, chemicals, null, null, {
+      completeVisit(visitId, bodies, null, null, {
         expectedVersion: 2,
       }),
     ).rejects.toThrow(VisitVersionConflictError);
@@ -618,6 +649,7 @@ describe("completeVisit", () => {
       version: 2,
       techId,
       pool: { ...mockPool, volume: 10_000 },
+      serviceVisitPools,
     });
 
     const txMock = {
@@ -639,7 +671,7 @@ describe("completeVisit", () => {
     );
 
     await expect(
-      completeVisit(visitId, readings, [], null, null, {
+      completeVisit(visitId, emptyBodies, null, null, {
         expectedVersion: 2,
       }),
     ).rejects.toThrow(VisitVersionConflictError);
@@ -660,6 +692,7 @@ describe("completeVisit", () => {
       version: 3,
       techId,
       pool: { ...mockPool, volume: 10_000 },
+      serviceVisitPools,
     });
     const txMock = {
       waterReading: {
@@ -678,8 +711,9 @@ describe("completeVisit", () => {
           version: 4,
           pool: mockPool,
           tech: mockTech,
-          waterReadings: [readings],
+          waterReadings: [{ serviceVisitPoolId: joinId, ...readings }],
           chemicalsAdded: [],
+          serviceVisitPools,
         }),
       },
     };
@@ -687,7 +721,7 @@ describe("completeVisit", () => {
       (fn: (tx: typeof txMock) => unknown) => fn(txMock),
     );
 
-    const result = await completeVisit(visitId, readings, []);
+    const result = await completeVisit(visitId, emptyBodies);
 
     expect(result.applied).toBe(true);
     expect(prismaMock.$transaction).toHaveBeenCalled();
@@ -704,14 +738,14 @@ describe("completeVisit", () => {
       clientMutationId: "mut-replay",
       pool: { ...mockPool, volume: 10_000 },
       tech: mockTech,
-      waterReadings: [readings],
+      waterReadings: [{ serviceVisitPoolId: joinId, ...readings }],
       chemicalsAdded: [],
+      serviceVisitPools,
     });
 
     const result = await completeVisit(
       visitId,
-      readings,
-      chemicals,
+      bodies,
       null,
       null,
       { clientMutationId: "mut-replay", expectedVersion: 2 },
@@ -728,6 +762,7 @@ describe("completeVisit", () => {
       version: 0,
       techId,
       pool: { ...mockPool, volume: 10_000 },
+      serviceVisitPools,
     });
     const txMock = {
       waterReading: {
@@ -746,8 +781,9 @@ describe("completeVisit", () => {
           version: 1,
           pool: mockPool,
           tech: mockTech,
-          waterReadings: [readings],
+          waterReadings: [{ serviceVisitPoolId: joinId, ...readings }],
           chemicalsAdded: [],
+          serviceVisitPools,
         }),
       },
     };
@@ -755,7 +791,7 @@ describe("completeVisit", () => {
       (fn: (tx: typeof txMock) => unknown) => fn(txMock),
     );
 
-    const result = await completeVisit(visitId, readings, [], null, null, {
+    const result = await completeVisit(visitId, emptyBodies, null, null, {
       expectedVersion: 0,
     });
 
@@ -776,6 +812,7 @@ describe("completeVisit", () => {
       clientMutationId: null,
       version: 0,
       pool: { ...mockPool, volume: 10_000 },
+      serviceVisitPools,
     });
 
     const txMock = {
@@ -796,8 +833,9 @@ describe("completeVisit", () => {
           clientMutationId: "mut-2",
           pool: mockPool,
           tech: mockTech,
-          waterReadings: [readings],
+          waterReadings: [{ serviceVisitPoolId: joinId, ...readings }],
           chemicalsAdded: [],
+          serviceVisitPools,
         }),
         findFirst: vi.fn().mockResolvedValue(null),
         create: vi.fn().mockResolvedValue({}),
@@ -809,8 +847,7 @@ describe("completeVisit", () => {
 
     const result = await completeVisit(
       visitId,
-      readings,
-      [],
+      emptyBodies,
       null,
       null,
       { clientMutationId: "mut-2" },
@@ -834,6 +871,7 @@ describe("completeVisit", () => {
         id: visitId,
         techId,
         pool: { ...mockPool, volume: 10_000 },
+        serviceVisitPools,
       })
       .mockResolvedValueOnce({
         id: visitId,
@@ -842,8 +880,9 @@ describe("completeVisit", () => {
         clientMutationId: "mut-3",
         pool: mockPool,
         tech: mockTech,
-        waterReadings: [readings],
+        waterReadings: [{ serviceVisitPoolId: joinId, ...readings }],
         chemicalsAdded: [],
+        serviceVisitPools,
       });
     const error = new Prisma.PrismaClientKnownRequestError("Unique constraint", {
       code: "P2002",
@@ -853,8 +892,7 @@ describe("completeVisit", () => {
 
     const result = await completeVisit(
       visitId,
-      readings,
-      [],
+      emptyBodies,
       null,
       null,
       { clientMutationId: "mut-3" },
@@ -871,6 +909,7 @@ describe("completeVisit", () => {
       techId,
       reportNotifiedAt: firstNotifiedAt,
       pool: { ...mockPool, volume: 10_000 },
+      serviceVisitPools,
     });
 
     const txMock = {
@@ -890,8 +929,9 @@ describe("completeVisit", () => {
           reportNotifiedAt: firstNotifiedAt,
           pool: mockPool,
           tech: mockTech,
-          waterReadings: [readings],
+          waterReadings: [{ serviceVisitPoolId: joinId, ...readings }],
           chemicalsAdded: [],
+          serviceVisitPools,
         }),
       },
     };
@@ -899,7 +939,7 @@ describe("completeVisit", () => {
       (fn: (tx: typeof txMock) => unknown) => fn(txMock),
     );
 
-    const result = await completeVisit(visitId, readings, []);
+    const result = await completeVisit(visitId, emptyBodies);
 
     expect(result.visit!.reportNotifiedAt).toBe(firstNotifiedAt);
     expect(txMock.serviceVisit.updateMany).toHaveBeenCalledWith(
@@ -948,6 +988,7 @@ describe("releaseReportNotification", () => {
 });
 
 describe("saveDraftVisit", () => {
+  const joinId = "join-1";
   const readings = {
     ph: 7.4,
     freeChlorine: 1,
@@ -957,11 +998,16 @@ describe("saveDraftVisit", () => {
     temperature: 75,
   };
 
+  const emptyBodies = [{ serviceVisitPoolId: joinId, readings, chemicals: [] }];
+
+  /** One join row per body — required by `assertBodiesCoverVisit`. */
+  const serviceVisitPools = [{ id: joinId, pool: { ...mockPool, volume: 10_000 } }];
+
   it("throws when visit is not found", async () => {
     prismaMock.serviceVisit.findUnique.mockResolvedValue(null);
 
     await expect(
-      saveDraftVisit(visitId, readings, []),
+      saveDraftVisit(visitId, emptyBodies),
     ).rejects.toThrow(/not found/i);
   });
 
@@ -969,6 +1015,7 @@ describe("saveDraftVisit", () => {
     prismaMock.serviceVisit.findUnique.mockResolvedValue({
       id: visitId,
       status: "DRAFT",
+      serviceVisitPools,
     });
 
     const txMock = {
@@ -986,8 +1033,9 @@ describe("saveDraftVisit", () => {
           status: "DRAFT",
           pool: mockPool,
           tech: mockTech,
-          waterReadings: [readings],
+          waterReadings: [{ serviceVisitPoolId: joinId, ...readings }],
           chemicalsAdded: [],
+          serviceVisitPools,
         }),
       },
     };
@@ -995,13 +1043,13 @@ describe("saveDraftVisit", () => {
       (fn: (tx: typeof txMock) => unknown) => fn(txMock),
     );
 
-    await saveDraftVisit(visitId, readings, [], "Draft notes");
+    await saveDraftVisit(visitId, emptyBodies, "Draft notes");
 
     expect(txMock.waterReading.deleteMany).toHaveBeenCalledWith({
       where: { visitId },
     });
     expect(txMock.waterReading.create).toHaveBeenCalledWith({
-      data: { visitId, ...readings },
+      data: { visitId, serviceVisitPoolId: joinId, ...readings },
     });
     expect(txMock.chemicalAdded.deleteMany).toHaveBeenCalledWith({
       where: { visitId },
@@ -1025,14 +1073,14 @@ describe("saveDraftVisit", () => {
       clientMutationId: "mut-1",
       pool: mockPool,
       tech: mockTech,
-      waterReadings: [],
+      waterReadings: [{ serviceVisitPoolId: joinId, ...readings }],
       chemicalsAdded: [],
+      serviceVisitPools,
     });
 
     const result = await saveDraftVisit(
       visitId,
-      readings,
-      [],
+      emptyBodies,
       null,
       null,
       { clientMutationId: "mut-1" },
@@ -1048,6 +1096,7 @@ describe("saveDraftVisit", () => {
       status: "DRAFT",
       clientMutationId: null,
       version: 0,
+      serviceVisitPools,
     });
 
     const txMock = {
@@ -1065,6 +1114,7 @@ describe("saveDraftVisit", () => {
           status: "DRAFT",
           version: 1,
           clientMutationId: "mut-2",
+          serviceVisitPools,
         }),
       },
     };
@@ -1074,8 +1124,7 @@ describe("saveDraftVisit", () => {
 
     const result = await saveDraftVisit(
       visitId,
-      readings,
-      [],
+      emptyBodies,
       null,
       null,
       { clientMutationId: "mut-2" },
@@ -1098,7 +1147,7 @@ describe("saveDraftVisit", () => {
       status: "COMPLETED",
     });
 
-    await expect(saveDraftVisit(visitId, readings, [])).rejects.toThrow(
+    await expect(saveDraftVisit(visitId, emptyBodies)).rejects.toThrow(
       /completed or cancelled/i,
     );
     expect(prismaMock.$transaction).not.toHaveBeenCalled();
@@ -1110,7 +1159,7 @@ describe("saveDraftVisit", () => {
       status: "CANCELLED",
     });
 
-    await expect(saveDraftVisit(visitId, readings, [])).rejects.toThrow(
+    await expect(saveDraftVisit(visitId, emptyBodies)).rejects.toThrow(
       /completed or cancelled/i,
     );
     expect(prismaMock.$transaction).not.toHaveBeenCalled();

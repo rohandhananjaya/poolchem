@@ -43,13 +43,24 @@ export interface OfflineChemical {
 }
 
 /**
- * A visit form payload ready to replay to the server — mirrors
- * `VisitFormValues`. Stored verbatim by the offline layer so a queued mutation
- * can be replayed to the matching Server Action unchanged.
+ * One body of water's form state — mirrors `VisitBodyFormValues` in the visit
+ * form's Server Actions. Keyed to a `ServiceVisitPool` join row of the visit.
  */
-export interface DraftVisitPayload {
+export interface OfflineVisitBody {
+  serviceVisitPoolId: string;
   readings: OfflineReadings;
   chemicals: OfflineChemical[];
+}
+
+/**
+ * A visit form payload ready to replay to the server — mirrors
+ * `VisitFormValues`. Stored verbatim by the offline layer so a queued mutation
+ * can be replayed to the matching Server Action unchanged. `bodies` holds one
+ * entry per body of water the visit serves (mirrors the per-body replacement
+ * contract of `completeVisit`/`saveDraftVisit`).
+ */
+export interface DraftVisitPayload {
+  bodies: OfflineVisitBody[];
   notes: string;
   /** YYYY-MM-DD string, or undefined to leave unset. */
   nextServiceDate?: string;
