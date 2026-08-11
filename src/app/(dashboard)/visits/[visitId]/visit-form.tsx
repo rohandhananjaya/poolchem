@@ -22,6 +22,12 @@ import {
   type LSIResult,
 } from "@/lib/pool-chemistry"
 import { Button } from "@/components/ui/button"
+import {
+  Tabs,
+  TabsList,
+  TabsTrigger,
+  TabsContent,
+} from "@/components/ui/tabs"
 import { WaterReadingInput } from "@/components/visits/WaterReadingInput"
 import { WaterHealthGauge } from "@/components/visits/WaterHealthGauge"
 import { ChemicalRecommendations } from "@/components/visits/ChemicalRecommendations"
@@ -154,6 +160,8 @@ interface VisitFormProps {
   companyId: string
   visit: SerializedVisit
   lastReadings: VisitReadings | null
+  /** Per-body previous-readings hint, keyed by join-row id (multi-body only). */
+  lastReadingsByJoinId?: Record<string, VisitReadings | null>
   currentUser: { id: string; name: string }
   techId: string | null
   canUseLSI: boolean
@@ -163,6 +171,7 @@ export function VisitForm({
   companyId,
   visit,
   lastReadings,
+  lastReadingsByJoinId,
   currentUser,
   techId,
   canUseLSI,
@@ -249,6 +258,10 @@ export function VisitForm({
       ? new Date(visit.nextServiceDate).toISOString().split("T")[0]
       : "",
   )
+
+  // Active body tab. String to satisfy the radix Tabs `value` contract; the
+  // page's `key={visit.id}` remount resets it per visit.
+  const [activeBody, setActiveBody] = useState("0")
 
   // Revision this client last observed from the server. Seeded from the
   // serialized visit and re-based from every successful saveDraft replay (via
@@ -428,6 +441,286 @@ export function VisitForm({
   })
 
   const allFieldsFilled = editors.every((editor) => editor.allFieldsFilled)
+
+  // Clamp the active tab against a shrunken `displayBodies` (join rows can
+  // disappear after a refresh); out-of-range values would otherwise leave the
+  // radix Tabs rendering no content at all.
+  const activeTabIndex = Math.min(
+    Number(activeBody) || 0,
+    Math.max(editors.length - 1, 0),
+  )
+
+  const incompleteBodies = editors.filter((editor) => !editor.allFieldsFilled)
+
+  // Previous-reading hint per input. Multi-body visits get each body's own
+  // pool-scoped hint (fetched per join row in page.tsx); legacy single-body
+  // visits keep the visit-level `lastReadings`.
+  const lastReadingFor = (
+    editor: BodyEditor,
+    key: keyof VisitReadings,
+  ): number | null | undefined => {
+    if (completed || isOthersVisit) return null
+    if (multiBody) return lastReadingsByJoinId?.[editor.joinId]?.[key]
+    return lastReadings?.[key]
+  }
+
+  // One body's editor stack: water test → analysis → recommendations. Rendered
+  // directly for legacy single-body visits and inside a TabsContent per body on
+  // multi-body visits. RHF values and `chemicalState` live at form level, so
+  // unmounting an inactive tab loses nothing — the persistence test pins this.
+  const renderBody = (editor: BodyEditor, bodyIndex: number) => (
+    <div className="space-y-6">
+      {/* Water Test Input Card */}
+      <div className="rounded-xl border border-border bg-card p-4">
+        <div className="mb-4 flex items-center justify-between">
+          <h2 className="text-sm font-semibold text-card-foreground">
+            {multiBody ? editor.poolName : "Log Readings"}
+          </h2>
+          {!completed && !isOthersVisit && (
+            <span className="text-xs text-muted-foreground">
+              {[editor.readings.ph, editor.readings.freeChlorine, editor.readings.totalAlkalinity, editor.readings.calciumHardness, editor.readings.cyanuricAcid, editor.readings.temperature]
+                .filter((v) => v !== undefined && v !== null).length}/6
+            </span>
+          )}
+        </div>
+
+        {multiBody && (
+          <p className="-mt-3 mb-3 text-xs text-muted-foreground">
+            {editor.volume.toLocaleString()} gal
+          </p>
+        )}
+
+        <div className="grid grid-cols-2 gap-4 lg:grid-cols-3">
+          <WaterReadingInput
+            name={`bodies.${bodyIndex}.readings.ph`}
+            label="pH"
+            unit=""
+            control={control}
+            disabled={completed || isOthersVisit}
+            lastReading={lastReadingFor(editor, "ph")}
+          />
+          <WaterReadingInput
+            name={`bodies.${bodyIndex}.readings.freeChlorine`}
+            label="Free Chlorine"
+            unit="ppm"
+            control={control}
+            disabled={completed || isOthersVisit}
+            lastReading={lastReadingFor(editor, "freeChlorine")}
+          />
+          <WaterReadingInput
+            name={`bodies.${bodyIndex}.readings.totalAlkalinity`}
+            label="Total Alkalinity"
+            unit="ppm"
+            control={control}
+            disabled={completed || isOthersVisit}
+            lastReading={lastReadingFor(editor, "totalAlkalinity")}
+          />
+          <WaterReadingInput
+            name={`bodies.${bodyIndex}.readings.calciumHardness`}
+            label="Calcium Hardness"
+            unit="ppm"
+            control={control}
+            disabled={completed || isOthersVisit}
+            lastReading={lastReadingFor(editor, "calciumHardness")}
+          />
+          <WaterReadingInput
+            name={`bodies.${bodyIndex}.readings.cyanuricAcid`}
+            label="Cyanuric Acid"
+            unit="ppm"
+            control={control}
+            disabled={completed || isOthersVisit}
+            lastReading={lastReadingFor(editor, "cyanuricAcid")}
+          />
+          <WaterReadingInput
+            name={`bodies.${bodyIndex}.readings.temperature`}
+            label="Temperature"
+            unit="°F"
+            control={control}
+            disabled={completed || isOthersVisit}
+            lastReading={lastReadingFor(editor, "temperature")}
+          />
+        </div>
+      </div>
+
+      {/* Results Card — shows when 5 core params are entered */}
+      {editor.hasCoreReadings && editor.waterHealth && (
+        <div className="rounded-xl border border-border bg-card p-4">
+          <h2 className="mb-4 text-sm font-semibold text-card-foreground">
+            Water Analysis
+          </h2>
+
+          <div className="flex flex-col items-center gap-4 sm:flex-row sm:items-start sm:justify-around">
+            <WaterHealthGauge
+              score={editor.waterHealth.score}
+              status={editor.waterHealth.status}
+              lsi={editor.lsi}
+            />
+
+            <div className="flex flex-col gap-3 sm:min-w-0 sm:flex-1">
+              {editor.waterHealth.issues.length > 0 && (
+                <div className="rounded-lg bg-amber-50 p-3 dark:bg-amber-950/30">
+                  <div className="flex items-center gap-1.5 text-sm font-medium text-amber-800 dark:text-amber-300">
+                    <AlertTriangle className="size-4" />
+                    <span>
+                      {editor.waterHealth.issues.length} parameter
+                      {editor.waterHealth.issues.length > 1 ? "s" : ""} need
+                      attention
+                    </span>
+                  </div>
+                  <ul className="mt-2 space-y-1">
+                    {editor.waterHealth.issues.map((issue, issueIndex) => (
+                      <li
+                        key={issueIndex}
+                        className="text-xs text-amber-700 dark:text-amber-400"
+                      >
+                        {issue}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {editor.waterHealth.issues.length === 0 && (
+                <div className="flex items-center gap-2 rounded-lg bg-emerald-50 p-3 dark:bg-emerald-950/30">
+                  <span className="text-sm font-medium text-emerald-700 dark:text-emerald-300">
+                    All parameters are within ideal range
+                  </span>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Per-parameter status summary */}
+          <div className="mt-4 overflow-x-auto">
+            <table className="w-full border-collapse text-sm">
+              <thead>
+                <tr className="text-left text-xs uppercase tracking-wider text-muted-foreground">
+                  <th className="pb-1.5 pr-3 font-medium">Parameter</th>
+                  <th className="pb-1.5 pr-3 font-medium">Reading</th>
+                  <th className="pb-1.5 pr-3 font-medium">Ideal</th>
+                  <th className="pb-1.5 font-medium">Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {editor.parameterRows.map((p) => (
+                  <tr key={p.key} className="border-t border-border">
+                    <td className="py-2 pr-3 font-medium text-foreground">
+                      {p.label}
+                    </td>
+                    <td className="py-2 pr-3 font-mono tabular-nums text-foreground">
+                      {p.value !== null ? p.value : "—"}
+                    </td>
+                    <td className="py-2 pr-3 font-mono tabular-nums text-muted-foreground">
+                      {p.ideal ? `${p.ideal.min}–${p.ideal.max}${p.unit ? ` ${p.unit}` : ""}` : "—"}
+                    </td>
+                    <td className="py-2">
+                      {p.status === "empty" ? (
+                        <span className="text-xs text-muted-foreground">—</span>
+                      ) : p.status === "ideal" ? (
+                        <span className="inline-flex items-center gap-1 text-sm font-medium text-emerald-600 dark:text-emerald-400">
+                          <CheckCircle2 className="size-3.5" />
+                          Ideal
+                        </span>
+                      ) : p.status === "low" ? (
+                        <span className="inline-flex items-center gap-1 text-sm font-medium text-amber-600 dark:text-amber-400">
+                          <AlertTriangle className="size-3.5" />
+                          Low
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 text-sm font-medium text-amber-600 dark:text-amber-400">
+                          <AlertTriangle className="size-3.5" />
+                          High
+                        </span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+                {/* Temperature row */}
+                <tr className="border-t border-border">
+                  <td className="py-2 pr-3 font-medium text-foreground">
+                    Temperature
+                  </td>
+                  <td className="py-2 pr-3 font-mono tabular-nums text-foreground">
+                    {editor.hasTemp ? `${editor.readings.temperature}°F` : "—"}
+                  </td>
+                  <td className="py-2 pr-3 font-mono tabular-nums text-muted-foreground">—</td>
+                  <td className="py-2">
+                    {editor.hasTemp ? (
+                      <span className="inline-flex items-center gap-1 text-sm font-medium text-muted-foreground">
+                        <CheckCircle2 className="size-3.5 text-emerald-500" />
+                        Recorded
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
+                        <Minus className="size-3.5" />
+                        {canUseLSI ? "Needed for LSI" : "Optional"}
+                      </span>
+                    )}
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* Chemical Recommendations Card */}
+      <div className="rounded-xl border border-border bg-card p-4">
+        <div className="mb-3 flex items-center justify-between">
+          <h2 className="text-sm font-semibold text-card-foreground">
+            Chemical Recommendations
+          </h2>
+          {!completed && !isOthersVisit && (
+            <AddChemicalDialog onAdd={(chem) => handleAddChemical(bodyIndex, chem)} />
+          )}
+        </div>
+        <ChemicalRecommendations
+          recommendations={editor.recommendations}
+          poolVolume={editor.volume}
+          checked={chemicalState[bodyIndex]?.checked ?? {}}
+          onToggle={(chemical) => handleToggleChemical(bodyIndex, chemical)}
+          disabled={completed || isOthersVisit}
+        />
+
+        {(chemicalState[bodyIndex]?.manual.length ?? 0) > 0 && (
+          <div className="mt-3 space-y-2">
+            <p className="text-xs font-medium text-muted-foreground">
+              Added manually
+            </p>
+            {chemicalState[bodyIndex]?.manual.map((chem, chemicalIndex) => (
+              <div
+                key={`${chem.name}-${chemicalIndex}`}
+                className="flex items-center justify-between gap-3 rounded-lg border border-border p-3"
+              >
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-baseline justify-between gap-2">
+                    <span className="text-sm font-medium text-foreground">
+                      {chem.name}
+                    </span>
+                    {chem.amount > 0 && (
+                      <span className="shrink-0 text-sm font-medium tabular-nums text-foreground">
+                        {chem.amount} {chem.unit}
+                      </span>
+                    )}
+                  </div>
+                </div>
+                {!completed && !isOthersVisit && (
+                  <button
+                    type="button"
+                    onClick={() => handleRemoveChemical(bodyIndex, chemicalIndex)}
+                    className="shrink-0 rounded-md p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                    aria-label={`Remove ${chem.name}`}
+                  >
+                    <X className="size-4" />
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  )
 
   const buildPayload = useCallback(
     (data: FormData): VisitFormValues => {
@@ -686,295 +979,46 @@ export function VisitForm({
   return (
     <form className="mt-6 space-y-6">
       {/* Per-body water test, analysis, and recommendations */}
-      {editors.map((editor, bodyIndex) => (
-        <div key={editor.joinId} className="space-y-6">
-          {/* Water Test Input Card */}
-          <div className="rounded-xl border border-border bg-card p-4">
-            <div className="mb-4 flex items-center justify-between">
-              <h2 className="text-sm font-semibold text-card-foreground">
-                {multiBody ? editor.poolName : "Log Readings"}
-              </h2>
-              {!completed && !isOthersVisit && (
-                <span className="text-xs text-muted-foreground">
-                  {[editor.readings.ph, editor.readings.freeChlorine, editor.readings.totalAlkalinity, editor.readings.calciumHardness, editor.readings.cyanuricAcid, editor.readings.temperature]
-                    .filter((v) => v !== undefined && v !== null).length}/6
-                </span>
-              )}
-            </div>
-
-            {multiBody && (
-              <p className="-mt-3 mb-3 text-xs text-muted-foreground">
-                {editor.volume.toLocaleString()} gal
-              </p>
-            )}
-
-            <div className="grid grid-cols-2 gap-4 lg:grid-cols-3">
-              <WaterReadingInput
-                name={`bodies.${bodyIndex}.readings.ph`}
-                label="pH"
-                unit=""
-                control={control}
-                disabled={completed || isOthersVisit}
-                lastReading={
-                  completed || isOthersVisit
-                    ? null
-                    : bodyIndex === 0
-                      ? lastReadings?.ph ?? undefined
-                      : undefined
-                }
-              />
-              <WaterReadingInput
-                name={`bodies.${bodyIndex}.readings.freeChlorine`}
-                label="Free Chlorine"
-                unit="ppm"
-                control={control}
-                disabled={completed || isOthersVisit}
-                lastReading={
-                  completed || isOthersVisit
-                    ? null
-                    : bodyIndex === 0
-                      ? lastReadings?.freeChlorine ?? undefined
-                      : undefined
-                }
-              />
-              <WaterReadingInput
-                name={`bodies.${bodyIndex}.readings.totalAlkalinity`}
-                label="Total Alkalinity"
-                unit="ppm"
-                control={control}
-                disabled={completed || isOthersVisit}
-                lastReading={
-                  completed || isOthersVisit
-                    ? null
-                    : bodyIndex === 0
-                      ? lastReadings?.totalAlkalinity ?? undefined
-                      : undefined
-                }
-              />
-              <WaterReadingInput
-                name={`bodies.${bodyIndex}.readings.calciumHardness`}
-                label="Calcium Hardness"
-                unit="ppm"
-                control={control}
-                disabled={completed || isOthersVisit}
-                lastReading={
-                  completed || isOthersVisit
-                    ? null
-                    : bodyIndex === 0
-                      ? lastReadings?.calciumHardness ?? undefined
-                      : undefined
-                }
-              />
-              <WaterReadingInput
-                name={`bodies.${bodyIndex}.readings.cyanuricAcid`}
-                label="Cyanuric Acid"
-                unit="ppm"
-                control={control}
-                disabled={completed || isOthersVisit}
-                lastReading={
-                  completed || isOthersVisit
-                    ? null
-                    : bodyIndex === 0
-                      ? lastReadings?.cyanuricAcid ?? undefined
-                      : undefined
-                }
-              />
-              <WaterReadingInput
-                name={`bodies.${bodyIndex}.readings.temperature`}
-                label="Temperature"
-                unit="°F"
-                control={control}
-                disabled={completed || isOthersVisit}
-                lastReading={
-                  completed || isOthersVisit
-                    ? null
-                    : bodyIndex === 0
-                      ? lastReadings?.temperature ?? undefined
-                      : undefined
-                }
-              />
-            </div>
-          </div>
-
-          {/* Results Card — shows when 5 core params are entered */}
-          {editor.hasCoreReadings && editor.waterHealth && (
-            <div className="rounded-xl border border-border bg-card p-4">
-              <h2 className="mb-4 text-sm font-semibold text-card-foreground">
-                Water Analysis
-              </h2>
-
-              <div className="flex flex-col items-center gap-4 sm:flex-row sm:items-start sm:justify-around">
-                <WaterHealthGauge
-                  score={editor.waterHealth.score}
-                  status={editor.waterHealth.status}
-                  lsi={editor.lsi}
-                />
-
-                <div className="flex flex-col gap-3 sm:min-w-0 sm:flex-1">
-                  {editor.waterHealth.issues.length > 0 && (
-                    <div className="rounded-lg bg-amber-50 p-3 dark:bg-amber-950/30">
-                      <div className="flex items-center gap-1.5 text-sm font-medium text-amber-800 dark:text-amber-300">
-                        <AlertTriangle className="size-4" />
-                        <span>
-                          {editor.waterHealth.issues.length} parameter
-                          {editor.waterHealth.issues.length > 1 ? "s" : ""} need
-                          attention
-                        </span>
-                      </div>
-                      <ul className="mt-2 space-y-1">
-                        {editor.waterHealth.issues.map((issue, issueIndex) => (
-                          <li
-                            key={issueIndex}
-                            className="text-xs text-amber-700 dark:text-amber-400"
-                          >
-                            {issue}
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
-
-                  {editor.waterHealth.issues.length === 0 && (
-                    <div className="flex items-center gap-2 rounded-lg bg-emerald-50 p-3 dark:bg-emerald-950/30">
-                      <span className="text-sm font-medium text-emerald-700 dark:text-emerald-300">
-                        All parameters are within ideal range
+      {multiBody ? (
+        <Tabs value={String(activeTabIndex)} onValueChange={setActiveBody}>
+          <TabsList className="w-full justify-start">
+            {editors.map((editor, tabIndex) => {
+              const filledCount = [
+                editor.readings.ph,
+                editor.readings.freeChlorine,
+                editor.readings.totalAlkalinity,
+                editor.readings.calciumHardness,
+                editor.readings.cyanuricAcid,
+                editor.readings.temperature,
+              ].filter((v) => v !== undefined && v !== null).length
+              return (
+                <TabsTrigger key={editor.joinId} value={String(tabIndex)}>
+                  <span className="flex items-center gap-1.5">
+                    <span className="max-w-32 truncate">{editor.poolName}</span>
+                    <span className="text-xs text-muted-foreground">
+                      {editor.volume.toLocaleString()} gal
+                    </span>
+                    {editor.allFieldsFilled ? (
+                      <CheckCircle2 className="size-3.5 text-emerald-500" />
+                    ) : (
+                      <span className="font-mono text-xs tabular-nums text-muted-foreground">
+                        {filledCount}/6
                       </span>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* Per-parameter status summary */}
-              <div className="mt-4 overflow-x-auto">
-                <table className="w-full border-collapse text-sm">
-                  <thead>
-                    <tr className="text-left text-xs uppercase tracking-wider text-muted-foreground">
-                      <th className="pb-1.5 pr-3 font-medium">Parameter</th>
-                      <th className="pb-1.5 pr-3 font-medium">Reading</th>
-                      <th className="pb-1.5 pr-3 font-medium">Ideal</th>
-                      <th className="pb-1.5 font-medium">Status</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {editor.parameterRows.map((p) => (
-                      <tr key={p.key} className="border-t border-border">
-                        <td className="py-2 pr-3 font-medium text-foreground">
-                          {p.label}
-                        </td>
-                        <td className="py-2 pr-3 font-mono tabular-nums text-foreground">
-                          {p.value !== null ? p.value : "—"}
-                        </td>
-                        <td className="py-2 pr-3 font-mono tabular-nums text-muted-foreground">
-                          {p.ideal ? `${p.ideal.min}–${p.ideal.max}${p.unit ? ` ${p.unit}` : ""}` : "—"}
-                        </td>
-                        <td className="py-2">
-                          {p.status === "empty" ? (
-                            <span className="text-xs text-muted-foreground">—</span>
-                          ) : p.status === "ideal" ? (
-                            <span className="inline-flex items-center gap-1 text-sm font-medium text-emerald-600 dark:text-emerald-400">
-                              <CheckCircle2 className="size-3.5" />
-                              Ideal
-                            </span>
-                          ) : p.status === "low" ? (
-                            <span className="inline-flex items-center gap-1 text-sm font-medium text-amber-600 dark:text-amber-400">
-                              <AlertTriangle className="size-3.5" />
-                              Low
-                            </span>
-                          ) : (
-                            <span className="inline-flex items-center gap-1 text-sm font-medium text-amber-600 dark:text-amber-400">
-                              <AlertTriangle className="size-3.5" />
-                              High
-                            </span>
-                          )}
-                        </td>
-                      </tr>
-                    ))}
-                    {/* Temperature row */}
-                    <tr className="border-t border-border">
-                      <td className="py-2 pr-3 font-medium text-foreground">
-                        Temperature
-                      </td>
-                      <td className="py-2 pr-3 font-mono tabular-nums text-foreground">
-                        {editor.hasTemp ? `${editor.readings.temperature}°F` : "—"}
-                      </td>
-                      <td className="py-2 pr-3 font-mono tabular-nums text-muted-foreground">—</td>
-                      <td className="py-2">
-                        {editor.hasTemp ? (
-                          <span className="inline-flex items-center gap-1 text-sm font-medium text-muted-foreground">
-                            <CheckCircle2 className="size-3.5 text-emerald-500" />
-                            Recorded
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
-                            <Minus className="size-3.5" />
-                            {canUseLSI ? "Needed for LSI" : "Optional"}
-                          </span>
-                        )}
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          )}
-
-          {/* Chemical Recommendations Card */}
-          <div className="rounded-xl border border-border bg-card p-4">
-            <div className="mb-3 flex items-center justify-between">
-              <h2 className="text-sm font-semibold text-card-foreground">
-                Chemical Recommendations
-              </h2>
-              {!completed && !isOthersVisit && (
-                <AddChemicalDialog onAdd={(chem) => handleAddChemical(bodyIndex, chem)} />
-              )}
-            </div>
-            <ChemicalRecommendations
-              recommendations={editor.recommendations}
-              poolVolume={editor.volume}
-              checked={chemicalState[bodyIndex]?.checked ?? {}}
-              onToggle={(chemical) => handleToggleChemical(bodyIndex, chemical)}
-              disabled={completed || isOthersVisit}
-            />
-
-            {(chemicalState[bodyIndex]?.manual.length ?? 0) > 0 && (
-              <div className="mt-3 space-y-2">
-                <p className="text-xs font-medium text-muted-foreground">
-                  Added manually
-                </p>
-                {chemicalState[bodyIndex]?.manual.map((chem, chemicalIndex) => (
-                  <div
-                    key={`${chem.name}-${chemicalIndex}`}
-                    className="flex items-center justify-between gap-3 rounded-lg border border-border p-3"
-                  >
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-baseline justify-between gap-2">
-                        <span className="text-sm font-medium text-foreground">
-                          {chem.name}
-                        </span>
-                        {chem.amount > 0 && (
-                          <span className="shrink-0 text-sm font-medium tabular-nums text-foreground">
-                            {chem.amount} {chem.unit}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                    {!completed && !isOthersVisit && (
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveChemical(bodyIndex, chemicalIndex)}
-                        className="shrink-0 rounded-md p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-                        aria-label={`Remove ${chem.name}`}
-                      >
-                        <X className="size-4" />
-                      </button>
                     )}
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-      ))}
+                  </span>
+                </TabsTrigger>
+              )
+            })}
+          </TabsList>
+          {editors.map((editor, bodyIndex) => (
+            <TabsContent key={editor.joinId} value={String(bodyIndex)}>
+              {renderBody(editor, bodyIndex)}
+            </TabsContent>
+          ))}
+        </Tabs>
+      ) : (
+        renderBody(editors[0], 0)
+      )}
 
       {/* Technician Notes */}
       <div className="rounded-xl border border-border bg-card p-4">
@@ -1064,7 +1108,11 @@ export function VisitForm({
           ) : (
             !allFieldsFilled && (
               <p className="text-xs text-muted-foreground">
-                Enter all 6 readings to complete the report
+                {multiBody
+                  ? incompleteBodies.length > 0
+                    ? `Fill readings for: ${incompleteBodies.map((editor) => editor.poolName).join(", ")}`
+                    : "Enter all 6 readings to complete the report"
+                  : "Enter all 6 readings to complete the report"}
               </p>
             )
           )}

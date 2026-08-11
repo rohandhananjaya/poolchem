@@ -25,11 +25,25 @@ export default async function VisitPage({
   const { visitId } = await params
   const user = await requireActivePackage()
   if (!user.companyId) return null
+  const companyId = user.companyId
 
   const visit = await getVisitById(visitId, user.companyId)
   if (!visit) notFound()
 
-  const lastReadings = await getLastVisitReadings(visit.poolId, user.companyId)
+  const lastReadings = await getLastVisitReadings(visit.poolId, companyId)
+  // Multi-body visits: fetch each body's own previous-reading hint (pool-scoped)
+  // so every tab shows its pool's last readings, not just body 0's.
+  const lastReadingsByJoinId =
+    visit.serviceVisitPools.length > 0
+      ? Object.fromEntries(
+          await Promise.all(
+            visit.serviceVisitPools.map(async (join) => [
+              join.id,
+              await getLastVisitReadings(join.pool.id, companyId),
+            ]),
+          ),
+        )
+      : {}
   const canUseLSI =
     getHealthScoringLevel(await getCompanyPackage(user.companyId)) ===
     "advanced+lsi"
@@ -163,6 +177,11 @@ export default async function VisitPage({
         companyId={user.companyId}
         visit={JSON.parse(JSON.stringify(visit))}
         lastReadings={lastReadings ? JSON.parse(JSON.stringify(lastReadings)) : null}
+        lastReadingsByJoinId={
+          Object.keys(lastReadingsByJoinId).length > 0
+            ? JSON.parse(JSON.stringify(lastReadingsByJoinId))
+            : undefined
+        }
         currentUser={{ id: user.id, name: user.name }}
         techId={visit.techId}
         canUseLSI={canUseLSI}

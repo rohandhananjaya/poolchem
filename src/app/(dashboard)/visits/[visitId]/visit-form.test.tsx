@@ -117,6 +117,69 @@ function labelFor(id: string): string {
   return map[id] ?? id;
 }
 
+function makeMultiVisit() {
+  return makeVisit({
+    serviceVisitPools: [
+      {
+        id: "join-1",
+        pool: {
+          name: "Pool A",
+          address: null,
+          image: null,
+          volume: 12_000,
+        },
+      },
+      {
+        id: "join-2",
+        pool: {
+          name: "Pool B",
+          address: null,
+          image: null,
+          volume: 20_000,
+        },
+      },
+    ],
+  });
+}
+
+function renderMultiForm() {
+  return render(
+    <VisitForm
+      companyId="company-1"
+      visit={makeMultiVisit() as never}
+      lastReadings={null}
+      lastReadingsByJoinId={{}}
+      currentUser={{ id: "user-1", name: "Tech" }}
+      techId="user-1"
+      canUseLSI
+    />,
+  );
+}
+
+const READING_LABELS: Array<[string, string]> = [
+  ["pH", "7.5"],
+  ["Free Chlorine", "2"],
+  ["Total Alkalinity", "100"],
+  ["Calcium Hardness", "300"],
+  ["Cyanuric Acid", "40"],
+  ["Temperature", "80"],
+];
+
+/** Fills the currently-active tab's six reading inputs. */
+function fillActiveTabReadings() {
+  for (const [label, value] of READING_LABELS) {
+    fireEvent.change(screen.getByLabelText(label), { target: { value } });
+  }
+}
+
+function phInput() {
+  return screen.getByLabelText("pH") as HTMLInputElement;
+}
+
+function completeButton() {
+  return screen.getByRole("button", { name: /Complete & Send Report/i });
+}
+
 beforeEach(() => {
   vi.clearAllMocks();
   mockDrain.mockReset();
@@ -213,5 +276,92 @@ describe("VisitForm handleComplete conflict branch", () => {
     expect(mockDrain.mock.invocationCallOrder[0]).toBeLessThan(
       vi.mocked(completeVisitAction).mock.invocationCallOrder[0],
     );
+  });
+});
+
+describe("VisitForm multi-body tab UI", () => {
+  it("renders one tab per body with pool names, only the active body's editor", () => {
+    renderMultiForm();
+
+    const tabs = screen.getAllByRole("tab");
+    expect(tabs).toHaveLength(2);
+    expect(screen.getByRole("tab", { name: /Pool A/ })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: /Pool B/ })).toBeInTheDocument();
+
+    // Inactive tabs are unmounted — only the active body's inputs exist.
+    expect(screen.getAllByLabelText("pH")).toHaveLength(1);
+  });
+
+  it("switches the visible editor per tab and preserves in-progress input", () => {
+    renderMultiForm();
+
+    fireEvent.change(phInput(), { target: { value: "7.5" } });
+
+    // Radix Tabs triggers select on mousedown (not click), so fire mouseDown.
+    fireEvent.mouseDown(screen.getByRole("tab", { name: /Pool B/ }));
+    // Tab B starts empty (its own editor is mounted now, A's is unmounted).
+    expect(phInput().value).toBe("");
+
+    // Back to A: the typed value survives because RHF state, not the hidden
+    // tab's DOM, owns the value.
+    fireEvent.mouseDown(screen.getByRole("tab", { name: /Pool A/ }));
+    expect(phInput().value).toBe("7.5");
+  });
+
+  it("blocks completion until every body is filled and submits a per-body payload", async () => {
+    vi.mocked(completeVisitAction).mockResolvedValue({ version: 4 });
+    renderMultiForm();
+
+    // Fill only tab A → completion stays disabled, action never fires.
+    fillActiveTabReadings();
+    expect(completeButton()).toBeDisabled();
+    fireEvent.click(completeButton());
+    expect(completeVisitAction).not.toHaveBeenCalled();
+
+    // Fill tab B → enabled; the payload carries both bodies keyed by join id.
+    fireEvent.mouseDown(screen.getByRole("tab", { name: /Pool B/ }));
+    fillActiveTabReadings();
+    expect(completeButton()).toBeEnabled();
+
+    fireEvent.click(completeButton());
+    await waitFor(() => expect(completeVisitAction).toHaveBeenCalledTimes(1));
+
+    const [, payload] = vi.mocked(completeVisitAction).mock.calls[0] as unknown as [
+      string,
+      {
+        bodies: Array<{
+          serviceVisitPoolId: string;
+          readings: Record<string, number | undefined>;
+        }>;
+      },
+    ];
+    expect(payload.bodies).toHaveLength(2);
+    expect(payload.bodies[0].serviceVisitPoolId).toBe("join-1");
+    expect(payload.bodies[0].readings.ph).toBe(7.5);
+    expect(payload.bodies[1].serviceVisitPoolId).toBe("join-2");
+    expect(payload.bodies[1].readings.ph).toBe(7.5);
+  });
+
+  it("shows a per-tab completion marker that reflects filled state", () => {
+    renderMultiForm();
+
+    const tabA = () => screen.getByRole("tab", { name: /Pool A/ });
+    expect(tabA().textContent).toContain("0/6");
+
+    fireEvent.change(phInput(), { target: { value: "7.5" } });
+    expect(tabA().textContent).toContain("1/6");
+
+    fillActiveTabReadings();
+    // All six filled → the tab swaps its n/6 count for a check icon.
+    expect(tabA().textContent).not.toContain("/6");
+    expect(tabA().querySelector("svg")).not.toBeNull();
+  });
+
+  it("renders no tab bar for a legacy single-body visit", () => {
+    renderForm();
+
+    expect(screen.queryByRole("tab")).toBeNull();
+    expect(screen.getAllByLabelText("pH")).toHaveLength(1);
+    expect(screen.getByText("Log Readings")).toBeInTheDocument();
   });
 });

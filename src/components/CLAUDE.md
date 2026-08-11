@@ -17,6 +17,7 @@ Feature components grouped by domain; shadcn/ui primitives in [ui/](ui/) (style 
 
 ## visits/
 `VisitCard` (dashboard list item) · `WaterReadingInput` (test-strip scan button = "coming soon") · `ChemicalRecommendations` · `AddChemicalDialog` (manual chemical entry popup; `onAdd(VisitChemical)`) · `WaterHealthGauge` · `VisitNotes` (voice recording = "coming soon") · `CancelVisitDialog` (reason-select + custom-reason confirmation UI) · `SyncStatusBadge` (presentational offline-sync indicator — pending/syncing/failed/offline/synced with tone colors + lucide icon + optional counts; driven by `useVisitSyncStatus` in the visit form)
+- `visit-form.tsx` (in `(dashboard)/visits/[visitId]/`, not here) renders a **per-body segmented tab control** on multi-body visits: one tab per body (pool name + volume + `n/6` fill marker, check icon when complete), readings/analysis/chemicals per tab, notes/next-service-date visit-level below. Legacy single-body visits render tab-free.
 
 ## reports/
 `ReportRow` · `ScoreSparkline` (inline SVG water-health trend) · `WaterHealthSummary` (gauge + at-a-glance callout, used by both report pages) · `ReportsFilters` (pool/date-range filter bar)
