@@ -55,7 +55,7 @@ Get the tenant with `getCompanyId()` / `requireAuth()` from [../auth.ts](../auth
 **service-visit-pools.ts** — the `ServiceVisitPool` join rows linking a visit to each pool (body of water) it serves. `companyId` is stored directly on the join so tenancy filters stay indexed; a join row's `companyId` MUST equal its pool's `companyId` (write-time invariant enforced by `assertPoolsBelongToCompany`, called from the createVisit rework in `visits.ts`).
 - `getServiceVisitPoolsByVisit(visitId, companyId) → ServiceVisitPoolWithPool[]` — join rows with `pool` attached; `[]` on a cross-tenant visit id
 - `getPoolsByVisit(visitId, companyId) → Pool[]` — convenience wrapper (the "bodies" of a visit)
-- `getVisitsByPool(poolId, companyId, limit?) → ServiceVisit[]` — multi-body-safe pool-scoped history (join-row scoped), newest first; swap-in target for the getVisitHistory rework
+- `getVisitsByPool(poolId, companyId, limit?) → ServiceVisit[]` — multi-body-safe pool-scoped history (join-row scoped, body-scoped readings/chemicals), newest first; **landed** — `getVisitHistory`/`getLastVisitReadings` now delegate to the same join-row + body-filter shape
 - `assertPoolsBelongToCompany(poolIds, companyId) → void` — tenant-FK guard; throws unless EVERY pool resolves to `companyId`, and on an empty `poolIds`
 - **Legacy data backfill** ships as a standalone script, NOT a migration: `npm run db:backfill:service-visit-pools` (dry-run default, `--apply` to write). It creates one join row per existing visit from the legacy `ServiceVisit.poolId` and backfills `serviceVisitPoolId` on readings/chemicals. **MUST run before the createVisit/completeVisit rework cards deploy** (those assume a join row exists for every visit). Validate on a full prod-data copy first — the card's Prod-cutover steps.
 
@@ -76,8 +76,8 @@ Get the tenant with `getCompanyId()` / `requireAuth()` from [../auth.ts](../auth
 - `releaseReportNotification(visitId, companyId) → void` — clears the claim after a confirmed send failure so a later retry re-sends; scoped via `pool: { companyId }`
 - `saveDraftVisit(visitId, readings, chemicals, notes?, nextServiceDate?, opts?: VisitWriteOpts) → { visit, applied }` — idempotent replacement; throws on COMPLETED/CANCELLED visits; `applied: false` on an already-applied replay
 - `getVisitByPublicToken(publicToken) → ServiceVisit | null` — **public, unscoped**; COMPLETED visits only, backs `report/[reportToken]`
-- `getVisitHistory(poolId, limit)`
-- `getLastVisitReadings(poolId) → VisitReadings | null`
+- `getVisitHistory(poolId, companyId, limit)` — tenant-scoped via the `ServiceVisitPool` join rows (`serviceVisitPools: { some: { poolId, companyId } }`) + body-scoped on the returned readings/chemicals (`waterReadings`/`chemicalsAdded` filtered by `serviceVisitPool: { poolId }`): a multi-pool visit contributes only THIS pool's readings/chemicals to its history row
+- `getLastVisitReadings(poolId, companyId) → VisitReadings | null`
 - `getPoolNextScheduledVisit(poolId) → Date | null` — latest future scheduled non-cancelled visit date for a pool
 
 **dashboard.ts**

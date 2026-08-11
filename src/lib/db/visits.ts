@@ -635,17 +635,36 @@ export async function getVisitByPublicToken(publicToken: string) {
 }
 
 /**
- * Returns a pool's most recent completed visits (newest first), with readings
- * and chemicals attached — the data source for trend charts.
+ * Returns a pool's most recent completed visits (newest first), with this
+ * pool's readings and chemicals attached — the data source for trend charts.
  *
+ * Tenant-scoped via the `ServiceVisitPool` join rows (a cross-tenant poolId
+ * yields `[]`) and body-scoped on the returned readings/chemicals: a
+ * multi-pool visit contributes only THIS pool's readings/chemicals to its
+ * history row (`@@unique([serviceVisitId, poolId])` guarantees at most one
+ * join per pool per visit).
+ *
+ * @param poolId - The pool (body of water) to scope to.
+ * @param companyId - The acting user's company (tenant scope).
  * @param limit - Maximum number of visits to return.
  */
-export async function getVisitHistory(poolId: string, limit: number) {
+export async function getVisitHistory(
+  poolId: string,
+  companyId: string,
+  limit: number,
+) {
   return prisma.serviceVisit.findMany({
-    where: { poolId, status: ServiceVisitStatus.COMPLETED },
+    where: {
+      serviceVisitPools: { some: { poolId, companyId } },
+      status: ServiceVisitStatus.COMPLETED,
+    },
     orderBy: { createdAt: "desc" },
     take: limit,
-    include: { waterReadings: true, chemicalsAdded: true, tech: true },
+    include: {
+      waterReadings: { where: { serviceVisitPool: { poolId } } },
+      chemicalsAdded: { where: { serviceVisitPool: { poolId } } },
+      tech: true,
+    },
   });
 }
 
@@ -669,11 +688,14 @@ export async function getPoolNextScheduledVisit(poolId: string): Promise<Date | 
 /**
  * Returns the water readings from the most recent completed visit for a pool,
  * or `null` if no completed visits exist yet.
+ *
+ * Tenant-scoped through {@link getVisitHistory}'s join-row filter.
  */
 export async function getLastVisitReadings(
   poolId: string,
+  companyId: string,
 ): Promise<VisitReadings | null> {
-  const history = await getVisitHistory(poolId, 1);
+  const history = await getVisitHistory(poolId, companyId, 1);
   const last = history[0]?.waterReadings[0];
   if (!last) return null;
   return {

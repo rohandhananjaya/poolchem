@@ -26,7 +26,7 @@ export default async function PoolAnalysisPage({
 
   const [pool, visits] = await Promise.all([
     getPoolById(poolId, user.companyId),
-    getVisitHistory(poolId, 20),
+    getVisitHistory(poolId, user.companyId, 20),
   ])
 
   if (!pool) {

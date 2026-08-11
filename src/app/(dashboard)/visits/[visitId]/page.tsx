@@ -29,7 +29,7 @@ export default async function VisitPage({
   const visit = await getVisitById(visitId, user.companyId)
   if (!visit) notFound()
 
-  const lastReadings = await getLastVisitReadings(visit.poolId)
+  const lastReadings = await getLastVisitReadings(visit.poolId, user.companyId)
   const canUseLSI =
     getHealthScoringLevel(await getCompanyPackage(user.companyId)) ===
     "advanced+lsi"

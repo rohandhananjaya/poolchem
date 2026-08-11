@@ -202,7 +202,7 @@ export async function generateServiceReport(
       : null;
   const parameters = reading ? buildParameters(reading) : [];
 
-  const history = await getVisitHistory(visit.poolId, TREND_VISIT_COUNT);
+  const history = await getVisitHistory(visit.poolId, companyId, TREND_VISIT_COUNT);
   // getVisitHistory is newest-first; the sparkline reads left→right oldest-first.
   const scoreHistory: ReportScorePoint[] = history
     .map((v) => {

@@ -91,7 +91,11 @@ describe("getVisitsByPool", () => {
     expect(prismaMock.serviceVisit.findMany).toHaveBeenCalledWith({
       where: { serviceVisitPools: { some: { poolId, companyId } } },
       orderBy: { createdAt: "desc" },
-      include: { waterReadings: true, chemicalsAdded: true, tech: true },
+      include: {
+        waterReadings: { where: { serviceVisitPool: { poolId } } },
+        chemicalsAdded: { where: { serviceVisitPool: { poolId } } },
+        tech: true,
+      },
     });
   });
 

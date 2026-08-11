@@ -45,8 +45,9 @@ export async function getPoolsByVisit(
 
 /**
  * Returns the visits that served a given pool, scoped to `companyId` via the
- * join rows (the multi-body-safe pool-scoped history query the getVisitHistory
- * rework card swaps in). Newest first.
+ * join rows, and body-scoped on the returned readings/chemicals: a multi-pool
+ * visit contributes only THIS pool's readings/chemicals to its history row.
+ * Newest first.
  *
  * @param limit - Maximum number of visits to return; all when omitted.
  */
@@ -59,7 +60,11 @@ export async function getVisitsByPool(
     where: { serviceVisitPools: { some: { poolId, companyId } } },
     orderBy: { createdAt: "desc" },
     ...(limit !== undefined ? { take: limit } : {}),
-    include: { waterReadings: true, chemicalsAdded: true, tech: true },
+    include: {
+      waterReadings: { where: { serviceVisitPool: { poolId } } },
+      chemicalsAdded: { where: { serviceVisitPool: { poolId } } },
+      tech: true,
+    },
   });
 }
 

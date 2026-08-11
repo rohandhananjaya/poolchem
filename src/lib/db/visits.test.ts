@@ -1167,19 +1167,41 @@ describe("saveDraftVisit", () => {
 });
 
 describe("getVisitHistory", () => {
-  it("returns completed visits newest first with a limit", async () => {
+  it("returns completed visits newest first with a limit, tenant- and body-scoped", async () => {
     const mockHistory = [{ id: visitId, waterReadings: [], chemicalsAdded: [] }];
     prismaMock.serviceVisit.findMany.mockResolvedValue(mockHistory);
 
-    const result = await getVisitHistory(poolId, 5);
+    const result = await getVisitHistory(poolId, companyId, 5);
 
     expect(prismaMock.serviceVisit.findMany).toHaveBeenCalledWith({
-      where: { poolId, status: "COMPLETED" },
+      where: {
+        serviceVisitPools: { some: { poolId, companyId } },
+        status: "COMPLETED",
+      },
       orderBy: { createdAt: "desc" },
       take: 5,
-      include: { waterReadings: true, chemicalsAdded: true, tech: true },
+      include: {
+        waterReadings: { where: { serviceVisitPool: { poolId } } },
+        chemicalsAdded: { where: { serviceVisitPool: { poolId } } },
+        tech: true,
+      },
     });
     expect(result).toEqual(mockHistory);
+  });
+
+  it("scopes through the join rows so a cross-tenant poolId cannot read history", async () => {
+    prismaMock.serviceVisit.findMany.mockResolvedValue([]);
+
+    await getVisitHistory(poolId, "other-company", 5);
+
+    expect(prismaMock.serviceVisit.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          serviceVisitPools: { some: { poolId, companyId: "other-company" } },
+          status: "COMPLETED",
+        },
+      }),
+    );
   });
 });
 
@@ -1197,14 +1219,14 @@ describe("getLastVisitReadings", () => {
       { waterReadings: [mockReadings] },
     ]);
 
-    const result = await getLastVisitReadings(poolId);
+    const result = await getLastVisitReadings(poolId, companyId);
 
     expect(result).toEqual(mockReadings);
   });
 
   it("returns null when no completed visits exist", async () => {
     prismaMock.serviceVisit.findMany.mockResolvedValue([]);
-    const result = await getLastVisitReadings(poolId);
+    const result = await getLastVisitReadings(poolId, companyId);
     expect(result).toBeNull();
   });
 });
