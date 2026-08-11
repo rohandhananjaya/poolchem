@@ -102,7 +102,7 @@ describe("offline types", () => {
         ...base("d"),
         action: "createVisit",
         payload: {
-          poolId: "p",
+          poolIds: ["p"],
           date: "2026-08-09",
           techId: "t",
           clientMutationId: "d",

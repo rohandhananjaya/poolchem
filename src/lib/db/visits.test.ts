@@ -116,57 +116,134 @@ describe("getVisitById", () => {
 });
 
 describe("createVisit", () => {
-  it("creates a DRAFT visit when pool and tech are found", async () => {
-    prismaMock.pool.findFirst.mockResolvedValue(mockPool);
-    prismaMock.user.findFirst.mockResolvedValue(mockTech);
-    prismaMock.serviceVisit.create.mockResolvedValue({
+  const txMock = {
+    serviceVisit: {
+      create: vi.fn().mockResolvedValue({
+        id: visitId,
+        status: "DRAFT",
+        serviceVisitPools: [],
+      }),
+    },
+    serviceVisitPool: {
+      createMany: vi.fn().mockResolvedValue({ count: 1 }),
+    },
+  };
+
+  beforeEach(() => {
+    txMock.serviceVisit.create.mockResolvedValue({
       id: visitId,
       status: "DRAFT",
+      serviceVisitPools: [],
     });
+    txMock.serviceVisitPool.createMany.mockResolvedValue({ count: 1 });
+  });
 
-    const result = await createVisit(poolId, techId, companyId);
+  it("creates a visit and a join row per pool transactionally", async () => {
+    prismaMock.pool.findMany.mockResolvedValue([
+      { id: "pool-1" },
+      { id: "pool-2" },
+    ]);
+    prismaMock.user.findFirst.mockResolvedValue(mockTech);
+    prismaMock.$transaction.mockImplementation(
+      (fn: (tx: typeof txMock) => unknown) => fn(txMock),
+    );
 
-    expect(prismaMock.serviceVisit.create).toHaveBeenCalledWith({
+    const result = await createVisit(["pool-1", "pool-2"], techId, companyId);
+
+    expect(txMock.serviceVisit.create).toHaveBeenCalledWith({
       data: {
         status: "DRAFT",
         scheduledAt: null,
-        poolId: poolId,
-        techId: techId,
+        poolId: "pool-1",
+        techId,
       },
+      include: { serviceVisitPools: true },
     });
-    expect(result.status).toBe("DRAFT");
+    expect(txMock.serviceVisitPool.createMany).toHaveBeenCalledWith({
+      data: [
+        { serviceVisitId: visitId, poolId: "pool-1", companyId },
+        { serviceVisitId: visitId, poolId: "pool-2", companyId },
+      ],
+    });
+    expect(result.id).toBe(visitId);
   });
 
-  it("throws when pool is not found in the company", async () => {
-    prismaMock.pool.findFirst.mockResolvedValue(null);
-
-    await expect(createVisit(poolId, techId, companyId)).rejects.toThrow(
-      /not found/i,
+  it("throws on an empty poolIds array before any write", async () => {
+    await expect(createVisit([], techId, companyId)).rejects.toThrow(
+      /at least one pool/i,
     );
+    expect(prismaMock.pool.findMany).not.toHaveBeenCalled();
+    expect(prismaMock.$transaction).not.toHaveBeenCalled();
+  });
+
+  it("throws when any pool is missing or owned by another company", async () => {
+    prismaMock.pool.findMany.mockResolvedValue([{ id: "pool-1" }]);
+
+    await expect(
+      createVisit(["pool-1", "pool-2"], techId, companyId),
+    ).rejects.toThrow(/pool-2.*not found for company/i);
+    expect(prismaMock.$transaction).not.toHaveBeenCalled();
+  });
+
+  it("dedupes duplicate poolIds into a single join row", async () => {
+    prismaMock.pool.findMany.mockResolvedValue([{ id: "pool-1" }]);
+    prismaMock.user.findFirst.mockResolvedValue(mockTech);
+    prismaMock.$transaction.mockImplementation(
+      (fn: (tx: typeof txMock) => unknown) => fn(txMock),
+    );
+
+    await createVisit(["pool-1", "pool-1"], techId, companyId);
+
+    expect(txMock.serviceVisitPool.createMany).toHaveBeenCalledWith({
+      data: [{ serviceVisitId: visitId, poolId: "pool-1", companyId }],
+    });
+    expect(txMock.serviceVisit.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({ poolId: "pool-1" }),
+      include: { serviceVisitPools: true },
+    });
   });
 
   it("throws when tech is not found in the company", async () => {
-    prismaMock.pool.findFirst.mockResolvedValue(mockPool);
+    prismaMock.pool.findMany.mockResolvedValue([{ id: "pool-1" }]);
     prismaMock.user.findFirst.mockResolvedValue(null);
 
-    await expect(createVisit(poolId, techId, companyId)).rejects.toThrow(
-      /not found/i,
-    );
+    await expect(
+      createVisit(["pool-1"], techId, companyId),
+    ).rejects.toThrow(/tech.*not found/i);
+    expect(prismaMock.$transaction).not.toHaveBeenCalled();
   });
 
   it("passes scheduledAt when provided", async () => {
     const scheduledAt = new Date("2026-07-15T12:00:00Z");
-    prismaMock.pool.findFirst.mockResolvedValue(mockPool);
+    prismaMock.pool.findMany.mockResolvedValue([{ id: "pool-1" }]);
     prismaMock.user.findFirst.mockResolvedValue(mockTech);
-    prismaMock.serviceVisit.create.mockResolvedValue({
-      id: visitId,
-      status: "DRAFT",
-    });
+    prismaMock.$transaction.mockImplementation(
+      (fn: (tx: typeof txMock) => unknown) => fn(txMock),
+    );
 
-    await createVisit(poolId, techId, companyId, scheduledAt);
+    await createVisit(["pool-1"], techId, companyId, scheduledAt);
 
-    expect(prismaMock.serviceVisit.create).toHaveBeenCalledWith({
+    expect(txMock.serviceVisit.create).toHaveBeenCalledWith({
       data: expect.objectContaining({ scheduledAt }),
+      include: { serviceVisitPools: true },
+    });
+  });
+
+  it("pins the legacy poolId to the single pool for single-pool visits", async () => {
+    prismaMock.pool.findMany.mockResolvedValue([{ id: "pool-1" }]);
+    prismaMock.user.findFirst.mockResolvedValue(null);
+    prismaMock.$transaction.mockImplementation(
+      (fn: (tx: typeof txMock) => unknown) => fn(txMock),
+    );
+
+    await createVisit(["pool-1"], null, companyId);
+
+    expect(txMock.serviceVisit.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({ poolId: "pool-1", techId: null }),
+      include: { serviceVisitPools: true },
+    });
+    expect(txMock.serviceVisitPool.createMany).toHaveBeenCalledWith({
+      data: [{ serviceVisitId: visitId, poolId: "pool-1", companyId }],
     });
   });
 });

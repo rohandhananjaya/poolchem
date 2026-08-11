@@ -52,7 +52,7 @@ Get the tenant with `getCompanyId()` / `requireAuth()` from [../auth.ts](../auth
 - `deleteProperty(propertyId, companyId) → void` — pools detach (SetNull), no cascade
 - `setPoolProperty(poolId, propertyId | null, companyId) → Pool` — attach/detach a pool; the tenant-FK guard (property must resolve to the same company as the pool, else throws)
 
-**service-visit-pools.ts** — the `ServiceVisitPool` join rows linking a visit to each pool (body of water) it serves. `companyId` is stored directly on the join so tenancy filters stay indexed; a join row's `companyId` MUST equal its pool's `companyId` (write-time invariant, see `assertPoolsBelongToCompany`). Read + guard only — join-row creation lands in the createVisit rework card.
+**service-visit-pools.ts** — the `ServiceVisitPool` join rows linking a visit to each pool (body of water) it serves. `companyId` is stored directly on the join so tenancy filters stay indexed; a join row's `companyId` MUST equal its pool's `companyId` (write-time invariant enforced by `assertPoolsBelongToCompany`, called from the createVisit rework in `visits.ts`).
 - `getServiceVisitPoolsByVisit(visitId, companyId) → ServiceVisitPoolWithPool[]` — join rows with `pool` attached; `[]` on a cross-tenant visit id
 - `getPoolsByVisit(visitId, companyId) → Pool[]` — convenience wrapper (the "bodies" of a visit)
 - `getVisitsByPool(poolId, companyId, limit?) → ServiceVisit[]` — multi-body-safe pool-scoped history (join-row scoped), newest first; swap-in target for the getVisitHistory rework
@@ -65,7 +65,7 @@ Get the tenant with `getCompanyId()` / `requireAuth()` from [../auth.ts](../auth
 **visits.ts** — a `ServiceVisit` has no `companyId`; it is scoped via `pool: { companyId }`. `poolId` (on the visit) and `visitId` (on readings/chemicals) keying stays in place until the Multi-Body rework cards land — `ServiceVisitPool` join rows are additive alongside them (`service-visit-pools.ts`). **Prerequisite for the rework:** the legacy-`poolId` backfill script (`npm run db:backfill:service-visit-pools`) must have run first so a join row exists for every visit.
 - `getTodayVisits(companyId)`
 - `getVisitById(visitId, companyId)`
-- `createVisit(poolId, techId\|null, companyId, scheduledAt?)`
+- `createVisit(poolIds: string[], techId\|null, companyId, scheduledAt?)` — creates a DRAFT visit for one or more pools transactionally: validates every pool against `companyId` via `assertPoolsBelongToCompany` (dedupes input, throws on empty/foreign/missing pools), then creates the visit + one `ServiceVisitPool` join row per pool. **Legacy `ServiceVisit.poolId` = first pool in the array** until the poolId-removal card; a multi-pool visit surfaces under its first pool only in legacy views
 - `startVisit(visitId, companyId, techId?) → ServiceVisit | null` — marks a DRAFT visit as `IN_PROGRESS`; the starting tech becomes assigned
 - `assertVisitAccess(visitId, companyId, userId) → ServiceVisitStatus` — throws unless the acting user may modify the visit (IN_PROGRESS visits require being the assigned tech)
 - `updateVisitStatus(visitId, companyId, status) → ServiceVisit | null` — changes visit status

@@ -139,12 +139,13 @@ export interface UpdateVisitStatusPayload {
 
 /**
  * Payload for `createVisit` (schedule a new visit) — mirrors the logical input
- * of `scheduleVisitAction` (poolId + date + resolved techId), stored as a
+ * of `scheduleVisitAction` (poolIds + date + resolved techId), stored as a
  * JSON-friendly object instead of `FormData`. `clientMutationId` rides along so
  * a replayed schedule dedupes against the ServiceVisit's unique key.
  */
 export interface CreateVisitPayload {
-  poolId: string;
+  /** The pools the visit serves; the server pins the legacy FK to the first. */
+  poolIds: string[];
   /** YYYY-MM-DD string; the server interprets it at local noon. */
   date: string;
   /** Tech to assign, or `null`/absent for unassigned (TECH users self-assign server-side). */

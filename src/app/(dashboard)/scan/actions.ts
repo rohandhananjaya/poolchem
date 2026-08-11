@@ -82,6 +82,6 @@ export async function startVisitFromScan(
     return { ok: false, reason: "not-found" };
   }
 
-  const visit = await createVisit(pool.id, user.id, user.companyId);
+  const visit = await createVisit([pool.id], user.id, user.companyId);
   return { ok: true, visitId: visit.id };
 }

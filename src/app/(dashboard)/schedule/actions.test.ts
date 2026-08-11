@@ -56,7 +56,7 @@ describe("scheduleVisitAction", () => {
 
     expect(result).toEqual({ ok: true });
     expect(createVisit).toHaveBeenCalledWith(
-      "pool-1",
+      ["pool-1"],
       "user-1",
       "company-1",
       expect.any(Date),

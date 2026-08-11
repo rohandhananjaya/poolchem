@@ -59,7 +59,7 @@ export async function scheduleVisitAction(
         : null;
 
   try {
-    const visit = await createVisit(poolId, techId, user.companyId, scheduledAt);
+    const visit = await createVisit([poolId], techId, user.companyId, scheduledAt);
     if (visit.techId) {
       await notifyVisitAssigned({
         companyId: user.companyId,

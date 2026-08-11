@@ -105,7 +105,7 @@ describe("startVisitFromScan", () => {
     expect(result).toEqual({ ok: true, visitId: "visit-1" });
     expect(getPoolByQR).toHaveBeenCalledWith("POOL-abc");
     expect(createVisit).toHaveBeenCalledWith(
-      "pool-1",
+      ["pool-1"],
       "user-1",
       "company-1",
     );

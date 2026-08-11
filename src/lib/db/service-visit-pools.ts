@@ -2,10 +2,11 @@
  * Data access for {@link ServiceVisitPool} — the join rows linking a
  * ServiceVisit to each Pool (body of water) it serves.
  *
- * This card is read + guard only: join-row creation lands in the createVisit
- * rework card. `companyId` is stored directly on the join so tenancy filters
- * stay indexed; the invariant that a join row's `companyId` MUST equal its
- * pool's `companyId` is enforced at write time by `assertPoolsBelongToCompany`.
+ * Join-row creation happens in the createVisit rework (`src/lib/db/visits.ts`),
+ * which calls `assertPoolsBelongToCompany` before writing. `companyId` is
+ * stored directly on the join so tenancy filters stay indexed; the invariant
+ * that a join row's `companyId` MUST equal its pool's `companyId` is enforced
+ * at write time by `assertPoolsBelongToCompany`.
  */
 import "server-only";
 

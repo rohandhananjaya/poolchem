@@ -17,6 +17,7 @@ import {
 } from "@/lib/pool-chemistry";
 import { prisma } from "@/lib/prisma";
 import { VisitVersionConflictError } from "@/lib/errors";
+import { assertPoolsBelongToCompany } from "@/lib/db/service-visit-pools";
 import {
   Prisma,
   ServiceVisit,
@@ -149,25 +150,31 @@ export async function getVisitById(visitId: string, companyId: string) {
 }
 
 /**
- * Starts a new DRAFT visit for a pool. When `techId` is provided, verifies the
- * tech belongs to `companyId` before creating. Passing `null` creates an
- * unassigned visit (any tech can pick it up).
+ * Starts a new DRAFT visit for one or more pools. When `techId` is provided,
+ * verifies the tech belongs to `companyId` before creating. Passing `null`
+ * creates an unassigned visit (any tech can pick it up).
  *
+ * Every pool is validated against `companyId` (via
+ * {@link assertPoolsBelongToCompany}), then a `ServiceVisitPool` join row is
+ * created for each pool inside the same transaction as the visit. The legacy
+ * `ServiceVisit.poolId` FK is pinned to the first pool in the array until the
+ * poolId-removal card lands.
+ *
+ * @param poolIds - The pools (bodies of water) the visit serves. Duplicates are
+ *   silently deduped. Must be non-empty.
  * @param scheduledAt - When the visit is planned for. Omit for ad-hoc visits
  *   (e.g. a tech scanning a pool in the field), which have no scheduled time.
- * @throws {Error} If the pool is not found, or if a `techId` is given but does
- *   not belong to the company.
+ * @throws {Error} If `poolIds` is empty, any pool is missing or owned by
+ *   another company, or a `techId` is given but does not belong to the company.
  */
 export async function createVisit(
-  poolId: string,
+  poolIds: string[],
   techId: string | null,
   companyId: string,
   scheduledAt?: Date,
 ) {
-  const pool = await prisma.pool.findFirst({ where: { id: poolId, companyId } });
-  if (!pool) {
-    throw new Error(`Pool "${poolId}" not found for company "${companyId}".`);
-  }
+  const deduped = [...new Set(poolIds)];
+  await assertPoolsBelongToCompany(deduped, companyId);
 
   if (techId) {
     const tech = await prisma.user.findFirst({ where: { id: techId, companyId } });
@@ -176,13 +183,26 @@ export async function createVisit(
     }
   }
 
-  return prisma.serviceVisit.create({
-    data: {
-      status: ServiceVisitStatus.DRAFT,
-      scheduledAt: scheduledAt ?? null,
-      poolId: poolId,
-      techId: techId,
-    },
+  return prisma.$transaction(async (tx) => {
+    const visit = await tx.serviceVisit.create({
+      data: {
+        status: ServiceVisitStatus.DRAFT,
+        scheduledAt: scheduledAt ?? null,
+        poolId: deduped[0],
+        techId: techId,
+      },
+      include: { serviceVisitPools: true },
+    });
+
+    await tx.serviceVisitPool.createMany({
+      data: deduped.map((poolId) => ({
+        serviceVisitId: visit.id,
+        poolId,
+        companyId,
+      })),
+    });
+
+    return visit;
   });
 }
 
