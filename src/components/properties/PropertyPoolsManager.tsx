@@ -17,6 +17,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog"
 import { setPoolPropertyAction } from "@/app/(dashboard)/properties/actions"
+import { AddPoolDialog } from "@/components/pools/AddPoolDialog"
 
 interface PropertyPoolsManagerProps {
   propertyId: string
@@ -24,12 +25,15 @@ interface PropertyPoolsManagerProps {
   pools: { id: string; name: string }[]
   /** The company's ungrouped pools (eligible to be added). */
   ungroupedPools: { id: string; name: string }[]
+  /** The company's properties, for the Location select on a new pool. */
+  properties: { id: string; name: string }[]
 }
 
 export function PropertyPoolsManager({
   propertyId,
   pools,
   ungroupedPools,
+  properties,
 }: PropertyPoolsManagerProps) {
   const [open, setOpen] = React.useState(false)
   const [search, setSearch] = React.useState("")
@@ -87,7 +91,18 @@ export function PropertyPoolsManager({
         <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
           Pools ({pools.length})
         </p>
-        <Dialog open={open} onOpenChange={setOpen}>
+        <div className="flex items-center gap-2">
+          <AddPoolDialog
+            properties={properties}
+            defaultPropertyId={propertyId}
+            trigger={
+              <Button type="button" variant="outline" size="sm">
+                <Plus className="size-4" />
+                New pool
+              </Button>
+            }
+          />
+          <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger asChild>
             <Button
               type="button"
@@ -168,6 +183,7 @@ export function PropertyPoolsManager({
             </DialogFooter>
           </DialogContent>
         </Dialog>
+        </div>
       </div>
 
       {pools.length === 0 ? (

@@ -20,6 +20,7 @@ interface PoolActionsProps {
     homeownerEmail: string | null
     homeownerPhone: string | null
     notes: string | null
+    propertyId: string | null
     isActive: boolean
   }
 }

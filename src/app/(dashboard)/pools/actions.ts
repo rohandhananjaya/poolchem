@@ -68,10 +68,12 @@ export async function createPoolAction(
         homeownerEmail: formOptionalText(formData, "homeownerEmail"),
         homeownerPhone: formOptionalText(formData, "homeownerPhone"),
         notes: formOptionalText(formData, "notes"),
+        propertyId: formOptionalText(formData, "propertyId"),
       },
       user.companyId,
     );
     revalidatePath("/pools");
+    revalidatePath("/properties");
     return { ok: true };
   } catch {
     return { ok: false, error: "Could not create pool. Please try again." };
@@ -103,7 +105,7 @@ export async function updatePoolAction(
   const isActive = formData.get("isActive") === "on";
 
   try {
-    await updatePool(poolId, {
+    const data: Parameters<typeof updatePool>[1] = {
       name,
       volume,
       address: formOptionalText(formData, "address"),
@@ -111,8 +113,16 @@ export async function updatePoolAction(
       homeownerPhone: formOptionalText(formData, "homeownerPhone"),
       notes: formOptionalText(formData, "notes"),
       isActive,
-    }, user.companyId);
+    };
+    // Only include propertyId when the form rendered the Location select.
+    // Omitting it leaves the grouping unchanged — a bare `null` would detach.
+    if (formData.has("propertyId")) {
+      const propertyId = formText(formData, "propertyId");
+      data.propertyId = propertyId === "" ? null : propertyId;
+    }
+    await updatePool(poolId, data, user.companyId);
     revalidatePath("/pools");
+    revalidatePath("/properties");
     return { ok: true };
   } catch {
     return { ok: false, error: "Could not update pool. Please try again." };

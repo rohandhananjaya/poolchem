@@ -34,6 +34,7 @@ Get the tenant with `getCompanyId()` / `requireAuth()` from [../auth.ts](../auth
 - `getPoolCount(companyId) → number`
 - `getPoolsPaginated(companyId, page, filters?) → { pools: PoolWithLastVisit[]; total: number }`
 - `getPoolsByCompany(companyId) → PoolWithLastVisit[]`
+- `PoolWithLastVisit = Pool & { lastVisitAt: Date | null; property: { id, name } | null }` — both list reads `include` the pool's property (id + name) so rows can show a property badge and prefill the edit dialog's Location select
 - `getAllPoolsForExport(companyId) → Pool[]` — active + inactive, for CSV export
 - `getPoolById(poolId, companyId) → Pool | null`
 - `createPool(data: CreatePoolData, companyId) → Pool` — `CreatePoolData` may include `propertyId?: string | null`; throws unless the property belongs to the same company (tenant-FK guard)

@@ -314,6 +314,8 @@ export interface CachedPool {
   homeownerEmail: string | null;
   homeownerPhone: string | null;
   notes: string | null;
+  propertyId: string | null;
+  propertyName: string | null;
   isActive: boolean;
   lastVisitAt: string | null;
 }

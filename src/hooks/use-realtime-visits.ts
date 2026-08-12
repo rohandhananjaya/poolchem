@@ -110,7 +110,24 @@ export function useRealtimeVisits(techId: string) {
     }
 
     let channel: ReturnType<typeof supabase.channel> | null = null
+    let retryTimer: ReturnType<typeof setTimeout> | null = null
+    let attempt = 0
     let cancelled = false
+
+    const RETRY_MAX_DELAY_MS = 30_000
+
+    // supabase-js fires TIMED_OUT when the channel join gets no ack within the
+    // timeout and does NOT auto-reconnect afterwards — without this the hook is
+    // dead until the component remounts. Back off and re-subscribe instead.
+    function scheduleRetry() {
+      if (retryTimer || cancelled) return
+      const delay = Math.min(1_000 * 2 ** attempt, RETRY_MAX_DELAY_MS)
+      attempt += 1
+      retryTimer = setTimeout(() => {
+        retryTimer = null
+        subscribe()
+      }, delay)
+    }
 
     // RLS-gated postgres_changes checks are authorized using the token handed
     // to Realtime via setAuth() — being signed in isn't enough on its own, and
@@ -123,6 +140,8 @@ export function useRealtimeVisits(techId: string) {
       }
       if (cancelled) return
 
+      if (channel) supabase.removeChannel(channel)
+
       channel = supabase
         .channel("visits")
         .on(
@@ -134,11 +153,26 @@ export function useRealtimeVisits(techId: string) {
           },
           handlePayload,
         )
-        .subscribe((status, err) => {
-          if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
-            console.error("useRealtimeVisits: subscription failed", status, err)
-          }
-        })
+        .subscribe(
+          (status, err) => {
+            if (cancelled) return
+            if (status === "SUBSCRIBED") {
+              attempt = 0
+              return
+            }
+            if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
+              console.error("useRealtimeVisits: subscription failed", status, err)
+              if (channel) {
+                supabase.removeChannel(channel)
+                channel = null
+              }
+              scheduleRetry()
+            }
+          },
+          // Bump above the 10s default: slow networks can ack the join after
+          // the default deadline, which would strand the channel as TIMED_OUT.
+          20_000,
+        )
     }
 
     subscribe()
@@ -152,6 +186,7 @@ export function useRealtimeVisits(techId: string) {
 
     return () => {
       cancelled = true
+      if (retryTimer) clearTimeout(retryTimer)
       authListener.subscription.unsubscribe()
       if (channel) supabase.removeChannel(channel)
     }

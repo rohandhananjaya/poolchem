@@ -22,8 +22,16 @@ import {
   type FormState,
 } from "@/app/(dashboard)/pools/actions"
 import { DeletePoolDialog } from "./DeletePoolDialog"
+import { cn } from "@/lib/utils"
 
 const INITIAL_STATE: FormState = { ok: false }
+
+const selectClasses = cn(
+  "flex h-9 w-full min-w-0 rounded-lg border border-input bg-background px-3 py-1 text-sm shadow-xs outline-none",
+  "focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50",
+  "disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50",
+  "dark:bg-input/30",
+)
 
 interface EditPoolDialogProps {
   pool: {
@@ -34,8 +42,11 @@ interface EditPoolDialogProps {
     homeownerEmail: string | null
     homeownerPhone: string | null
     notes: string | null
+    propertyId: string | null
     isActive: boolean
   }
+  /** The company's properties, rendered as a Location select when present. */
+  properties?: { id: string; name: string }[]
   /** When false, the dialog is a read-only detail view (no edit/delete). */
   canManage?: boolean
   open?: boolean
@@ -44,6 +55,7 @@ interface EditPoolDialogProps {
 
 export function EditPoolDialog({
   pool,
+  properties,
   canManage = true,
   open,
   onOpenChange,
@@ -117,6 +129,25 @@ export function EditPoolDialog({
                 disabled={!canManage}
               />
             </div>
+            {properties && properties.length > 0 && (
+              <div className="grid gap-1.5">
+                <Label htmlFor="edit-propertyId">Location</Label>
+                <select
+                  id="edit-propertyId"
+                  name="propertyId"
+                  defaultValue={pool.propertyId ?? ""}
+                  disabled={!canManage}
+                  className={selectClasses}
+                >
+                  <option value="">No location</option>
+                  {properties.map((property) => (
+                    <option key={property.id} value={property.id}>
+                      {property.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
             <div className="grid gap-1.5">
               <Label htmlFor="edit-volume">Volume (gallons)</Label>
               <Input

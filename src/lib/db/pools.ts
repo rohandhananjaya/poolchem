@@ -77,6 +77,7 @@ export async function getPoolsPaginated(
           take: 1,
           select: { createdAt: true },
         },
+        property: { select: { id: true, name: true } },
       },
     }),
     prisma.pool.count({ where }),
@@ -131,7 +132,10 @@ export interface CreatePoolData {
 export type UpdatePoolData = Partial<CreatePoolData> & { isActive?: boolean };
 
 /** A pool augmented with the timestamp of its most recent service visit. */
-export type PoolWithLastVisit = Pool & { lastVisitAt: Date | null };
+export type PoolWithLastVisit = Pool & {
+  lastVisitAt: Date | null;
+  property: { id: string; name: string } | null;
+};
 
 /** Returns true for Prisma's "record not found" error (P2025). */
 function isRecordNotFound(error: unknown): boolean {
@@ -187,6 +191,7 @@ export async function getPoolsByCompany(
         take: 1,
         select: { createdAt: true },
       },
+      property: { select: { id: true, name: true } },
     },
   });
 

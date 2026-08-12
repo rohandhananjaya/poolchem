@@ -17,12 +17,15 @@ interface PropertyRowProps {
   pools: { id: string; name: string }[]
   /** The company's ungrouped pools (eligible to be added). */
   ungroupedPools: { id: string; name: string }[]
+  /** The company's properties, for the Location select on a new pool. */
+  properties: { id: string; name: string }[]
 }
 
 export function PropertyRow({
   property,
   pools,
   ungroupedPools,
+  properties,
 }: PropertyRowProps) {
   return (
     <div className="space-y-2">
@@ -49,6 +52,7 @@ export function PropertyRow({
         propertyId={property.id}
         pools={pools}
         ungroupedPools={ungroupedPools}
+        properties={properties}
       />
     </div>
   )

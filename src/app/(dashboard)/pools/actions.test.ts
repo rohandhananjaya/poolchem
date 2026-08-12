@@ -153,6 +153,44 @@ describe("createPoolAction", () => {
 
     expect(result).toEqual({ ok: false, error: "No company affiliation." });
   });
+
+  it("attaches the pool to a selected property", async () => {
+    vi.mocked(requireOwner).mockResolvedValue(mockUser as never);
+    vi.mocked(getCompanyPackage).mockResolvedValue(mockCompanyPackage as never);
+    vi.mocked(getPoolCount).mockResolvedValue(0);
+
+    const result = await createPoolAction(
+      { ok: false },
+      formData({
+        name: "Pool",
+        volume: "10000",
+        propertyId: "property-1",
+      }),
+    );
+
+    expect(result).toEqual({ ok: true });
+    expect(createPool).toHaveBeenCalledWith(
+      expect.objectContaining({ propertyId: "property-1" }),
+      "company-1",
+    );
+    expect(revalidatePath).toHaveBeenCalledWith("/properties");
+  });
+
+  it("maps an empty location select to null (ungrouped)", async () => {
+    vi.mocked(requireOwner).mockResolvedValue(mockUser as never);
+    vi.mocked(getCompanyPackage).mockResolvedValue(mockCompanyPackage as never);
+    vi.mocked(getPoolCount).mockResolvedValue(0);
+
+    await createPoolAction(
+      { ok: false },
+      formData({ name: "Pool", volume: "10000", propertyId: "" }),
+    );
+
+    expect(createPool).toHaveBeenCalledWith(
+      expect.objectContaining({ propertyId: null }),
+      "company-1",
+    );
+  });
 });
 
 describe("updatePoolAction", () => {
@@ -192,6 +230,49 @@ describe("updatePoolAction", () => {
     );
 
     expect(result).toEqual({ ok: false, error: "Pool ID is required." });
+  });
+
+  it("moves the pool to a selected property", async () => {
+    vi.mocked(requireOwner).mockResolvedValue(mockUser as never);
+
+    const result = await updatePoolAction(
+      { ok: false },
+      formData({
+        poolId: "pool-1",
+        name: "Updated",
+        volume: "20000",
+        propertyId: "property-2",
+      }),
+    );
+
+    expect(result).toEqual({ ok: true });
+    expect(updatePool).toHaveBeenCalledWith(
+      "pool-1",
+      expect.objectContaining({ propertyId: "property-2" }),
+      "company-1",
+    );
+    expect(revalidatePath).toHaveBeenCalledWith("/properties");
+  });
+
+  it("detaches the pool when the location select is emptied", async () => {
+    vi.mocked(requireOwner).mockResolvedValue(mockUser as never);
+
+    await updatePoolAction(
+      { ok: false },
+      formData({
+        poolId: "pool-1",
+        name: "Updated",
+        volume: "20000",
+        propertyId: "",
+      }),
+    );
+
+    expect(updatePool).toHaveBeenCalledWith(
+      "pool-1",
+      expect.objectContaining({ propertyId: null }),
+      "company-1",
+    );
+    expect(revalidatePath).toHaveBeenCalledWith("/properties");
   });
 });
 

@@ -15,6 +15,8 @@ function pool(id: string): CachedPool {
     homeownerEmail: null,
     homeownerPhone: null,
     notes: null,
+    propertyId: null,
+    propertyName: null,
     isActive: true,
     lastVisitAt: null,
   };

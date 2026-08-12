@@ -26,6 +26,11 @@ export default async function PropertiesPage() {
     .filter((pool) => !pool.propertyId)
     .map((pool) => ({ id: pool.id, name: pool.name }))
 
+  const propertyOptions = properties.map((property) => ({
+    id: property.id,
+    name: property.name,
+  }))
+
   return (
     <Shell title="Properties">
       <div className="space-y-6">
@@ -60,6 +65,7 @@ export default async function PropertiesPage() {
                   name: pool.name,
                 }))}
                 ungroupedPools={ungroupedPools}
+                properties={propertyOptions}
               />
             ))}
           </div>

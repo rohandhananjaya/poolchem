@@ -4,6 +4,7 @@ import { Waves } from "lucide-react"
 import { requireActivePackage } from "@/lib/auth"
 import { getPoolsPaginated, POOLS_PAGE_SIZE } from "@/lib/db/pools"
 import type { PoolsFilters as PoolsFilterParams } from "@/lib/db/pools"
+import { getPropertiesByCompany } from "@/lib/db/properties"
 import { getCompanyPackage } from "@/lib/db/packages"
 import { checkFeatureAccess } from "@/lib/package-features"
 import { Shell } from "@/components/ui/shell"
@@ -40,10 +41,16 @@ export default async function PoolsPage({
     status: effectiveStatus,
   }
 
-  const [{ pools, total }, companyPackage] = await Promise.all([
+  const [{ pools, total }, companyPackage, properties] = await Promise.all([
     getPoolsPaginated(user.companyId, currentPage, filters),
     getCompanyPackage(user.companyId),
+    canManage ? getPropertiesByCompany(user.companyId) : Promise.resolve([]),
   ])
+
+  const propertyOptions = properties.map((property) => ({
+    id: property.id,
+    name: property.name,
+  }))
 
   const canImportExport =
     canManage && !!companyPackage && checkFeatureAccess(companyPackage, "csv_import")
@@ -64,7 +71,7 @@ export default async function PoolsPage({
             <div className="flex flex-wrap items-center justify-end gap-2">
               <ExportPoolsButton canImportExport={canImportExport} />
               <ImportPoolsDialog canImportExport={canImportExport} />
-              <AddPoolDialog />
+              <AddPoolDialog properties={propertyOptions} />
             </div>
           )}
 
@@ -84,7 +91,15 @@ export default async function PoolsPage({
             <>
               <div className="space-y-3">
                 {pools.map((pool) => (
-                  <PoolRow key={pool.id} pool={pool} canManage={canManage} />
+                  <PoolRow
+                    key={pool.id}
+                    pool={{
+                      ...pool,
+                      propertyName: pool.property?.name ?? null,
+                    }}
+                    properties={propertyOptions}
+                    canManage={canManage}
+                  />
                 ))}
               </div>
 
@@ -110,6 +125,8 @@ export default async function PoolsPage({
           homeownerEmail: pool.homeownerEmail,
           homeownerPhone: pool.homeownerPhone,
           notes: pool.notes,
+          propertyId: pool.propertyId,
+          propertyName: pool.property?.name ?? null,
           isActive: pool.isActive,
           lastVisitAt: pool.lastVisitAt ? pool.lastVisitAt.toISOString() : null,
         }))}

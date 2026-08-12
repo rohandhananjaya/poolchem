@@ -3,7 +3,7 @@
 import * as React from "react"
 import Link from "next/link"
 import { format } from "date-fns"
-import { LayoutDashboard, MapPin } from "lucide-react"
+import { LayoutDashboard, MapPin, Building2 } from "lucide-react"
 
 import { ActiveBadge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -18,14 +18,22 @@ interface PoolRowProps {
     homeownerEmail: string | null
     homeownerPhone: string | null
     notes: string | null
+    propertyId: string | null
+    propertyName: string | null
     isActive: boolean
     lastVisitAt: Date | string | null
   }
+  /** The company's properties, forwarded to the edit dialog's Location select. */
+  properties?: { id: string; name: string }[]
   /** When false, the detail dialog is read-only (no edit/delete). */
   canManage?: boolean
 }
 
-export function PoolRow({ pool, canManage = false }: PoolRowProps) {
+export function PoolRow({
+  pool,
+  properties,
+  canManage = false,
+}: PoolRowProps) {
   const [open, setOpen] = React.useState(false)
   const isActive = pool.isActive
 
@@ -46,6 +54,12 @@ export function PoolRow({ pool, canManage = false }: PoolRowProps) {
               {pool.name}
             </h3>
             {<ActiveBadge active={isActive} />}
+            {pool.propertyName ? (
+              <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
+                <Building2 className="size-3.5 shrink-0" />
+                {pool.propertyName}
+              </span>
+            ) : null}
           </div>
 
           {pool.address ? (
@@ -74,6 +88,7 @@ export function PoolRow({ pool, canManage = false }: PoolRowProps) {
 
       <EditPoolDialog
         pool={pool}
+        properties={properties}
         canManage={canManage}
         open={open}
         onOpenChange={setOpen}
