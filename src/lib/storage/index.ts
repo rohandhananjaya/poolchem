@@ -1,4 +1,6 @@
 export { uploadCompanyLogo, deleteCompanyLogoObject } from "./logos";
+export { uploadVisitPhoto, deleteVisitPhotoObject } from "./visit-photos";
+export { extensionForPhotoMimeType } from "./photo-format";
 export {
   validateLogoFile,
   extensionForMimeType,
