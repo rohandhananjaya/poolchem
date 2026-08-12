@@ -23,6 +23,14 @@ import {
 } from "@/lib/pool-chemistry"
 import { Button } from "@/components/ui/button"
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
+import {
   Tabs,
   TabsList,
   TabsTrigger,
@@ -772,6 +780,7 @@ export function VisitForm({
   )
 
   const [saving, setSaving] = useState<"draft" | "complete" | null>(null)
+  const [completeDialogOpen, setCompleteDialogOpen] = useState(false)
 
   const { online } = useOnlineStatus()
 
@@ -1049,7 +1058,7 @@ export function VisitForm({
 
       {/* Action Buttons */}
       {!completed && !isOthersVisit && (
-        <div className="flex flex-col items-end gap-2">
+        <div className="flex flex-col items-start gap-2">
           <SyncStatusBadge status={syncStatus} counts={syncCounts} />
           {syncCounts.dead > 0 && (
             <div className="flex w-full items-center justify-between gap-3 rounded-lg border border-destructive/30 bg-destructive/10 p-3">
@@ -1069,25 +1078,12 @@ export function VisitForm({
               </Button>
             </div>
           )}
-          <div className="flex gap-3">
-            <Button
-              type="button"
-              variant="outline"
-              size="lg"
-              onClick={handleSaveDraft}
-              disabled={isSubmitting || saving !== null || hasValidationErrors}
-            >
-              {saving === "draft" ? (
-                <Loader2 className="size-4 animate-spin" />
-              ) : null}
-              Save Draft
-            </Button>
-
+          <div className="flex w-full justify-between">
             <Button
               type="button"
               size="lg"
               className="bg-brand-600 text-white hover:bg-brand-900 disabled:opacity-50"
-              onClick={handleComplete}
+              onClick={() => setCompleteDialogOpen(true)}
               disabled={
                 !allFieldsFilled ||
                 isSubmitting ||
@@ -1099,6 +1095,19 @@ export function VisitForm({
                 <Loader2 className="size-4 animate-spin" />
               ) : null}
               Complete &amp; Send Report
+            </Button>
+
+            <Button
+              type="button"
+              variant="outline"
+              size="lg"
+              onClick={handleSaveDraft}
+              disabled={isSubmitting || saving !== null || hasValidationErrors}
+            >
+              {saving === "draft" ? (
+                <Loader2 className="size-4 animate-spin" />
+              ) : null}
+              Save Draft
             </Button>
           </div>
           {hasValidationErrors ? (
@@ -1118,6 +1127,37 @@ export function VisitForm({
           )}
         </div>
       )}
+
+      <Dialog open={completeDialogOpen} onOpenChange={setCompleteDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Complete Visit</DialogTitle>
+            <DialogDescription>
+              This will finalize the visit and send the service report to the
+              customer. Continue?
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setCompleteDialogOpen(false)}
+              disabled={saving === "complete"}
+            >
+              Cancel
+            </Button>
+            <Button
+              className="bg-brand-600 text-white hover:bg-brand-900"
+              onClick={handleComplete}
+              disabled={saving === "complete"}
+            >
+              {saving === "complete" ? (
+                <Loader2 className="size-4 animate-spin" />
+              ) : null}
+              Complete &amp; Send Report
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </form>
   )
 }
