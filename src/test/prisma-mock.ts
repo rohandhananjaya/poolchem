@@ -62,6 +62,17 @@ export const prismaMock = {
     deleteMany: vi.fn(),
     count: vi.fn(),
   },
+  visitPhoto: {
+    findMany: vi.fn(),
+    findFirst: vi.fn(),
+    findUnique: vi.fn(),
+    create: vi.fn(),
+    update: vi.fn(),
+    updateMany: vi.fn(),
+    delete: vi.fn(),
+    deleteMany: vi.fn(),
+    count: vi.fn(),
+  },
   waterReading: {
     findMany: vi.fn(),
     create: vi.fn(),

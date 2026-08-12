@@ -63,6 +63,13 @@ Get the tenant with `getCompanyId()` / `requireAuth()` from [../auth.ts](../auth
 **service-visit-pool-backfill.ts** — pure plan-builder (no I/O, no `server-only`, no Prisma runtime) feeding `scripts/backfill-service-visit-pools.ts`. Unit-testable in vitest.
 - `buildServiceVisitPoolBackfillPlan(input) → ServiceVisitPoolBackfillPlan` — input: `visits` (`{id, poolId, createdAt}`), `poolCompanyIdByPoolId`, `existingJoins` (`{id, serviceVisitId, poolId}`), `unbackfilledReadings`/`unbackfilledChemicals` (`{id, visitId}`). Output: `{ joinsToCreate, readingsToUpdate, chemicalsToUpdate, orphanVisits, skippedVisits, summary }`. `companyId` on every new join is always derived from its pool (invariant can't drift); orphan visits (pool missing) are collected, never guessed. **Partial-run healing:** child batches carry the visit's join id when it already exists, so a crash between join-create and child-update self-heals on re-run.
 
+**visit-photos.ts** — a photo taken during a service visit, keyed per body of water via the `ServiceVisitPool` join row. `companyId` is stored **directly on the row** (matching the ServiceVisitPool/Property precedent) so tenancy filters stay indexed; a photo's `companyId` MUST equal its body's `companyId` (write-time invariant enforced by `assertServiceVisitPoolOwnedByCompany`, which runs before every write).
+- `assertServiceVisitPoolOwnedByCompany(serviceVisitPoolId, companyId) → void` — tenant-FK guard; throws `NotFoundError` unless the body resolves to `companyId`. Load-bearing: `serviceVisitPoolId` is the only caller-supplied untrusted input; `companyId` always comes from the session
+- `addVisitPhoto({ serviceVisitPoolId, url, category?, sortOrder? }, companyId) → VisitPhoto` — guard first; **auto-appends `sortOrder`** (max existing + 1) when omitted, so new photos land at the end
+- `listVisitPhotos(serviceVisitPoolId, companyId) → VisitPhoto[]` — scoped, `sortOrder` then `createdAt` ascending; `[]` on a cross-tenant body
+- `deleteVisitPhoto(visitPhotoId, companyId) → void` — scoped `deleteMany`; count 0 → `NotFoundError`
+- `reorderVisitPhotos(serviceVisitPoolId, companyId, orderedIds) → void` — guard body; every id must resolve to a photo of the SAME body + company (else `NotFoundError`, no tx); then one `sortOrder: i` update per index in a `$transaction`
+
 **visits.ts** — a `ServiceVisit` has no `companyId`; it is scoped via `pool: { companyId }`. `poolId` (on the visit) and `visitId` (on readings/chemicals) keying stays in place until the Multi-Body rework cards land — `ServiceVisitPool` join rows are additive alongside them (`service-visit-pools.ts`). **Prerequisite for the rework:** the legacy-`poolId` backfill script (`npm run db:backfill:service-visit-pools`) must have run first so a join row exists for every visit.
 - `getTodayVisits(companyId)`
 - `getVisitById(visitId, companyId)`
@@ -157,11 +164,11 @@ Get the tenant with `getCompanyId()` / `requireAuth()` from [../auth.ts](../auth
 - `getPaymentSettings() → PaymentSettings` — `{ stripeEnabled, paypalEnabled, paymentDevMode }`; upserts the row if missing
 - `updatePaymentSettings(data: Partial<PaymentSettings>) → PaymentSettings`
 
-## Tests (201 tests across 13 files)
+## Tests (212 tests across 14 files)
 
 All DB tests mock `@/lib/prisma` and require `server-only` to be stubbed (handled by the Vitest config alias) — EXCEPT `service-visit-pool-backfill.test.ts`, which is pure (no prisma mock). Tests are in the same directory with `.test.ts` suffix:
 - `visits.test.ts` — 54 tests · `company.test.ts` — 12 · `pools.test.ts` — 29 · `packages.test.ts` — 31
-- `users.test.ts` — 14 · `reports.test.ts` — 3 · `schedule.test.ts` — 8 · `dashboard.test.ts` — 2 · `api-keys.test.ts` — 12 · `feedback.test.ts` — 9 · `push-devices.test.ts` — 5 · `properties.test.ts` — 13 · `service-visit-pool-backfill.test.ts` — 9
+- `users.test.ts` — 14 · `reports.test.ts` — 3 · `schedule.test.ts` — 8 · `dashboard.test.ts` — 2 · `api-keys.test.ts` — 12 · `feedback.test.ts` — 9 · `push-devices.test.ts` — 5 · `properties.test.ts` — 13 · `visit-photos.test.ts` — 11 · `service-visit-pool-backfill.test.ts` — 9
 
 No tests yet for `admin-dashboard.ts`, `admin-audit.ts`, `admin-diagnostics.ts`, `payment-settings.ts`, or `invitations.ts` — a real coverage gap, not just a doc omission.
 
