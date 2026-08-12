@@ -48,6 +48,13 @@ enum PushPlatform {
   IOS
 }
 
+enum VisitPhotoCategory {
+  EQUIPMENT
+  ISSUE
+  BEFORE
+  AFTER
+}
+
 /// A tenant. Every other record is scoped to a Company.
 model Company {
   id                   String    @id @default(cuid())
@@ -75,6 +82,7 @@ model Company {
   invitations Invitation[]
   auditLogs AuditLog[]
   companyPackage CompanyPackage?
+  visitPhotos VisitPhoto[]
   invoices Invoice[]
   apiKeys ApiKey[]
   feedback Feedback[]
@@ -230,6 +238,7 @@ model ServiceVisitPool {
 
   waterReadings  WaterReading[]
   chemicalsAdded ChemicalAdded[]
+  photos VisitPhoto[]
 
   @@unique([serviceVisitId, poolId])
   @@index([poolId])
@@ -276,6 +285,27 @@ model ChemicalAdded {
   @@index([visitId])
   @@index([serviceVisitPoolId])
   @@map("chemicals_added")
+}
+
+/// A photo taken during a service visit, keyed per body of water (the
+/// ServiceVisitPool join row — the canonical post-Multi-Body path). `companyId`
+/// is stored directly (matching the ServiceVisitPool/Property precedent) so
+/// tenancy filters stay indexed.
+model VisitPhoto {
+  id             String            @id @default(cuid())
+  serviceVisitPoolId String
+  companyId      String
+  url            String
+  category       VisitPhotoCategory @default(EQUIPMENT)
+  sortOrder      Int               @default(0)
+  createdAt      DateTime          @default(now())
+
+  serviceVisitPool ServiceVisitPool @relation(fields: [serviceVisitPoolId], references: [id], onDelete: Cascade)
+  company          Company          @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@index([serviceVisitPoolId])
+  @@index([companyId])
+  @@map("visit_photos")
 }
 
 model SystemLog {
