@@ -39,6 +39,7 @@ import {
 import { WaterReadingInput } from "@/components/visits/WaterReadingInput"
 import { WaterHealthGauge } from "@/components/visits/WaterHealthGauge"
 import { ChemicalRecommendations } from "@/components/visits/ChemicalRecommendations"
+import { VisitPhotoCapture } from "@/components/visits/VisitPhotoCapture"
 import { AddChemicalDialog } from "@/components/visits/AddChemicalDialog"
 import { VisitNotes } from "@/components/visits/VisitNotes"
 import {
@@ -170,6 +171,8 @@ interface VisitFormProps {
   lastReadings: VisitReadings | null
   /** Per-body previous-readings hint, keyed by join-row id (multi-body only). */
   lastReadingsByJoinId?: Record<string, VisitReadings | null>
+  /** Per-body photos, keyed by join-row id (multi-body only). */
+  photosByJoinId?: Record<string, Array<{ id: string; url: string }>>
   currentUser: { id: string; name: string }
   techId: string | null
   canUseLSI: boolean
@@ -180,6 +183,7 @@ export function VisitForm({
   visit,
   lastReadings,
   lastReadingsByJoinId,
+  photosByJoinId,
   currentUser,
   techId,
   canUseLSI,
@@ -727,6 +731,23 @@ export function VisitForm({
           </div>
         )}
       </div>
+
+      {/* Photos Card — per body of water. Gated off for the pre-backfill
+          legacy fallback body, whose `"legacy"` joinId is not a real
+          ServiceVisitPool row (uploads against it would throw NotFoundError). */}
+      {editor.joinId !== "legacy" && (
+        <div className="rounded-xl border border-border bg-card p-4">
+          <h2 className="mb-3 text-sm font-semibold text-card-foreground">
+            Photos
+          </h2>
+          <VisitPhotoCapture
+            visitId={visit.id}
+            serviceVisitPoolId={editor.joinId}
+            photos={photosByJoinId?.[editor.joinId] ?? []}
+            disabled={completed || isOthersVisit}
+          />
+        </div>
+      )}
     </div>
   )
 

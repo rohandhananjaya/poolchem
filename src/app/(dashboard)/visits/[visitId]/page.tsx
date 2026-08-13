@@ -5,6 +5,7 @@ import { ArrowLeft, FileText, FlaskConical } from "lucide-react"
 
 import { requireActivePackage } from "@/lib/auth"
 import { getVisitById, getLastVisitReadings } from "@/lib/db/visits"
+import { listVisitPhotos } from "@/lib/db/visit-photos"
 import { getCompanyPackage } from "@/lib/db/packages"
 import { getHealthScoringLevel } from "@/lib/package-features"
 import type { OfflineServiceVisitStatus } from "@/lib/offline/types"
@@ -40,6 +41,19 @@ export default async function VisitPage({
             visit.serviceVisitPools.map(async (join) => [
               join.id,
               await getLastVisitReadings(join.pool.id, companyId),
+            ]),
+          ),
+        )
+      : {}
+  // Multi-body visits: fetch each body's own photos (keyed on the join row)
+  // so the per-body Photos card renders that body's tiles.
+  const photosByJoinId =
+    visit.serviceVisitPools.length > 0
+      ? Object.fromEntries(
+          await Promise.all(
+            visit.serviceVisitPools.map(async (join) => [
+              join.id,
+              await listVisitPhotos(join.id, companyId),
             ]),
           ),
         )
@@ -180,6 +194,11 @@ export default async function VisitPage({
         lastReadingsByJoinId={
           Object.keys(lastReadingsByJoinId).length > 0
             ? JSON.parse(JSON.stringify(lastReadingsByJoinId))
+            : undefined
+        }
+        photosByJoinId={
+          Object.keys(photosByJoinId).length > 0
+            ? JSON.parse(JSON.stringify(photosByJoinId))
             : undefined
         }
         currentUser={{ id: user.id, name: user.name }}

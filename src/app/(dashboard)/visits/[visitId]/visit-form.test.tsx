@@ -23,6 +23,13 @@ vi.mock("sonner", () => ({
   toast: { success: vi.fn(), error: vi.fn(), info: vi.fn() },
 }));
 
+// Wiring imports VisitPhotoCapture → real photo-actions (server-only/auth
+// deps) would break every test on import. Mock it like VisitPhotoCapture.test.
+vi.mock("@/app/(dashboard)/visits/[visitId]/photo-actions", () => ({
+  uploadVisitPhotoAction: vi.fn(),
+  deleteVisitPhotoAction: vi.fn(),
+}));
+
 vi.mock("./actions", () => ({
   completeVisitAction: vi.fn(),
 }));
@@ -117,7 +124,7 @@ function labelFor(id: string): string {
   return map[id] ?? id;
 }
 
-function makeMultiVisit() {
+function makeMultiVisit(overrides: Partial<Record<string, unknown>> = {}) {
   return makeVisit({
     serviceVisitPools: [
       {
@@ -139,6 +146,7 @@ function makeMultiVisit() {
         },
       },
     ],
+    ...overrides,
   });
 }
 
@@ -149,6 +157,32 @@ function renderMultiForm() {
       visit={makeMultiVisit() as never}
       lastReadings={null}
       lastReadingsByJoinId={{}}
+      currentUser={{ id: "user-1", name: "Tech" }}
+      techId="user-1"
+      canUseLSI
+    />,
+  );
+}
+
+const JOIN1_PHOTOS = [
+  { id: "photo-a1", url: "https://r2.example/join-1-a.jpg" },
+  { id: "photo-a2", url: "https://r2.example/join-1-b.jpg" },
+];
+const JOIN2_PHOTOS = [
+  { id: "photo-b1", url: "https://r2.example/join-2-a.jpg" },
+];
+
+function renderMultiFormWithPhotos(
+  photosByJoinId: Record<string, Array<{ id: string; url: string }>>,
+  overrides: Partial<Record<string, unknown>> = {},
+) {
+  return render(
+    <VisitForm
+      companyId="company-1"
+      visit={makeMultiVisit(overrides) as never}
+      lastReadings={null}
+      lastReadingsByJoinId={{}}
+      photosByJoinId={photosByJoinId}
       currentUser={{ id: "user-1", name: "Tech" }}
       techId="user-1"
       canUseLSI
@@ -180,6 +214,15 @@ function completeButton() {
   return screen.getByRole("button", { name: /Complete & Send Report/i });
 }
 
+// The page-level Complete button only opens the confirmation dialog; the
+// dialog's own confirm button (same label) actually submits. Once open, the
+// page button is aria-hidden, so a second getByRole resolves to the dialog's
+// confirm.
+function openAndConfirmComplete() {
+  fireEvent.click(completeButton());
+  fireEvent.click(completeButton());
+}
+
 beforeEach(() => {
   vi.clearAllMocks();
   mockDrain.mockReset();
@@ -195,7 +238,7 @@ describe("VisitForm handleComplete conflict branch", () => {
     renderForm();
     await fillAllReadings();
 
-    fireEvent.click(screen.getByRole("button", { name: /Complete & Send Report/i }));
+    openAndConfirmComplete();
 
     await waitFor(() => expect(completeVisitAction).toHaveBeenCalledTimes(1));
     expect(toastError).toHaveBeenCalledWith(CONFLICT_MESSAGE);
@@ -211,7 +254,7 @@ describe("VisitForm handleComplete conflict branch", () => {
     renderForm();
     await fillAllReadings();
 
-    fireEvent.click(screen.getByRole("button", { name: /Complete & Send Report/i }));
+    openAndConfirmComplete();
 
     await waitFor(() => expect(completeVisitAction).toHaveBeenCalledTimes(1));
     expect(toastError).toHaveBeenCalledWith("Failed to save. Please try again.");
@@ -231,7 +274,7 @@ describe("VisitForm handleComplete conflict branch", () => {
     const { rerender } = renderForm();
     await fillAllReadings();
 
-    fireEvent.click(screen.getByRole("button", { name: /Complete & Send Report/i }));
+    openAndConfirmComplete();
     await waitFor(() => expect(completeVisitAction).toHaveBeenCalledTimes(1));
     expect(mockRefresh).toHaveBeenCalled();
     expect(
@@ -269,7 +312,7 @@ describe("VisitForm handleComplete conflict branch", () => {
     renderForm();
     await fillAllReadings();
 
-    fireEvent.click(screen.getByRole("button", { name: /Complete & Send Report/i }));
+    openAndConfirmComplete();
     await waitFor(() => expect(completeVisitAction).toHaveBeenCalledTimes(1));
 
     expect(mockDrain).toHaveBeenCalled();
@@ -323,7 +366,7 @@ describe("VisitForm multi-body tab UI", () => {
     fillActiveTabReadings();
     expect(completeButton()).toBeEnabled();
 
-    fireEvent.click(completeButton());
+    openAndConfirmComplete();
     await waitFor(() => expect(completeVisitAction).toHaveBeenCalledTimes(1));
 
     const [, payload] = vi.mocked(completeVisitAction).mock.calls[0] as unknown as [
@@ -363,5 +406,55 @@ describe("VisitForm multi-body tab UI", () => {
     expect(screen.queryByRole("tab")).toBeNull();
     expect(screen.getAllByLabelText("pH")).toHaveLength(1);
     expect(screen.getByText("Log Readings")).toBeInTheDocument();
+  });
+});
+
+describe("VisitForm Photos card", () => {
+  it("renders no Photos card on a legacy single-body visit (no join rows)", () => {
+    renderForm();
+
+    expect(screen.queryByText("Photos")).toBeNull();
+    expect(screen.queryByAltText("")).toBeNull();
+    expect(screen.queryByLabelText(/add photo/i)).toBeNull();
+  });
+
+  it("renders the active body's photo tiles and switches sets per tab", () => {
+    renderMultiFormWithPhotos({
+      "join-1": JOIN1_PHOTOS,
+      "join-2": JOIN2_PHOTOS,
+    });
+
+    // Active tab (Pool A / join-1) shows its own tiles only — inactive tabs
+    // are unmounted.
+    expect(screen.getAllByAltText("")).toHaveLength(JOIN1_PHOTOS.length);
+    expect(screen.getAllByAltText("")[0].getAttribute("src")).toBe(
+      "https://r2.example/join-1-a.jpg",
+    );
+
+    fireEvent.mouseDown(screen.getByRole("tab", { name: /Pool B/ }));
+    expect(screen.getAllByAltText("")).toHaveLength(JOIN2_PHOTOS.length);
+    expect(screen.getAllByAltText("")[0].getAttribute("src")).toBe(
+      "https://r2.example/join-2-a.jpg",
+    );
+  });
+
+  it("shows the empty hint and Add photo button when a body has no photos", () => {
+    renderMultiFormWithPhotos({});
+
+    expect(
+      screen.getByText("No photos yet — add equipment or issue shots."),
+    ).toBeInTheDocument();
+    expect(screen.getByLabelText(/add photo/i)).toBeInTheDocument();
+  });
+
+  it("renders photo tiles read-only on a completed visit", () => {
+    renderMultiFormWithPhotos(
+      { "join-1": JOIN1_PHOTOS, "join-2": JOIN2_PHOTOS },
+      { status: "COMPLETED" },
+    );
+
+    expect(screen.getAllByAltText("")).toHaveLength(JOIN1_PHOTOS.length);
+    expect(screen.queryByLabelText(/add photo/i)).toBeNull();
+    expect(screen.queryByRole("button", { name: /delete photo/i })).toBeNull();
   });
 });
