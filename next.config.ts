@@ -14,9 +14,10 @@ const nextConfig: NextConfig = {
   },
   experimental: {
     serverActions: {
-      // Company logo uploads go through a Server Action (2MB cap) — raise the
-      // default 1MB body limit to cover the file plus multipart overhead.
-      bodySizeLimit: "3mb",
+      // Company logo uploads (2MB cap) and visit photos (camera JPEGs reach
+      // 4–8MB) go through Server Actions — raise the default 1MB body limit to
+      // cover the file plus multipart overhead.
+      bodySizeLimit: "8mb",
     },
   },
 };

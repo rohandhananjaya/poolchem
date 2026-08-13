@@ -92,22 +92,25 @@ export async function listVisitPhotos(
 }
 
 /**
- * Deletes a photo, scoped to `companyId`.
+ * Deletes a photo, scoped to `companyId`, and returns the deleted row.
  *
- * @throws {NotFoundError} When the photo is missing or owned by another company.
+ * Returns `null` when the photo is missing or owned by another company. Callers
+ * use the returned row's AUTHORITATIVE `url` to clean up the backing R2 object
+ * — never trust a client-supplied url, since `deleteVisitPhotoObject` accepts
+ * any public URL. Row-first ordering means a foreign `visitPhotoId` resolves to
+ * `null` before any object is touched.
  */
 export async function deleteVisitPhoto(
   visitPhotoId: string,
   companyId: string,
-): Promise<void> {
-  const { count } = await prisma.visitPhoto.deleteMany({
+): Promise<VisitPhoto | null> {
+  const existing = await prisma.visitPhoto.findFirst({
     where: { id: visitPhotoId, companyId },
   });
-  if (count === 0) {
-    throw new NotFoundError(
-      `Photo "${visitPhotoId}" not found for this company.`,
-    );
+  if (!existing) {
+    return null;
   }
+  return prisma.visitPhoto.delete({ where: { id: visitPhotoId } });
 }
 
 /**

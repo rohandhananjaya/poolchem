@@ -124,21 +124,36 @@ describe("listVisitPhotos", () => {
 });
 
 describe("deleteVisitPhoto", () => {
-  it("deletes a photo scoped to the company", async () => {
-    prismaMock.visitPhoto.deleteMany.mockResolvedValue({ count: 1 });
+  it("deletes a photo scoped to the company and returns the deleted row", async () => {
+    prismaMock.visitPhoto.findFirst.mockResolvedValue(mockPhoto);
+    prismaMock.visitPhoto.delete.mockResolvedValue(mockPhoto);
 
-    await deleteVisitPhoto(visitPhotoId, companyId);
+    const result = await deleteVisitPhoto(visitPhotoId, companyId);
 
-    expect(prismaMock.visitPhoto.deleteMany).toHaveBeenCalledWith({
+    expect(result).toEqual(mockPhoto);
+    expect(prismaMock.visitPhoto.findFirst).toHaveBeenCalledWith({
       where: { id: visitPhotoId, companyId },
+    });
+    expect(prismaMock.visitPhoto.delete).toHaveBeenCalledWith({
+      where: { id: visitPhotoId },
     });
   });
 
-  it("throws NotFoundError when the photo is missing or foreign", async () => {
-    prismaMock.visitPhoto.deleteMany.mockResolvedValue({ count: 0 });
+  it("returns null without deleting when the photo is missing or foreign", async () => {
+    prismaMock.visitPhoto.findFirst.mockResolvedValue(null);
+
+    const result = await deleteVisitPhoto(visitPhotoId, companyId);
+
+    expect(result).toBeNull();
+    expect(prismaMock.visitPhoto.delete).not.toHaveBeenCalled();
+  });
+
+  it("propagates a delete failure", async () => {
+    prismaMock.visitPhoto.findFirst.mockResolvedValue(mockPhoto);
+    prismaMock.visitPhoto.delete.mockRejectedValue(new Error("DB down"));
 
     await expect(deleteVisitPhoto(visitPhotoId, companyId)).rejects.toThrow(
-      /not found/i,
+      "DB down",
     );
   });
 });
