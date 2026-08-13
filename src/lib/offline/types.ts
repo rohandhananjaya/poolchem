@@ -300,6 +300,47 @@ export interface SyncMeta {
 }
 
 /**
+ * What a queued photo entry does. `"upload"` is the only kind built today;
+ * `"delete"` is reserved (cheap OCP) for a follow-up card so the field type
+ * never needs to widen later.
+ */
+export type PhotoQueueKind = "upload";
+
+/**
+ * A queued photo upload awaiting (or retrying) a server replay. Unlike the
+ * JSON-only mutation queue, this entry carries the raw `Blob` so a photo
+ * captured offline survives in IndexedDB until connectivity returns. Replayed
+ * through `uploadVisitPhotoAction` with `clientMutationId` (also the R2 key
+ * seed) so retries are idempotent end-to-end.
+ */
+export interface QueuedPhoto {
+  /** Dexie auto-increment primary key. */
+  id?: number;
+  companyId: string;
+  /** Idempotency key — unique per tenant; also the R2 object key seed. */
+  clientMutationId: string;
+  visitId: string;
+  /** The body of water (`ServiceVisitPool` join row) this photo belongs to. */
+  serviceVisitPoolId: string;
+  /** Reserved for a future `"delete"` variant. Only `"upload"` is built. */
+  kind: PhotoQueueKind;
+  /** The raw image bytes, stored via IndexedDB structured clone. */
+  blob: Blob;
+  mimeType: string;
+  status: MutationStatus;
+  retryCount: number;
+  /** Last failure message, for diagnostics. */
+  lastError?: string;
+  /**
+   * Epoch-ms before which the entry must not be retried (backoff schedule).
+   * Mirrors `QueuedMutationBase.nextRetryAt`.
+   */
+  nextRetryAt?: number;
+  createdAt: number;
+  updatedAt: number;
+}
+
+/**
  * A cached pool row for the offline pools list — mirrors the fields of
  * `PoolWithLastVisit` (in `src/lib/db/pools.ts`) that the client renders
  * (`PoolRow`). `lastVisitAt` is stored as an ISO string so the snapshot stays

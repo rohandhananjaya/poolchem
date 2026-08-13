@@ -30,6 +30,11 @@
  * v5 adds the `visitCache` table (one last-observed visit per tenant per
  * visit) so the offline fallback can render a cached visit instead of the
  * generic copy.
+ *
+ * v6 adds the `photoQueue` table — a Blob-capable queue for offline photo
+ * uploads (`QueuedPhoto`), drained by the same sweep engine as the mutation
+ * queue. `&[companyId+clientMutationId]` dedupes re-enqueues; the blob is
+ * stored via IndexedDB structured clone (survives reloads).
  */
 import "client-only";
 
@@ -40,6 +45,7 @@ import type {
   OfflineDraftVisit,
   PoolCacheSnapshot,
   QueuedMutation,
+  QueuedPhoto,
   SyncMeta,
 } from "./types";
 
@@ -49,6 +55,7 @@ class PoolbenchOfflineDB extends Dexie {
   syncMeta!: EntityTable<SyncMeta, "companyId">;
   poolCache!: EntityTable<PoolCacheSnapshot, "companyId">;
   visitCache!: EntityTable<CachedVisit, "id">;
+  photoQueue!: EntityTable<QueuedPhoto, "id">;
 
   constructor() {
     super("poolbench-offline");
@@ -82,6 +89,16 @@ class PoolbenchOfflineDB extends Dexie {
       syncMeta: "&companyId, lastSyncedAt",
       poolCache: "&companyId, cachedAt",
       visitCache: "++id, &[companyId+visitId], companyId, cachedAt",
+    });
+    this.version(6).stores({
+      draftVisits: "++id, &[companyId+visitId], companyId, updatedAt",
+      mutationQueue:
+        "++id, &[companyId+clientMutationId], companyId, [companyId+status], [companyId+visitId], createdAt",
+      syncMeta: "&companyId, lastSyncedAt",
+      poolCache: "&companyId, cachedAt",
+      visitCache: "++id, &[companyId+visitId], companyId, cachedAt",
+      photoQueue:
+        "++id, &[companyId+clientMutationId], companyId, [companyId+status], [companyId+visitId], [companyId+serviceVisitPoolId], createdAt",
     });
   }
 }

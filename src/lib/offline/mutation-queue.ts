@@ -351,9 +351,9 @@ export async function getVisitStats(
 }
 
 /**
- * Removes all drafts, queued mutations, and the pools + visits read caches for a
- * tenant. Called on sign-out or tenant switch so one company's data never leaks
- * to the next session.
+ * Removes all drafts, queued mutations, queued photos, and the pools + visits
+ * read caches for a tenant. Called on sign-out or tenant switch so one
+ * company's data never leaks to the next session.
  */
 export async function clearCompanyData(companyId: string): Promise<void> {
   await db.transaction(
@@ -362,11 +362,13 @@ export async function clearCompanyData(companyId: string): Promise<void> {
     db.mutationQueue,
     db.poolCache,
     db.visitCache,
+    db.photoQueue,
     async () => {
       await db.draftVisits.where("companyId").equals(companyId).delete();
       await db.mutationQueue.where("companyId").equals(companyId).delete();
       await db.poolCache.delete(companyId);
       await db.visitCache.where("companyId").equals(companyId).delete();
+      await db.photoQueue.where("companyId").equals(companyId).delete();
     },
   );
 }

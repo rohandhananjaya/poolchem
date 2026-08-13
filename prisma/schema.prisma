@@ -298,6 +298,11 @@ model VisitPhoto {
   url            String
   category       VisitPhotoCategory @default(EQUIPMENT)
   sortOrder      Int               @default(0)
+  // Device-generated idempotency key for offline-queue replay. Unique so a
+  // replayed upload returns the existing row instead of duplicating it; the R2
+  // object name mirrors this key so a crash between PUT and insert never
+  // accumulates orphans. Null for uploads made online-only.
+  clientMutationId String?         @unique
   createdAt      DateTime          @default(now())
 
   serviceVisitPool ServiceVisitPool @relation(fields: [serviceVisitPoolId], references: [id], onDelete: Cascade)

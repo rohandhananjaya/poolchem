@@ -14,14 +14,21 @@ import { buildPublicUrl, getR2BucketName, getR2Client, keyFromPublicUrl } from "
  * per body of water (`serviceVisitPoolId`), matching the landed `VisitPhoto`
  * schema. Caller is responsible for tenancy/validation (the db-helper card's
  * `addVisitPhoto` tenant-scopes the insert).
+ *
+ * When `keySeed` is present the object name is `${keySeed}.${ext}` instead of a
+ * fresh UUID, so re-uploads (offline-queue replays) overwrite the SAME object —
+ * a crash between the PUT and the DB insert never accumulates orphan objects.
  */
 export async function uploadVisitPhoto(input: {
   companyId: string;
   serviceVisitPoolId: string;
   file: File;
+  keySeed?: string;
 }): Promise<string> {
-  const { companyId, serviceVisitPoolId, file } = input;
-  const key = `photos/${companyId}/${serviceVisitPoolId}/${randomUUID()}.${extensionForPhotoMimeType(file.type)}`;
+  const { companyId, serviceVisitPoolId, file, keySeed } = input;
+  const objectName =
+    keySeed ?? `${randomUUID()}.${extensionForPhotoMimeType(file.type)}`;
+  const key = `photos/${companyId}/${serviceVisitPoolId}/${objectName}`;
   const body = new Uint8Array(await file.arrayBuffer());
 
   await getR2Client().send(

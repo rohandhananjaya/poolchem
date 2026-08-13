@@ -41,12 +41,18 @@ export interface AddVisitPhotoInput {
   url: string;
   category?: VisitPhotoCategory;
   sortOrder?: number;
+  /** Device-generated idempotency key for offline-queue replay. */
+  clientMutationId?: string;
 }
 
 /**
  * Adds a photo to a body of water, tenant-guarded. When `sortOrder` is
  * omitted it is auto-appended (max existing + 1) so new photos land at the
  * end of the ordering.
+ *
+ * When `clientMutationId` is present, a prior row with the same key (and
+ * company) is returned instead of inserting a duplicate — a replayed offline
+ * upload resolves to the original photo.
  *
  * @throws {NotFoundError} When the body is missing or owned by another company.
  */
@@ -55,6 +61,15 @@ export async function addVisitPhoto(
   companyId: string,
 ): Promise<VisitPhoto> {
   await assertServiceVisitPoolOwnedByCompany(input.serviceVisitPoolId, companyId);
+
+  // Replay dedupe: an already-applied upload with the same idempotency key
+  // returns the existing row instead of inserting a duplicate.
+  if (input.clientMutationId !== undefined) {
+    const existing = await prisma.visitPhoto.findFirst({
+      where: { clientMutationId: input.clientMutationId, companyId },
+    });
+    if (existing) return existing;
+  }
 
   let sortOrder = input.sortOrder;
   if (sortOrder === undefined) {
@@ -73,6 +88,9 @@ export async function addVisitPhoto(
       url: input.url,
       ...(input.category !== undefined ? { category: input.category } : {}),
       sortOrder,
+      ...(input.clientMutationId !== undefined
+        ? { clientMutationId: input.clientMutationId }
+        : {}),
     },
   });
 }
