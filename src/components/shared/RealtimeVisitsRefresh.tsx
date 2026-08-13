@@ -42,7 +42,17 @@ export function RealtimeVisitsRefresh() {
         )
         .subscribe((status, err) => {
           if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
-            console.error("RealtimeVisitsRefresh: subscription failed", status, err)
+            // Transient transport failure (network flake, brief offline, dev
+            // proxy hiccups) — realtime-js reconnects the socket and rejoins
+            // the channel. Log as a warning (skip when already offline) rather
+            // than an error for an expected, handled condition.
+            if (typeof navigator === "undefined" || navigator.onLine) {
+              console.warn(
+                "RealtimeVisitsRefresh: subscription failed, waiting for reconnect",
+                status,
+                err,
+              )
+            }
           }
         })
     }

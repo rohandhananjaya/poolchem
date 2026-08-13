@@ -161,7 +161,18 @@ export function useRealtimeVisits(techId: string) {
               return
             }
             if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
-              console.error("useRealtimeVisits: subscription failed", status, err)
+              // Transport failures are transient (network flake, brief
+              // offline, dev-server proxy hiccups) and self-healed by
+              // scheduleRetry below — log as a warning, and skip entirely
+              // when the browser already reports offline, rather than
+              // flooding the console as errors for an expected condition.
+              if (typeof navigator === "undefined" || navigator.onLine) {
+                console.warn(
+                  "useRealtimeVisits: subscription failed, will retry",
+                  status,
+                  err,
+                )
+              }
               if (channel) {
                 supabase.removeChannel(channel)
                 channel = null
