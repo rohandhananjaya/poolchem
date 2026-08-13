@@ -22,7 +22,9 @@ Photo objects are keyed `photos/{companyId}/{serviceVisitPoolId}/{uuid}.{ext}` �
 - `validateLogoFile(file) → LogoValidationResult` · `extensionForMimeType(mime) → string` · `MAX_LOGO_BYTES` · `ALLOWED_LOGO_MIME_TYPES`
 
 **photo-format.ts** (pure)
-- `extensionForPhotoMimeType(mime) → string` — `jpg` for `image/jpeg`, `png`, `webp`, else `bin`. Home for `MAX_PHOTO_BYTES`/allowed-quantities when the validation card lands.
+- `extensionForPhotoMimeType(mime) → string` — `jpg` for `image/jpeg`, `png`, `webp`, else `bin`
+- `validatePhotoFile(file) → PhotoValidationResult` — `{ ok:false }` for empty / >6MB / non-JPEG-PNG-WebP (mirrors `logo-validation.ts`)
+- `MAX_PHOTO_BYTES = 6MB` (clears the 8mb `serverActions.bodySizeLimit` with multipart overhead) · `ALLOWED_PHOTO_MIME_TYPES` · `PhotoValidationResult`
 
 **visit-photos.ts**
 - `uploadVisitPhoto({ companyId, serviceVisitPoolId, file }) → Promise<string>` — key `photos/{companyId}/{serviceVisitPoolId}/{uuid}.{ext}`, `PutObjectCommand`, returns public URL. Storage stays dumb — no tenancy/ownership verification here (db-helper `addVisitPhoto` tenant-scopes the insert)
