@@ -11,7 +11,15 @@ import {
   getPending,
   markStatus,
 } from "./mutation-queue";
-import { _resetSweepGuardForTests, drainOnce } from "./processor";
+import {
+  _resetSweepGuardForTests,
+  drainOnce,
+  drainPhotosOnce,
+} from "./processor";
+import {
+  enqueuePhoto,
+  getPhotoVisitStats,
+} from "./photo-queue";
 import type { DraftVisitPayload } from "./types";
 
 function payload(overrides: Partial<DraftVisitPayload> = {}): DraftVisitPayload {
@@ -358,5 +366,160 @@ describe("drainOnce", () => {
       { clientMutationId: entry.clientMutationId, status: "synced" },
     ]);
     expect(followUp).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("drainPhotosOnce", () => {
+  beforeEach(async () => {
+    await db.delete();
+    await db.open();
+    _resetSweepGuardForTests();
+    vi.spyOn(Math, "random").mockReturnValue(0.5);
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+    restoreNavigatorOnline();
+  });
+
+  const photoFile = new File(["photo-bytes"], "photo.jpg", {
+    type: "image/jpeg",
+  });
+
+  it("drains a pending photo through the replay and deletes its entry", async () => {
+    const entry = await enqueuePhoto(
+      "company-1",
+      "visit-1",
+      "svp-1",
+      photoFile,
+    );
+
+    const replay = vi.fn().mockResolvedValue(undefined);
+    const results = await drainPhotosOnce("company-1", replay);
+
+    expect(results).toEqual([
+      { clientMutationId: entry.clientMutationId, status: "synced" },
+    ]);
+    expect(replay).toHaveBeenCalledTimes(1);
+    expect(replay).toHaveBeenCalledWith(
+      expect.objectContaining({
+        companyId: "company-1",
+        visitId: "visit-1",
+        serviceVisitPoolId: "svp-1",
+        clientMutationId: entry.clientMutationId,
+        kind: "upload",
+      }),
+    );
+    expect(await getPhotoVisitStats("company-1", "visit-1")).toEqual({
+      pending: 0,
+      failed: 0,
+      dead: 0,
+    });
+  });
+
+  it("schedules a transient photo failure with backoff and retries when due", async () => {
+    const entry = await enqueuePhoto(
+      "company-1",
+      "visit-1",
+      "svp-1",
+      photoFile,
+    );
+    const now = 1_000_000;
+    const replay = vi.fn().mockRejectedValue(new Error("offline"));
+
+    const results = await drainPhotosOnce("company-1", replay, { now });
+
+    expect(results).toEqual([
+      { clientMutationId: entry.clientMutationId, status: "failed" },
+    ]);
+    const stats = await getPhotoVisitStats("company-1", "visit-1");
+    expect(stats).toEqual({ pending: 0, failed: 1, dead: 0 });
+
+    const due = vi.fn().mockResolvedValue(undefined);
+    await expect(
+      drainPhotosOnce("company-1", due, { now: now + 1_000_000 }),
+    ).resolves.toEqual([
+      { clientMutationId: entry.clientMutationId, status: "synced" },
+    ]);
+    expect(due).toHaveBeenCalledTimes(1);
+  });
+
+  it("dead-letters a photo whose failure is permanent", async () => {
+    const entry = await enqueuePhoto(
+      "company-1",
+      "visit-1",
+      "svp-1",
+      photoFile,
+    );
+    const classifyError = vi.fn(() => true);
+    const replay = vi.fn().mockRejectedValue(new Error("Bad file"));
+
+    const results = await drainPhotosOnce("company-1", replay, {
+      classifyError,
+    });
+
+    expect(results).toEqual([
+      { clientMutationId: entry.clientMutationId, status: "dead" },
+    ]);
+    expect(await getPhotoVisitStats("company-1", "visit-1")).toEqual({
+      pending: 0,
+      failed: 0,
+      dead: 1,
+    });
+  });
+
+  it("is a no-op while offline", async () => {
+    await enqueuePhoto("company-1", "visit-1", "svp-1", photoFile);
+    setNavigatorOnline(false);
+
+    const replay = vi.fn().mockResolvedValue(undefined);
+    await expect(drainPhotosOnce("company-1", replay)).resolves.toEqual([]);
+    expect(replay).not.toHaveBeenCalled();
+  });
+
+  it("serializes against the mutation sweep (shared single-flight guard)", async () => {
+    const photo = await enqueuePhoto("company-1", "visit-1", "svp-1", photoFile);
+    await enqueue("company-1", "saveDraft", "visit-1", payload());
+
+    // Photo sweep must NOT get the guard — its replay would hang forever, so it
+    // is constructed to never settle; asserting it never ran is the point.
+    const photoReplay = vi.fn(() => new Promise(() => {}));
+
+    // The mutation sweep takes the guard first; the photo sweep must skip.
+    const mutationSweep = drainOnce(
+      "company-1",
+      vi.fn().mockResolvedValue(undefined),
+    );
+    const photoSweep = drainPhotosOnce("company-1", photoReplay);
+
+    await vi.waitFor(() => expect(photoReplay).not.toHaveBeenCalled());
+    await expect(photoSweep).resolves.toEqual([]);
+    await expect(mutationSweep).resolves.toHaveLength(1);
+
+    // With the guard released, the photo drains on the next sweep.
+    const retry = vi.fn().mockResolvedValue(undefined);
+    await expect(drainPhotosOnce("company-1", retry)).resolves.toEqual([
+      { clientMutationId: photo.clientMutationId, status: "synced" },
+    ]);
+  });
+
+  it("reverts a photo to pending on a one-shot (unscheduled) failure", async () => {
+    const entry = await enqueuePhoto("company-1", "visit-1", "svp-1", photoFile);
+    const replay = vi.fn().mockRejectedValue(new Error("flaky"));
+
+    const results = await drainPhotosOnce("company-1", replay, {
+      scheduleRetry: false,
+    });
+
+    expect(results).toEqual([
+      { clientMutationId: entry.clientMutationId, status: "failed" },
+    ]);
+    // One-shot drain: the entry reverts to `pending` for a later scheduled
+    // sweep instead of scheduling a backoff window.
+    expect(await getPhotoVisitStats("company-1", "visit-1")).toEqual({
+      pending: 1,
+      failed: 0,
+      dead: 0,
+    });
   });
 });

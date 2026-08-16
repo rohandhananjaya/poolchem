@@ -46,6 +46,8 @@ vi.mock("@/hooks/use-visit-sync-status", () => ({
     drain: mockDrain,
     retry: mockRetry,
   }),
+  // The photo processor reuses the form's permanent-failure classifier.
+  classifyVisitError: () => false,
 }));
 
 vi.mock("@/lib/offline/draft-visits", () => ({
@@ -58,6 +60,25 @@ vi.mock("@/lib/offline/mutation-queue", () => ({
   enqueue: vi.fn().mockResolvedValue({}),
   deleteEntriesForVisit: vi.fn().mockResolvedValue(undefined),
   deleteDeadForVisit: vi.fn().mockResolvedValue(undefined),
+  // The shared processor (`useQueueProcessor`, wired through the form's photo
+  // + mutation hooks) imports these — must exist on the mock or the module
+  // graph breaks at import time.
+  getDue: vi.fn().mockResolvedValue([]),
+  deleteEntry: vi.fn().mockResolvedValue(undefined),
+  markStatus: vi.fn().mockResolvedValue(undefined),
+  countEntriesForVisit: vi.fn().mockResolvedValue(0),
+}));
+
+// This test file doesn't boot fake-indexeddb; the real photo queue (IndexedDB
+// via Dexie) would reject on every mount. Mock it so both the live photo
+// component tiles and the photo processor's sweep resolve to empty/no-ops.
+vi.mock("@/lib/offline/photo-queue", () => ({
+  enqueuePhoto: vi.fn().mockResolvedValue({}),
+  deletePhotoEntry: vi.fn().mockResolvedValue(undefined),
+  getPendingPhotosForBody: vi.fn().mockResolvedValue([]),
+  getPhotoStats: vi.fn().mockResolvedValue({ pending: 0, processing: 0, failed: 0, dead: 0 }),
+  getDuePhotos: vi.fn().mockResolvedValue([]),
+  markPhotoStatus: vi.fn().mockResolvedValue(undefined),
 }));
 
 import { toast } from "sonner";

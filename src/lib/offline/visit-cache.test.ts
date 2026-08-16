@@ -33,8 +33,8 @@ describe("visit-cache", () => {
     await db.open();
   });
 
-  it("runs against the v5 schema with a visitCache table", async () => {
-    expect(db.verno).toBe(5);
+  it("runs against the v6 schema with a visitCache table", async () => {
+    expect(db.verno).toBe(6);
   });
 
   it("returns null before a snapshot is saved", async () => {

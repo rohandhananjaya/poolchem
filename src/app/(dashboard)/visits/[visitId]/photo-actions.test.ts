@@ -37,8 +37,9 @@ const mockPhoto = {
   serviceVisitPoolId,
   companyId: "company-1",
   url: "https://r2.example.com/photos/company-1/svp-1/abc.jpg",
-  category: "EQUIPMENT",
+  category: "EQUIPMENT" as const,
   sortOrder: 0,
+  clientMutationId: null,
   createdAt: new Date(),
 };
 
@@ -130,6 +131,34 @@ describe("uploadVisitPhotoAction", () => {
     await uploadVisitPhotoAction(visitId, serviceVisitPoolId, formWith(photoFile));
 
     expect(deleteVisitPhotoObject).not.toHaveBeenCalled();
+  });
+
+  it("forwards clientMutationId as the R2 keySeed and the replay dedupe key", async () => {
+    vi.mocked(requireTech).mockResolvedValue(mockUser as never);
+    vi.mocked(uploadVisitPhoto).mockResolvedValue(mockPhoto.url);
+    vi.mocked(addVisitPhoto).mockResolvedValue(mockPhoto);
+
+    const result = await uploadVisitPhotoAction(
+      visitId,
+      serviceVisitPoolId,
+      formWith(photoFile),
+      "cm-1",
+    );
+
+    // Both halves of idempotency are load-bearing: the stable key means a crash
+    // between PUT and insert never orphans a second object, and forwarding the
+    // key means a replay resolves to the original row (no duplicate).
+    expect(uploadVisitPhoto).toHaveBeenCalledWith({
+      companyId: "company-1",
+      serviceVisitPoolId,
+      file: photoFile,
+      keySeed: "cm-1",
+    });
+    expect(addVisitPhoto).toHaveBeenCalledWith(
+      { serviceVisitPoolId, url: mockPhoto.url, clientMutationId: "cm-1" },
+      "company-1",
+    );
+    expect(result).toEqual({ ok: true, photo: mockPhoto });
   });
 
   it("throws when unauthenticated", async () => {

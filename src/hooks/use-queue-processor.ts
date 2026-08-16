@@ -5,24 +5,51 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import {
   drainOnce,
   type DrainResult,
-  type FlushReplay,
 } from "@/lib/offline/processor";
-import type { QueuedMutation } from "@/lib/offline/types";
 import { useOnlineStatus } from "./use-online-status";
 
-export interface UseQueueProcessorOptions {
+/**
+ * The callbacks a sweep entry-point accepts — the structural subset of the
+ * mutation/photo drain options the hook wires through (now/limit/backoff stay
+ * internal to the queue backends).
+ */
+export interface DrainCallbackOptions<E> {
+  classifyError?: (err: unknown, entry: E) => boolean;
+  onDead?: (entry: E) => void;
+  onSynced?: (entry: E) => void;
+  onFailed?: (entry: E, permanent: boolean) => void;
+}
+
+/**
+ * The sweep entry-point abstraction (DIP). `drainOnce` (mutation queue) and
+ * `drainPhotosOnce` (photo queue) both satisfy it, so the SAME trigger wiring
+ * drains either queue.
+ */
+export type DrainFn<E> = (
+  companyId: string,
+  replay: (entry: E) => Promise<unknown>,
+  opts: DrainCallbackOptions<E>,
+) => Promise<DrainResult[]>;
+
+export interface UseQueueProcessorOptions<E = unknown> {
   /** Tenant whose queue to drain. */
   companyId: string;
   /** Injected Server Action to replay each due entry against (DIP). */
-  replay: FlushReplay;
+  replay: (entry: E) => Promise<unknown>;
+  /**
+   * Sweep entry-point. Defaults to `drainOnce` (the mutation queue). The photo
+   * processor passes `drainPhotosOnce`; a photo sweep and a mutation sweep
+   * serialize on the shared single-flight guard in `processor.ts`.
+   */
+  drainFn?: DrainFn<E>;
   /** Maps replay errors to permanent (dead-letter immediately). */
-  classifyError?: (err: unknown, entry: QueuedMutation) => boolean;
+  classifyError?: (err: unknown, entry: E) => boolean;
   /** Fired when an entry dead-letters. */
-  onDead?: (entry: QueuedMutation) => void;
+  onDead?: (entry: E) => void;
   /** Fired when an entry syncs successfully. */
-  onSynced?: (entry: QueuedMutation) => void;
+  onSynced?: (entry: E) => void;
   /** Fired when an entry fails; `permanent` is true when dead-lettered. */
-  onFailed?: (entry: QueuedMutation, permanent: boolean) => void;
+  onFailed?: (entry: E, permanent: boolean) => void;
   /** Periodic sweep interval in ms. Default 5000. */
   sweepIntervalMs?: number;
   /**
@@ -55,8 +82,8 @@ export interface UseQueueProcessorResult {
  * currently running (all triggers flow through `drain`). The single-flight
  * guard in `drainOnce` prevents overlapping sweeps from the various triggers.
  */
-export function useQueueProcessor(
-  options: UseQueueProcessorOptions,
+export function useQueueProcessor<E = unknown>(
+  options: UseQueueProcessorOptions<E>,
 ): UseQueueProcessorResult {
   const { online, hydrated } = useOnlineStatus();
   const enabled = options.enabled !== false;
@@ -94,15 +121,19 @@ export function useQueueProcessor(
     const {
       companyId,
       replay,
+      drainFn,
       classifyError,
       onDead,
       onSynced,
       onFailed,
     } = optsRef.current;
+    // The default only ever runs when the caller didn't inject a drainFn (the
+    // mutation queue, where `E` is `QueuedMutation`) — the cast is safe.
+    const sweep = (drainFn ?? drainOnce) as DrainFn<E>;
     sweepCountRef.current += 1;
     setInFlight(true);
     try {
-      return await drainOnce(companyId, replay, {
+      return await sweep(companyId, replay, {
         classifyError,
         onDead,
         onSynced,

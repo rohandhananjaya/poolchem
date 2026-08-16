@@ -60,6 +60,7 @@ import {
 } from "@/lib/offline/types"
 import { useOnlineStatus } from "@/hooks/use-online-status"
 import { useVisitSyncStatus } from "@/hooks/use-visit-sync-status"
+import { usePhotoQueueProcessor } from "@/hooks/use-photo-queue-processor"
 import { SyncStatusBadge } from "@/components/visits/SyncStatusBadge"
 
 const formSchema = z.object({
@@ -172,7 +173,10 @@ interface VisitFormProps {
   /** Per-body previous-readings hint, keyed by join-row id (multi-body only). */
   lastReadingsByJoinId?: Record<string, VisitReadings | null>
   /** Per-body photos, keyed by join-row id (multi-body only). */
-  photosByJoinId?: Record<string, Array<{ id: string; url: string }>>
+  photosByJoinId?: Record<
+    string,
+    Array<{ id: string; url: string; clientMutationId?: string | null }>
+  >
   currentUser: { id: string; name: string }
   techId: string | null
   canUseLSI: boolean
@@ -741,6 +745,7 @@ export function VisitForm({
             Photos
           </h2>
           <VisitPhotoCapture
+            companyId={companyId}
             visitId={visit.id}
             serviceVisitPoolId={editor.joinId}
             photos={photosByJoinId?.[editor.joinId] ?? []}
@@ -826,6 +831,16 @@ export function VisitForm({
     retry: retryDead,
     drain,
   } = sync
+
+  // Photo-queue processor: same triggers as the mutation processor, draining
+  // `photoQueue` through `drainPhotosOnce` (`uploadVisitPhotoAction` replay,
+  // idempotent via clientMutationId). Enabled gate mirrors the mutation one —
+  // completed/other-tech pages have nothing worth syncing (photos there are
+  // read-only already). Injected replay defaults to `DEFAULT_PHOTO_REPLAY`.
+  usePhotoQueueProcessor({
+    companyId,
+    enabled: !completed && !isOthersVisit,
+  })
 
   const handleSaveDraft = useCallback(async () => {
     setSaving("draft")
